@@ -23,7 +23,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        public static void ConvertFrom(string base58, Span<byte> bytes)
+        public static void ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
         {
             if (base58.Length == 0)
             {
@@ -98,7 +98,7 @@ namespace Ibasa.Ripple
             return (byte)remainder;
         }
 
-        public static string ConvertTo(Span<byte> bytes)
+        public static string ConvertTo(ReadOnlySpan<byte> bytes)
         {
             if (bytes.Length == 0)
             {
@@ -114,10 +114,13 @@ namespace Ibasa.Ripple
             byte[] temp = new byte[bytes.Length * 2];
             int j = temp.Length;
 
+            byte[] buffer = new byte[bytes.Length];
+            bytes.CopyTo(buffer);
+
             int startAt = zeroCount;
             while (startAt < bytes.Length)
             {
-                byte mod = DivMod58(bytes, startAt);
+                byte mod = DivMod58(buffer, startAt);
                 if (bytes[startAt] == 0)
                 {
                     ++startAt;
@@ -162,7 +165,7 @@ namespace Ibasa.Ripple
         [ThreadStatic]
         static System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create();
 
-        public static void ConvertFrom(string base58, Span<byte> bytes)
+        public static void ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
         {
             Span<byte> buffer = stackalloc byte[bytes.Length + 4];
             Base58.ConvertFrom(base58, buffer);
@@ -189,7 +192,7 @@ namespace Ibasa.Ripple
             buffer.Slice(0, bytes.Length).CopyTo(bytes);
         }
 
-        public static string ConvertTo(Span<byte> bytes)
+        public static string ConvertTo(ReadOnlySpan<byte> bytes)
         {
             Span<byte> buffer = stackalloc byte[bytes.Length + 4];
             bytes.CopyTo(buffer);

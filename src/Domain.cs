@@ -37,7 +37,7 @@ namespace Ibasa.Ripple
     }
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
-    public struct CurrencyCode
+    public struct CurrencyCode : IEquatable<CurrencyCode>
     {
         readonly ulong a;
         readonly ulong b;
@@ -127,6 +127,25 @@ namespace Ibasa.Ripple
                 return new string(chars);
             }
 
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(obj is CurrencyCode)
+            {
+                return Equals((CurrencyCode)obj);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(a, b, c);
+        }
+
+        public bool Equals(CurrencyCode other)
+        {
+            return a == other.a && b == other.b && c == other.c;
         }
     }
 

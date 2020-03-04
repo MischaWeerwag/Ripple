@@ -3,12 +3,12 @@ using Xunit;
 
 namespace Ibasa.Ripple.Tests
 {
-    public class HashTests
+    public class Hash256Tests
     {
         [Fact]
         public void TestDefault()
         {
-            var hash = new Hash();
+            var hash = new Hash256();
             Assert.Equal("0000000000000000000000000000000000000000000000000000000000000000", hash.ToString());
         }
 
@@ -17,7 +17,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData("8ED765AEBBD6767603C2C9375B2679AEC76E6A8133EF59F04F9FC1AAA70E41AF")]
         public void TestRoundTrip(string hex)
         {
-            var hash = new Hash(hex);
+            var hash = new Hash256(hex);
             Assert.Equal(hex, hash.ToString());
         }
     }

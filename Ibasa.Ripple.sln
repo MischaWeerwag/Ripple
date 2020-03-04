@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29806.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ibasa.Ripple", "src\Ibasa.Ripple.csproj", "{C2EAA9E7-EB2A-4C73-AA39-65F284B79954}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ibasa.Ripple.Tests", "tests\Ibasa.Ripple.Tests.csproj", "{767BC330-8352-4B41-BEAD-66B2C3A77C9E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C2EAA9E7-EB2A-4C73-AA39-65F284B79954}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2EAA9E7-EB2A-4C73-AA39-65F284B79954}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2EAA9E7-EB2A-4C73-AA39-65F284B79954}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2EAA9E7-EB2A-4C73-AA39-65F284B79954}.Release|Any CPU.Build.0 = Release|Any CPU
+		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D7EB2E54-3B51-45A9-8B71-E61981D3DAB4}
+	EndGlobalSection
+EndGlobal

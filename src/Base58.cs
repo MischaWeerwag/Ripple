@@ -3,11 +3,6 @@ using System.Buffers;
 
 namespace Ibasa.Ripple
 {
-    // N.B compare to System.Buffers.Text.Base64 API
-
-    /// <summary>
-    /// Converts between binary data and UTF-8 encoded text that is represented in base 58.
-    /// </summary>
     public static class Base58
     {
         private static string alphabet = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";

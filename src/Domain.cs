@@ -175,7 +175,6 @@ namespace Ibasa.Ripple
     {
         //LedgerEntryType String  UInt16 The value 0x0061, mapped to the string AccountRoot, indicates that this is an AccountRoot object.
         //Flags Number  UInt32 A bit-map of boolean flags enabled for this account.
-        //OwnerCount Number  UInt32 The number of objects this account owns in the ledger, which contributes to its owner reserve.
         //PreviousTxnID String  Hash256 The identifying hash of the transaction that most recently modified this object.
         //PreviousTxnLgrSeq Number  UInt32 The index of the ledger that contains the transaction that most recently modified this object.
         //Sequence Number  UInt32 The sequence number of the next valid transaction for this account. (Each account starts with Sequence = 1 and increases each time a transaction is made.)
@@ -199,11 +198,36 @@ namespace Ibasa.Ripple
         /// </summary>
         public ulong Balance { get; private set; }
 
+        /// <summary>
+        /// The number of objects this account owns in the ledger, which contributes to its owner reserve.
+        /// </summary>
+        public uint OwnerCount { get; private set; }
+
         internal AccountRoot(JsonElement json)
         {
             Account = new AccountID(json.GetProperty("Account").GetString());
             Balance = ulong.Parse(json.GetProperty("Balance").GetString());
+            OwnerCount = json.GetProperty("OwnerCount").GetUInt32();
         }
+
+        //{id: 1,…}
+        //        id: 1
+        //    result: {account_data: {Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", Balance: "7584128441", Flags: 0,…},…}
+        //    account_data: {Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", Balance: "7584128441", Flags: 0,…}
+        //    Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV"
+        //    Balance: "7584128441"
+        //    Flags: 0
+        //    LedgerEntryType: "AccountRoot"
+        //    OwnerCount: 7
+        //    PreviousTxnID: "309E32220F1ECEAC58262E34F19F5A7C9A22A98F882FD8C66C99A46F0B967485"
+        //    PreviousTxnLgrSeq: 52708421
+        //    Sequence: 345
+        //    index: "B33FDD5CF3445E1A7F2BE9B06336BEBD73A5E3EE885D3EF93F7E3E2992E46F1A"
+        //    ledger_hash: "C191678AE13A66BAFCAA5CA776839FAA04D283C429D1EFDE2F2AB643CFE0F2D4"
+        //    ledger_index: 53870749
+        //    validated: true
+        //    status: "success"
+        //    type: "response"
     }
 
     public static class Epoch

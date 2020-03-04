@@ -253,22 +253,22 @@ namespace Ibasa.Ripple
 
     public sealed class LedgerResponse
     {
-        public Hash LedgerHash { get; private set; }
+        public Hash256 LedgerHash { get; private set; }
 
         internal LedgerResponse(JsonElement json)
         {
-            LedgerHash = new Hash(json.GetProperty("ledger_hash").GetString());
+            LedgerHash = new Hash256(json.GetProperty("ledger_hash").GetString());
         }
     }
 
-    public struct Hash
+    public struct Hash256 : IEquatable<Hash256>
     {
         readonly long a;
         readonly long b;
         readonly long c;
         readonly long d;
 
-        public Hash(string hex)
+        public Hash256(string hex)
         {
             a = long.Parse(hex.Substring(0, 16), System.Globalization.NumberStyles.HexNumber);
             b = long.Parse(hex.Substring(16, 16), System.Globalization.NumberStyles.HexNumber);
@@ -280,13 +280,32 @@ namespace Ibasa.Ripple
         {
             return String.Format("{0,16:X}{1,16:X}{2,16:X}{3,16:X}", a, b, c, d).Replace(' ', '0');
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Hash256)
+            {
+                return Equals((Hash256)obj);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(a, b, c, d);
+        }
+
+        public bool Equals(Hash256 other)
+        {
+            return a == other.a && b == other.b && c == other.c && d == other.d;
+        }
     }
 
     public struct LedgerSpecification
     {
         private int index;
         private string shortcut;
-        private Hash? hash;
+        private Hash256? hash;
 
         /// <summary>
         /// The most recent ledger that has been validated by the whole network.
@@ -312,13 +331,13 @@ namespace Ibasa.Ripple
 
             this.index = index;
             this.shortcut = null;
-            this.hash = new Hash?();
+            this.hash = new Hash256?();
         }
-        public LedgerSpecification(Hash hash)
+        public LedgerSpecification(Hash256 hash)
         {
             this.index = 0;
             this.shortcut = null;
-            this.hash = new Hash?(hash);
+            this.hash = new Hash256?(hash);
         }
 
         internal static void Write(Utf8JsonWriter writer, LedgerSpecification specification)
@@ -443,12 +462,12 @@ namespace Ibasa.Ripple
 
     public sealed class LedgerClosedResponse
     {
-        public Hash LedgerHash { get; private set; }
+        public Hash256 LedgerHash { get; private set; }
         public uint LedgerIndex { get; private set; }
 
         internal LedgerClosedResponse(JsonElement json)
         {
-            LedgerHash = new Hash(json.GetProperty("ledger_hash").GetString());
+            LedgerHash = new Hash256(json.GetProperty("ledger_hash").GetString());
             LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
         }
     }

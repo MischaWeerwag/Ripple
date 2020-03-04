@@ -112,6 +112,22 @@ namespace Ibasa.Ripple
             // Ping just returns an empty object {}
             var _ = await ReceiveAsync(thisId, cancellationToken);
         }
+        public async Task<Hash256> Random(CancellationToken cancellationToken = default)
+        {
+            var buffer = new System.IO.MemoryStream();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = System.Threading.Interlocked.Increment(ref currentId);
+            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "random");
+                writer.WriteEndObject();
+            }
+            await socket.SendAsync(new ArraySegment<byte>(buffer.GetBuffer(), 0, (int)buffer.Length), WebSocketMessageType.Text, true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new Hash256(response.GetProperty("random").GetString());
+        }
 
         public async Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default)
         {

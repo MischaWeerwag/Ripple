@@ -96,6 +96,10 @@ namespace Ibasa.Ripple
             }
             return await tcs.Task;
         }
+
+        /// <summary>
+        /// The ping command returns an acknowledgement, so that clients can test the connection status and latency.
+        /// </summary>
         public async Task Ping(CancellationToken cancellationToken = default)
         {
             var buffer = new System.IO.MemoryStream();
@@ -112,6 +116,11 @@ namespace Ibasa.Ripple
             // Ping just returns an empty object {}
             var _ = await ReceiveAsync(thisId, cancellationToken);
         }
+
+        /// <summary>
+        /// The random command provides a random number to be used as a source of entropy for random number generation by clients.
+        /// </summary>
+        /// <returns>Random 256-bit hex value.</returns>
         public async Task<Hash256> Random(CancellationToken cancellationToken = default)
         {
             var buffer = new System.IO.MemoryStream();

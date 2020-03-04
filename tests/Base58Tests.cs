@@ -21,6 +21,7 @@ namespace Ibasa.Ripple.Tests
 
         [Theory]
         [InlineData("r4nmanwKSE6GpkTCrBjz8uanrGZabbpSfp")]
+        [InlineData("r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV")]
         public void TestAccount(string base58)
         {
             var bytes = new byte[21];

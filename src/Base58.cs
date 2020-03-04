@@ -121,7 +121,7 @@ namespace Ibasa.Ripple
             while (startAt < bytes.Length)
             {
                 byte mod = DivMod58(buffer, startAt);
-                if (bytes[startAt] == 0)
+                if (buffer[startAt] == 0)
                 {
                     ++startAt;
                 }

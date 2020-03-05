@@ -16,9 +16,9 @@ namespace Ibasa.Ripple
     }
 
 
-    public sealed class WebSocketClient : IDisposable
+    public sealed class WebSocketApi : IDisposable
     {
-        private readonly WebSocket socket;
+        private readonly ClientWebSocket socket;
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>> responses;
         private int currentId = 0;
@@ -72,9 +72,9 @@ namespace Ibasa.Ripple
             }
         }
         
-        public WebSocketClient(WebSocket webSocket)
+        public WebSocketApi(ClientWebSocket clientWebSocket)
         {
-            socket = webSocket;
+            socket = clientWebSocket;
             cancellationTokenSource = new CancellationTokenSource();
             responses = new System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>>();
 
@@ -245,6 +245,12 @@ namespace Ibasa.Ripple
             await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new AccountInfoResponse(response);
+        }
+
+        public async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
+        {
+            throw new Exception("");
+
         }
     }
 }

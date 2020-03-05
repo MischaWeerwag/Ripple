@@ -579,4 +579,14 @@ namespace Ibasa.Ripple
             Levels = new FeeResponseLevels(json.GetProperty("levels"));
         }
     }
+
+    public sealed class AccountCurrenciesResponse
+    {
+
+    }
+
+    public sealed class AccountCurrenciesRequest
+    {
+
+    }
 }

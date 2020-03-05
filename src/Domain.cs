@@ -369,7 +369,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// A unique identifier for the account, most commonly the account's Address.
         /// </summary>
-        public string Account { get; set; }
+        public AccountID Account { get; set; }
 
         /// <summary>
         /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.

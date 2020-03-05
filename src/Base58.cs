@@ -162,26 +162,25 @@ namespace Ibasa.Ripple
 
     public static class Base58Check
     {
-        [ThreadStatic]
-        static System.Security.Cryptography.SHA256 sha256 = System.Security.Cryptography.SHA256.Create();
-
         public static void ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
         {
             Span<byte> buffer = stackalloc byte[bytes.Length + 4];
             Base58.ConvertFrom(base58, buffer);
 
             Span<byte> firstHash = stackalloc byte[32];
-
-            if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
-            {
-                throw new Exception("sha256 error");
-            }
-
             Span<byte> secondHash = stackalloc byte[32];
 
-            if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                throw new Exception("sha256 error");
+                if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
+                {
+                    throw new Exception("sha256 error");
+                }
+
+                if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
+                {
+                    throw new Exception("sha256 error");
+                }
             }
 
             if (!buffer.Slice(bytes.Length, 4).SequenceEqual(secondHash.Slice(0, 4)))
@@ -199,19 +198,22 @@ namespace Ibasa.Ripple
 
             Span<byte> firstHash = stackalloc byte[32];
 
-            if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                throw new Exception("sha256 error");
+                if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
+                {
+                    throw new Exception("sha256 error");
+                }
+
+                Span<byte> secondHash = stackalloc byte[32];
+
+                if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
+                {
+                    throw new Exception("sha256 error");
+                }
+
+                secondHash.Slice(0, 4).CopyTo(buffer.Slice(bytes.Length, 4));
             }
-
-            Span<byte> secondHash = stackalloc byte[32];
-
-            if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
-            {
-                throw new Exception("sha256 error");
-            }
-
-            secondHash.Slice(0, 4).CopyTo(buffer.Slice(bytes.Length, 4));
 
             return Base58.ConvertTo(buffer);
         }

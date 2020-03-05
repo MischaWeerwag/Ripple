@@ -235,7 +235,7 @@ namespace Ibasa.Ripple
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "account_info");
                 LedgerSpecification.Write(writer, request.Ledger);
-                writer.WriteString("account", request.Account);
+                writer.WriteString("account", request.Account.ToString());
                 writer.WriteBoolean("strict", request.Strict);
                 writer.WriteBoolean("queue", request.Queue);
                 writer.WriteBoolean("signer_lists", request.SignerLists);

@@ -8,6 +8,7 @@ namespace Ibasa.Ripple.Tests
 
         [Theory]
         [InlineData("")]
+        [InlineData("bpHzbE")]
         [InlineData("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz")]
         public void TestRoundTrip(string data)
         {
@@ -18,10 +19,14 @@ namespace Ibasa.Ripple.Tests
             var result = System.Text.Encoding.UTF8.GetString(bytes);
             Assert.Equal(data, result);
         }
+    }
 
+    public class Base58CheckTests
+    { 
         [Theory]
         [InlineData("r4nmanwKSE6GpkTCrBjz8uanrGZabbpSfp")]
         [InlineData("r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV")]
+        [InlineData("rEopG7qc7ZWFMvCSH3GYeJJ7GPAQnKmxgw")]
         public void TestAccount(string base58)
         {
             var bytes = new byte[21];

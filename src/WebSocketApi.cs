@@ -263,10 +263,28 @@ namespace Ibasa.Ripple
             return new AccountInfoResponse(response);
         }
 
+        /// <summary>
+        /// The account_currencies command retrieves a list of currencies that an account can send or receive, based on its trust lines. (This is not a thoroughly confirmed list, but it can be used to populate user interfaces.)
+        /// </summary>
         public async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
         {
-            throw new Exception("");
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = System.Threading.Interlocked.Increment(ref currentId);
+            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "account_currencies");
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                writer.WriteBoolean("strict", request.Strict);
+                writer.WriteEndObject();
+            }
 
+            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new AccountCurrenciesResponse(response);
         }
     }
 }

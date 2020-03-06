@@ -89,11 +89,29 @@ namespace Ibasa.Ripple.Tests
 
             var request = new AccountInfoRequest()
             {
+                Ledger = LedgerSpecification.Current,
                 Account = account,
             };
             var response = await fixture.SocketApi.AccountInfo(request);
             Assert.Equal(account, response.AccountData.Account);
             Assert.Equal(fixture.TestAccountOne.Amount, response.AccountData.Balance);
+        }
+
+        [Fact]
+        public async Task TestAccountCurrencies()
+        {
+            var account = new AccountID(fixture.TestAccountOne.Address);
+            var request = new AccountCurrenciesRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = account,
+            };
+            var response = await fixture.SocketApi.AccountCurrencies(request);
+            Assert.False(response.Validated);
+            Assert.Empty(response.SendCurrencies);
+            Assert.Empty(response.ReceiveCurrencies);
+            Assert.Null(response.LedgerHash);
+            Assert.NotEqual(default, response.LedgerIndex);
         }
 
         [Fact]

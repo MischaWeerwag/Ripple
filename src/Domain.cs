@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Text.Json;
 
 namespace Ibasa.Ripple
@@ -582,11 +583,79 @@ namespace Ibasa.Ripple
 
     public sealed class AccountCurrenciesResponse
     {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data, as hex.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
 
+        /// <summary>
+        /// Array of Currency Codes for currencies that this account can receive.
+        /// </summary>
+        public ReadOnlyCollection<CurrencyCode> ReceiveCurrencies { get; private set; }
+
+        /// <summary>
+        /// Array of Currency Codes for currencies that this account can send.
+        /// </summary>
+        public ReadOnlyCollection<CurrencyCode> SendCurrencies { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
+        internal AccountCurrenciesResponse(JsonElement json)
+        {
+            if(json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+
+            LedgerIndex = json.GetProperty("ledger_current_index").GetUInt32();
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            JsonElement json_array;
+            CurrencyCode[] codes;
+            int index;
+
+            json_array = json.GetProperty("receive_currencies");
+            codes = new CurrencyCode[json_array.GetArrayLength()];
+            index = 0;
+            foreach(var code in json_array.EnumerateArray())
+            {
+                codes[index++] = new CurrencyCode(code.GetString());
+            }
+            ReceiveCurrencies = Array.AsReadOnly(codes);
+
+            json_array = json.GetProperty("send_currencies");
+            codes = new CurrencyCode[json_array.GetArrayLength()];
+            index = 0;
+            foreach (var code in json_array.EnumerateArray())
+            {
+                codes[index++] = new CurrencyCode(code.GetString());
+            }
+            SendCurrencies = Array.AsReadOnly(codes);
+        }
     }
 
     public sealed class AccountCurrenciesRequest
     {
+        /// <summary>
+        /// A unique identifier for the account, most commonly the account's Address.
+        /// </summary>
+        public AccountID Account { get; set; }
 
+        /// <summary>
+        /// If true, only accept an address or public key for the account parameter.
+        /// </summary>
+        public bool Strict { get; set; }
+
+        /// <summary>
+        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
     }
 }

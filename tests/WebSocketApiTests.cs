@@ -50,7 +50,7 @@ namespace Ibasa.Ripple.Tests
             return new TestAccount(
                 document.RootElement.GetProperty("account").GetProperty("address").GetString(),
                 document.RootElement.GetProperty("account").GetProperty("secret").GetString(),
-                document.RootElement.GetProperty("balance").GetUInt64());
+                document.RootElement.GetProperty("balance").GetUInt64() * 1000000UL);
         }
 
         public void Dispose()

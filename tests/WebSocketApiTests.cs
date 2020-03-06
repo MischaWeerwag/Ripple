@@ -95,5 +95,12 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(account, response.AccountData.Account);
             Assert.Equal(fixture.TestAccountOne.Amount, response.AccountData.Balance);
         }
+
+        [Fact]
+        public async Task TestFee()
+        {
+            var response = await fixture.SocketApi.Fee();
+            Assert.NotEqual(0u, response.LedgerCurrentIndex);
+        }
     }
 }

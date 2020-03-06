@@ -21,53 +21,69 @@ namespace Ibasa.Ripple
         private readonly ClientWebSocket socket;
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>> responses;
+        private readonly Task receiveTask;
         private int currentId = 0;
 
-        private async void ReceiveLoop()
+        private async Task ReceiveLoop()
         {
             var response = new System.Buffers.ArrayBufferWriter<byte>();
             while(!cancellationTokenSource.IsCancellationRequested)
             {
                 var buffer = response.GetMemory();
-                var result = await socket.ReceiveAsync(buffer, cancellationTokenSource.Token);
-                response.Advance(result.Count);
-                if (result.EndOfMessage)
+                try
                 {
-                    var json = System.Text.Json.JsonDocument.Parse(response.WrittenMemory);
-
-                    var type = json.RootElement.GetProperty("type").GetString();
-                    if (type == "response")
+                    var result = await socket.ReceiveAsync(buffer, cancellationTokenSource.Token);
+                    response.Advance(result.Count);
+                    if (result.EndOfMessage)
                     {
-                        var id = json.RootElement.GetProperty("id").GetInt32();
-                        var status = json.RootElement.GetProperty("status").GetString();
-                        if (status == "success")
+                        var json = System.Text.Json.JsonDocument.Parse(response.WrittenMemory);
+
+                        var type = json.RootElement.GetProperty("type").GetString();
+                        if (type == "response")
                         {
-                            lock (responses)
+                            var id = json.RootElement.GetProperty("id").GetInt32();
+                            var status = json.RootElement.GetProperty("status").GetString();
+                            if (status == "success")
                             {
-                                if (responses.TryGetValue(id, out var task))
+                                lock (responses)
                                 {
-                                    responses.Remove(id);
-                                    task.SetResult(json.RootElement.GetProperty("result").Clone());
+                                    if (responses.TryGetValue(id, out var task))
+                                    {
+                                        responses.Remove(id);
+                                        task.SetResult(json.RootElement.GetProperty("result").Clone());
+                                    }
                                 }
                             }
-                        } 
-                        else if(status == "error")
-                        {
-                            var error = json.RootElement.GetProperty("error").GetString();
-                            var exception = new RippleException(error, json.RootElement.GetProperty("request").Clone());
-
-                            lock (responses)
+                            else if (status == "error")
                             {
-                                if (responses.TryGetValue(id, out var task))
+                                var error = json.RootElement.GetProperty("error").GetString();
+                                var exception = new RippleException(error, json.RootElement.GetProperty("request").Clone());
+
+                                lock (responses)
                                 {
-                                    responses.Remove(id);
-                                    task.SetException(exception);
+                                    if (responses.TryGetValue(id, out var task))
+                                    {
+                                        responses.Remove(id);
+                                        task.SetException(exception);
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    response.Clear();
+                        response.Clear();
+                    }
+                }
+                catch(TaskCanceledException taskCanceledException)
+                {
+                    if(taskCanceledException.CancellationToken == cancellationTokenSource.Token)
+                    {
+                        // We canceled the receive, while loop will now terminate and task completes successfully
+                    }
+                    else
+                    {
+                        // Something else unexpected was cancelled, rethrow
+                        throw;
+                    }
                 }
             }
             socket.Dispose();
@@ -78,13 +94,13 @@ namespace Ibasa.Ripple
             socket = clientWebSocket;
             cancellationTokenSource = new CancellationTokenSource();
             responses = new System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>>();
-
-            ReceiveLoop();
+            receiveTask = ReceiveLoop();
         }
 
         public void Dispose()
         {
             cancellationTokenSource.Cancel();
+            receiveTask.Wait();
         }
 
         private async Task<System.Text.Json.JsonElement> ReceiveAsync(int id, CancellationToken cancellationToken)

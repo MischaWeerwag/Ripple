@@ -20,9 +20,10 @@ namespace Ibasa.Ripple
     {
         private readonly ClientWebSocket socket;
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-        private readonly System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>> responses;
+        private readonly System.Collections.Generic.Dictionary<uint, TaskCompletionSource<System.Text.Json.JsonElement>> responses;
         private readonly Task receiveTask;
-        private int currentId = 0;
+        private readonly System.Buffers.ArrayBufferWriter<byte> jsonBuffer = new System.Buffers.ArrayBufferWriter<byte>();
+        private uint currentId = 0U;
 
         private async Task ReceiveLoop()
         {
@@ -41,7 +42,7 @@ namespace Ibasa.Ripple
                         var type = json.RootElement.GetProperty("type").GetString();
                         if (type == "response")
                         {
-                            var id = json.RootElement.GetProperty("id").GetInt32();
+                            var id = json.RootElement.GetProperty("id").GetUInt32();
                             var status = json.RootElement.GetProperty("status").GetString();
                             if (status == "success")
                             {
@@ -93,7 +94,7 @@ namespace Ibasa.Ripple
         {
             socket = clientWebSocket;
             cancellationTokenSource = new CancellationTokenSource();
-            responses = new System.Collections.Generic.Dictionary<int, TaskCompletionSource<System.Text.Json.JsonElement>>();
+            responses = new System.Collections.Generic.Dictionary<uint, TaskCompletionSource<System.Text.Json.JsonElement>>();
             receiveTask = ReceiveLoop();
         }
 
@@ -103,7 +104,7 @@ namespace Ibasa.Ripple
             receiveTask.Wait();
         }
 
-        private async Task<System.Text.Json.JsonElement> ReceiveAsync(int id, CancellationToken cancellationToken)
+        private async Task<System.Text.Json.JsonElement> ReceiveAsync(uint id, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<System.Text.Json.JsonElement>();
             lock(responses)
@@ -118,17 +119,17 @@ namespace Ibasa.Ripple
         /// </summary>
         public async Task Ping(CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "ping");
                 writer.WriteEndObject();
             }
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, true, cancellationToken);
             // Ping just returns an empty object {}
             var _ = await ReceiveAsync(thisId, cancellationToken);
         }
@@ -139,27 +140,27 @@ namespace Ibasa.Ripple
         /// <returns>Random 256-bit hex value.</returns>
         public async Task<Hash256> Random(CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "random");
                 writer.WriteEndObject();
             }
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new Hash256(response.GetProperty("random").GetString());
         }
 
         public async Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -174,17 +175,17 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);            
             return new LedgerResponse(response);
         }
 
         public async Task<LedgerClosedResponse> LedgerClosed(CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -192,17 +193,17 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new LedgerClosedResponse(response);
         }
 
         public async Task<uint> LedgerCurrent(CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -210,7 +211,7 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return response.GetProperty("ledger_current_index").GetUInt32();
         }
@@ -220,10 +221,10 @@ namespace Ibasa.Ripple
         /// </summary>
         public async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -231,7 +232,7 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new FeeResponse(response);
         }
@@ -242,10 +243,10 @@ namespace Ibasa.Ripple
         /// </summary>
         public async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -258,7 +259,7 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new AccountInfoResponse(response);
         }
@@ -268,10 +269,10 @@ namespace Ibasa.Ripple
         /// </summary>
         public async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
         {
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
-            var thisId = System.Threading.Interlocked.Increment(ref currentId);
-            using (var writer = new System.Text.Json.Utf8JsonWriter(buffer, options))
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
             {
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
@@ -282,7 +283,7 @@ namespace Ibasa.Ripple
                 writer.WriteEndObject();
             }
 
-            await socket.SendAsync(buffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new AccountCurrenciesResponse(response);
         }

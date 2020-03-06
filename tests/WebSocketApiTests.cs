@@ -59,7 +59,7 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
-
+    [Collection("WebSocket")]
     public class WebSocketApiTests : IClassFixture<WebSocketClientSetup>
     {
         WebSocketClientSetup fixture;

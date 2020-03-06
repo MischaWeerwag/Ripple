@@ -6,4 +6,4 @@ Ibasa.Ripple is a .NET library for interacting with the Ripple WebSocket and JSO
 
 ## License
 
-This project is licensed under the LGPL License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the LGPL License - see the [LICENSE](LICENSE) file for details

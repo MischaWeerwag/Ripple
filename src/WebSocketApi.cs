@@ -70,6 +70,7 @@ namespace Ibasa.Ripple
                     response.Clear();
                 }
             }
+            socket.Dispose();
         }
         
         public WebSocketApi(ClientWebSocket clientWebSocket)
@@ -84,7 +85,6 @@ namespace Ibasa.Ripple
         public void Dispose()
         {
             cancellationTokenSource.Cancel();
-            socket.Dispose();
         }
 
         private async Task<System.Text.Json.JsonElement> ReceiveAsync(int id, CancellationToken cancellationToken)

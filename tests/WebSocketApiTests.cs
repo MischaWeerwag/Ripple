@@ -55,7 +55,7 @@ namespace Ibasa.Ripple.Tests
 
         public void Dispose()
         {
-            WebSocket.Dispose();
+            SocketApi.Dispose();
         }
     }
 

@@ -4,9 +4,12 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <PackageId>Ibasa.Ripple</PackageId>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Authors>Ibasa</Authors>
+    <Company>Ibasa</Company>
+    <RepositoryUrl>https://github.com/Ibasa/Ripple</RepositoryUrl>
     <PackageLicenseExpression>LGPL-3.0-only</PackageLicenseExpression>
+    <PackageTags>Cryptocurrencies;XRP;Ripple</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -614,7 +614,14 @@ namespace Ibasa.Ripple
                 LedgerHash = new Hash256(hash.GetString());
             }
 
-            LedgerIndex = json.GetProperty("ledger_current_index").GetUInt32();
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            } 
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
             Validated = json.GetProperty("validated").GetBoolean();
 
             JsonElement json_array;

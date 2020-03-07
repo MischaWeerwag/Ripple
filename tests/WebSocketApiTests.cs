@@ -115,6 +115,17 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Fact]
+        public async Task TestServerState()
+        {
+            var response = await fixture.SocketApi.ServerState();
+            Assert.NotEmpty(response.BuildVersion);
+            Assert.NotEmpty(response.PubkeyNode);
+            Assert.Null(response.PubkeyValidator);
+            Assert.NotEqual(TimeSpan.Zero, response.ServerStateDuration);
+            Assert.NotEqual(TimeSpan.Zero, response.Uptime);
+        }
+
+        [Fact]
         public async Task TestFee()
         {
             var response = await fixture.SocketApi.Fee();

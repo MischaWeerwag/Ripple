@@ -287,5 +287,26 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new AccountCurrenciesResponse(response);
         }
+
+        /// <summary>
+        /// The server_state command asks the server for various machine-readable information about the rippled server's current state.
+        /// </summary>
+        public async Task<ServerStateResponse> ServerState(CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "server_state");
+                writer.WriteEndObject();
+            }
+
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new ServerStateResponse(response);
+        }
     }
 }

@@ -898,5 +898,102 @@ namespace Ibasa.Ripple
             //    "validator_list_expires": 561139596
             //}
             //}
+    }
+
+    public sealed class AccountLinesRequest
+    {
+        /// <summary>
+        /// A unique identifier for the account, most commonly the account's Address.
+        /// </summary>
+        public AccountID Account { get; set; }
+
+        /// <summary>
+        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// The Address of a second account.
+        /// If provided, show only lines of trust connecting the two accounts.
+        /// </summary>
+        public AccountID? Peer { get; set; }
+
+    }
+
+    public sealed class TrustLine
+    {
+        /// <summary>
+        /// The unique Address of the counterparty to this trust line.
+        /// </summary>
+        public AccountID Account { get; private set; }
+
+        /// <summary>
+        /// Representation of the numeric balance currently held against this line.
+        /// A positive balance means that the perspective account holds value; a negative balance means that the perspective account owes value.
+        /// </summary>
+        public string Balance { get; private set; }
+
+        /// <summary>
+        /// A Currency Code identifying what currency this trust line can hold.
+        /// </summary>
+        public CurrencyCode Currency { get; private set; }
+
+        //limit String  The maximum amount of the given currency that this account is willing to owe the peer account
+        //limit_peer String  The maximum amount of currency that the counterparty account is willing to owe the perspective account
+        //quality_in Unsigned Integer Rate at which the account values incoming balances on this trust line, as a ratio of this value per 1 billion units. (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
+        //quality_out Unsigned Integer Rate at which the account values outgoing balances on this trust line, as a ratio of this value per 1 billion units. (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
+        //no_ripple Boolean(May be omitted) true if this account has enabled the NoRipple flag for this line.If omitted, that is the same as false.
+        //no_ripple_peer Boolean(May be omitted) true if the peer account has enabled the NoRipple flag.If omitted, that is the same as false.
+        //authorized Boolean (May be omitted) true if this account has authorized this trust line. If omitted, that is the same as false.
+        //peer_authorized Boolean (May be omitted) true if the peer account has authorized this trust line. If omitted, that is the same as false.
+        //freeze Boolean (May be omitted) true if this account has frozen this trust line. If omitted, that is the same as false.
+        //freeze_peer Boolean (May be omitted) true if the peer account has frozen this trust line. If omitted, that is the same as false.
+        internal TrustLine(JsonElement json)
+        {
+            Account = new AccountID(json.GetProperty("account").GetString());
+            Balance = json.GetProperty("balance").GetString();
+            Currency = new CurrencyCode(json.GetProperty("currency").GetString());
         }
+    }
+
+
+    public sealed class AccountLinesResponse
+    {
+        //ledger_current_index Integer - Ledger Index  (Omitted if ledger_hash or ledger_index provided) The ledger index of the current open ledger, which was used when retrieving this information. New in: rippled 0.26.4-sp1
+        //ledger_index Integer - Ledger Index  (Omitted if ledger_current_index provided instead) The ledger index of the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
+        //ledger_hash String - Hash(May be omitted) The identifying hash the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
+        //marker  Marker Server-defined value indicating the response is paginated.Pass this to the next call to resume where this call left off.Omitted when there are no additional pages after this one.New in: rippled 0.26.4 
+
+        /// <summary>
+        /// Unique Address of the account this request corresponds to.
+        /// This is the "perspective account" for purpose of the trust lines.
+        /// </summary>
+        public AccountID Account { get; private set; }
+
+        /// <summary>
+        /// Array of trust line objects.
+        /// </summary>
+        public ReadOnlyCollection<TrustLine> Lines { get; private set; } 
+        private System.Collections.Generic.List<TrustLine> _lines = new System.Collections.Generic.List<TrustLine>();
+
+
+        internal AccountLinesResponse(JsonElement json)
+        {
+            Account = new AccountID(json.GetProperty("account").GetString());
+            Lines = _lines.AsReadOnly();
+
+            foreach (var line in json.GetProperty("lines").EnumerateArray())
+            {
+                _lines.Add(new TrustLine(line));
+            }
+        }
+
+        internal void Add(JsonElement json)
+        {
+            foreach (var line in json.GetProperty("lines").EnumerateArray())
+            {
+                _lines.Add(new TrustLine(line));
+            }
+        }
+    }
 }

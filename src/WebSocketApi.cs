@@ -5,18 +5,7 @@ using System.Threading.Tasks;
 
 namespace Ibasa.Ripple
 {
-    public sealed class RippleException : System.Exception
-    {
-        public System.Text.Json.JsonElement Request { get; private set; }
-        public RippleException(string error, System.Text.Json.JsonElement request) 
-            : base(error) 
-        {
-            Request = request;
-        }
-    }
-
-
-    public sealed class WebSocketApi : IDisposable
+    public sealed class WebSocketApi : Api
     {
         private readonly ClientWebSocket socket;
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -58,7 +47,7 @@ namespace Ibasa.Ripple
                             else if (status == "error")
                             {
                                 var error = json.RootElement.GetProperty("error").GetString();
-                                var exception = new RippleException(error, json.RootElement.GetProperty("request").Clone());
+                                var exception = new RippleRequestException(error, json.RootElement.GetProperty("request").Clone());
 
                                 lock (responses)
                                 {
@@ -66,6 +55,17 @@ namespace Ibasa.Ripple
                                     {
                                         responses.Remove(id);
                                         task.SetException(exception);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                lock (responses)
+                                {
+                                    if (responses.TryGetValue(id, out var task))
+                                    {
+                                        responses.Remove(id);
+                                        task.SetException(new NotSupportedException(string.Format("{0} not a supported status", status)));
                                     }
                                 }
                             }
@@ -98,10 +98,10 @@ namespace Ibasa.Ripple
             receiveTask = ReceiveLoop();
         }
 
-        public void Dispose()
+        public override ValueTask DisposeAsync()
         {
             cancellationTokenSource.Cancel();
-            receiveTask.Wait();
+            return new ValueTask(receiveTask);
         }
 
         private async Task<System.Text.Json.JsonElement> ReceiveAsync(uint id, CancellationToken cancellationToken)
@@ -114,10 +114,7 @@ namespace Ibasa.Ripple
             return await tcs.Task;
         }
 
-        /// <summary>
-        /// The ping command returns an acknowledgement, so that clients can test the connection status and latency.
-        /// </summary>
-        public async Task Ping(CancellationToken cancellationToken = default)
+        public override async Task Ping(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -134,11 +131,7 @@ namespace Ibasa.Ripple
             var _ = await ReceiveAsync(thisId, cancellationToken);
         }
 
-        /// <summary>
-        /// The random command provides a random number to be used as a source of entropy for random number generation by clients.
-        /// </summary>
-        /// <returns>Random 256-bit hex value.</returns>
-        public async Task<Hash256> Random(CancellationToken cancellationToken = default)
+        public override async Task<Hash256> Random(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -155,7 +148,7 @@ namespace Ibasa.Ripple
             return new Hash256(response.GetProperty("random").GetString());
         }
 
-        public async Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -180,7 +173,7 @@ namespace Ibasa.Ripple
             return new LedgerResponse(response);
         }
 
-        public async Task<LedgerClosedResponse> LedgerClosed(CancellationToken cancellationToken = default)
+        public override async Task<LedgerClosedResponse> LedgerClosed(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -198,7 +191,7 @@ namespace Ibasa.Ripple
             return new LedgerClosedResponse(response);
         }
 
-        public async Task<uint> LedgerCurrent(CancellationToken cancellationToken = default)
+        public override async Task<uint> LedgerCurrent(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -216,10 +209,7 @@ namespace Ibasa.Ripple
             return response.GetProperty("ledger_current_index").GetUInt32();
         }
 
-        /// <summary>
-        /// The fee command reports the current state of the open-ledger requirements for the transaction cost.
-        /// </summary>
-        public async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)
+        public override async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -237,11 +227,7 @@ namespace Ibasa.Ripple
             return new FeeResponse(response);
         }
 
-        /// <summary>
-        /// The account_info command retrieves information about an account, its activity, and its XRP balance. 
-        /// All information retrieved is relative to a particular version of the ledger.
-        /// </summary>
-        public async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -264,10 +250,7 @@ namespace Ibasa.Ripple
             return new AccountInfoResponse(response);
         }
 
-        /// <summary>
-        /// The account_currencies command retrieves a list of currencies that an account can send or receive, based on its trust lines. (This is not a thoroughly confirmed list, but it can be used to populate user interfaces.)
-        /// </summary>
-        public async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -288,10 +271,7 @@ namespace Ibasa.Ripple
             return new AccountCurrenciesResponse(response);
         }
 
-        /// <summary>
-        /// The server_state command asks the server for various machine-readable information about the rippled server's current state.
-        /// </summary>
-        public async Task<ServerStateResponse> ServerState(CancellationToken cancellationToken = default)
+        public override async Task<ServerStateResponse> ServerState(CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -309,11 +289,7 @@ namespace Ibasa.Ripple
             return new ServerStateResponse(response);
         }
 
-        /// <summary>
-        /// The account_lines method returns information about an account's trust lines, including balances in all non-XRP currencies and assets. 
-        /// All information retrieved is relative to a particular version of the ledger.
-        /// </summary>
-        public async Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default)
+        public override async Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default)
         {
             // N.B It would be interesting to see if we could write this to use IAsyncEnumerable instead of collecting all the data up front, but it's not
             // clear what that API would look like? Should Lines on AccountLinesResponse be an AsyncEnumerable? Should this return a 

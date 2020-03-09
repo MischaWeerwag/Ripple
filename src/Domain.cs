@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Ibasa.Ripple
 {
@@ -957,7 +960,7 @@ namespace Ibasa.Ripple
     }
 
 
-    public sealed class AccountLinesResponse
+    public sealed class AccountLinesResponse : IAsyncEnumerable<TrustLine>
     {
         //ledger_current_index Integer - Ledger Index  (Omitted if ledger_hash or ledger_index provided) The ledger index of the current open ledger, which was used when retrieving this information. New in: rippled 0.26.4-sp1
         //ledger_index Integer - Ledger Index  (Omitted if ledger_current_index provided instead) The ledger index of the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
@@ -970,29 +973,54 @@ namespace Ibasa.Ripple
         /// </summary>
         public AccountID Account { get; private set; }
 
-        /// <summary>
-        /// Array of trust line objects.
-        /// </summary>
-        public ReadOnlyCollection<TrustLine> Lines { get; private set; } 
-        private System.Collections.Generic.List<TrustLine> _lines = new System.Collections.Generic.List<TrustLine>();
+        private Func<JsonElement, CancellationToken, Task<JsonElement>> PostAsync;
+        private JsonElement? Marker;
+        private JsonElement Lines;
 
 
-        internal AccountLinesResponse(JsonElement json)
+        internal AccountLinesResponse(JsonElement json, Func<JsonElement, CancellationToken, Task<JsonElement>> postAsync)
         {
+            PostAsync = postAsync;
             Account = new AccountID(json.GetProperty("account").GetString());
-            Lines = _lines.AsReadOnly();
 
-            foreach (var line in json.GetProperty("lines").EnumerateArray())
+            if(!json.TryGetProperty("marker", out var marker))
             {
-                _lines.Add(new TrustLine(line));
+                Marker = marker;
             }
+
+            Lines = json.GetProperty("lines");
         }
 
-        internal void Add(JsonElement json)
+        public async IAsyncEnumerator<TrustLine> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            foreach (var line in json.GetProperty("lines").EnumerateArray())
+            var marker = Marker;
+            var lines = Lines;
+
+            while (true)
             {
-                _lines.Add(new TrustLine(line));
+                foreach (var line in lines.EnumerateArray())
+                {
+                    yield return new TrustLine(line);
+                }
+
+                if (marker.HasValue)
+                {
+                    var response = await PostAsync(marker.Value, cancellationToken);
+                    if (!response.TryGetProperty("marker", out var marker2))
+                    {
+                        marker = marker2;
+                    }
+                    else
+                    {
+                        marker = null;
+                    }
+
+                    lines = response.GetProperty("lines");
+                }
+                else
+                {
+                    break;
+                }
             }
         }
     }

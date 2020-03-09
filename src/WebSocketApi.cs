@@ -291,14 +291,26 @@ namespace Ibasa.Ripple
 
         public override async Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default)
         {
-            // N.B It would be interesting to see if we could write this to use IAsyncEnumerable instead of collecting all the data up front, but it's not
-            // clear what that API would look like? Should Lines on AccountLinesResponse be an AsyncEnumerable? Should this return a 
-            // Task<Tuple<AccountLinesResponse>, AsyncEnumerable<TrustLine>> where the response object just has account and ledger on it. Or even have this just return
-            // AsyncEnumerable<TrustLine> and copy the account and ledger info onto each TrustLine object instead of just having it once?
-            System.Text.Json.JsonElement? currentMarker = null;
-            AccountLinesResponse accountLinesResponse = null;
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "account_lines");
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                if (request.Peer.HasValue)
+                {
+                    writer.WriteString("peer", request.Peer.Value.ToString());
+                }
+                writer.WriteEndObject();
+            }
 
-            do
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new AccountLinesResponse(response, async (marker, cancellationToken) =>
             {
                 jsonBuffer.Clear();
                 var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -314,37 +326,14 @@ namespace Ibasa.Ripple
                     {
                         writer.WriteString("peer", request.Peer.Value.ToString());
                     }
-                    if (currentMarker.HasValue)
-                    {
-                        writer.WritePropertyName("marker");
-                        currentMarker.Value.WriteTo(writer);
-                    }
+                    writer.WritePropertyName("marker");
+                    marker.WriteTo(writer);
                     writer.WriteEndObject();
                 }
 
                 await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
-                var response = await ReceiveAsync(thisId, cancellationToken);
-                if (accountLinesResponse == null)
-                {
-                    accountLinesResponse = new AccountLinesResponse(response);
-                }
-                else
-                {
-                    accountLinesResponse.Add(response);
-                }
-
-                if(response.TryGetProperty("marker", out var marker))
-                {
-                    // Have to clone because we clear the json buffer on each loop.
-                    currentMarker = marker.Clone();
-                }
-                else
-                {
-                    currentMarker = null;
-                }
-
-            } while (currentMarker.HasValue);
-            return accountLinesResponse;
+                return await ReceiveAsync(thisId, cancellationToken);
+            });
         }
     }
 }

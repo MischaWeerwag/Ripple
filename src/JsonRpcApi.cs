@@ -52,12 +52,50 @@ namespace Ibasa.Ripple
 
         public override async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = null, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "account_currencies");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                writer.WriteBoolean("strict", request.Strict);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new AccountCurrenciesResponse(response);
         }
 
         public override async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = null, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "account_info");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                writer.WriteBoolean("strict", request.Strict);
+                writer.WriteBoolean("queue", request.Queue);
+                writer.WriteBoolean("signer_lists", request.SignerLists);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new AccountInfoResponse(response);
         }
 
         public override async Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default)
@@ -66,7 +104,22 @@ namespace Ibasa.Ripple
         }
         public override async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "fee");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new FeeResponse(response);
         }
 
         public override async Task<LedgerResponse> Ledger(LedgerRequest request = null, CancellationToken cancellationToken = default)
@@ -125,7 +178,22 @@ namespace Ibasa.Ripple
 
         public override async Task<ServerStateResponse> ServerState(CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "server_state");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new ServerStateResponse(response);
         }
     }
 }

@@ -69,6 +69,23 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Fact]
+        public async Task TestFee()
+        {
+            var response = await Api.Fee();
+            Assert.NotEqual(0u, response.LedgerCurrentIndex);
+        }
+
+        [Fact]
+        public async Task TestLedgerCurrentAndClosed()
+        {
+            var current = await Api.LedgerCurrent();
+            var closed = await Api.LedgerClosed();
+
+            Assert.True(current > closed.LedgerIndex, "current > closed");
+            Assert.NotEqual(default, closed.LedgerHash);
+        }
+
+        [Fact]
         public async Task TestAccount()
         {
             var account = new AccountID(TestAccounts.TestAccountOne.Address);
@@ -109,13 +126,6 @@ namespace Ibasa.Ripple.Tests
             Assert.Null(response.PubkeyValidator);
             Assert.NotEqual(TimeSpan.Zero, response.ServerStateDuration);
             Assert.NotEqual(TimeSpan.Zero, response.Uptime);
-        }
-
-        [Fact]
-        public async Task TestFee()
-        {
-            var response = await Api.Fee();
-            Assert.NotEqual(0u, response.LedgerCurrentIndex);
         }
     }
 }

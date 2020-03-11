@@ -962,6 +962,8 @@ namespace Ibasa.Ripple
 
     public sealed class AccountLinesResponse : IAsyncEnumerable<TrustLine>
     {
+        // TODO: I'm not sure about this API
+
         //ledger_current_index Integer - Ledger Index  (Omitted if ledger_hash or ledger_index provided) The ledger index of the current open ledger, which was used when retrieving this information. New in: rippled 0.26.4-sp1
         //ledger_index Integer - Ledger Index  (Omitted if ledger_current_index provided instead) The ledger index of the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
         //ledger_hash String - Hash(May be omitted) The identifying hash the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
@@ -983,7 +985,7 @@ namespace Ibasa.Ripple
             PostAsync = postAsync;
             Account = new AccountID(json.GetProperty("account").GetString());
 
-            if(!json.TryGetProperty("marker", out var marker))
+            if(json.TryGetProperty("marker", out var marker))
             {
                 Marker = marker;
             }
@@ -1006,9 +1008,9 @@ namespace Ibasa.Ripple
                 if (marker.HasValue)
                 {
                     var response = await PostAsync(marker.Value, cancellationToken);
-                    if (!response.TryGetProperty("marker", out var marker2))
+                    if (response.TryGetProperty("marker", out var newMarker))
                     {
-                        marker = marker2;
+                        marker = newMarker;
                     }
                     else
                     {
@@ -1022,6 +1024,51 @@ namespace Ibasa.Ripple
                     break;
                 }
             }
+        }
+    }
+
+    public sealed class SubmitRequest
+    {
+        /// <summary>
+        /// Hex representation of the signed transaction to submit. This can be a multi-signed transaction.
+        /// </summary>
+        public string TxBlob { get; private set; }
+        /// <summary>
+        /// If true, and the transaction fails locally, do not retry or relay the transaction to other servers
+        /// </summary>
+        public bool FailHard { get; set; }
+    }
+
+    public sealed class SubmitResponse
+    {
+        /// <summary>
+        /// Code indicating the preliminary result of the transaction, for example tesSUCCESS
+        /// </summary>
+        public string EngineResult { get; private set; }
+        /// <summary>
+        /// Numeric code indicating the preliminary result of the transaction, directly correlated to engine_result
+        /// </summary>
+        public uint EngineResultCode { get; private set; }
+        /// <summary>
+        /// Human-readable explanation of the transaction's preliminary result
+        /// </summary>
+        public string EngineResultMessage { get; private set; }
+        /// <summary>
+        /// The complete transaction in hex string format
+        /// </summary>
+        public string TxBlob { get; private set; }
+        /// <summary>
+        /// The complete transaction in JSON format
+        /// </summary>
+        public JsonElement TxJson { get; private set; }
+
+        internal SubmitResponse(JsonElement json)
+        {
+            EngineResult = json.GetProperty("engine_result").GetString();
+            EngineResultCode = json.GetProperty("engine_result_code").GetUInt32();
+            EngineResultMessage = json.GetProperty("engine_result_message").GetString();
+            TxBlob = json.GetProperty("tx_blob").GetString();
+            TxJson = json.GetProperty("tx_json").Clone();
         }
     }
 }

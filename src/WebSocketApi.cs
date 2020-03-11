@@ -17,7 +17,7 @@ namespace Ibasa.Ripple
         private async Task ReceiveLoop()
         {
             var response = new System.Buffers.ArrayBufferWriter<byte>();
-            while(!cancellationTokenSource.IsCancellationRequested)
+            while (!cancellationTokenSource.IsCancellationRequested)
             {
                 var buffer = response.GetMemory();
                 try
@@ -74,9 +74,9 @@ namespace Ibasa.Ripple
                         response.Clear();
                     }
                 }
-                catch(TaskCanceledException taskCanceledException)
+                catch (TaskCanceledException taskCanceledException)
                 {
-                    if(taskCanceledException.CancellationToken == cancellationTokenSource.Token)
+                    if (taskCanceledException.CancellationToken == cancellationTokenSource.Token)
                     {
                         // We canceled the receive, while loop will now terminate and task completes successfully
                     }
@@ -89,7 +89,7 @@ namespace Ibasa.Ripple
             }
             socket.Dispose();
         }
-        
+
         public WebSocketApi(ClientWebSocket clientWebSocket)
         {
             socket = clientWebSocket;
@@ -107,7 +107,7 @@ namespace Ibasa.Ripple
         private async Task<System.Text.Json.JsonElement> ReceiveAsync(uint id, CancellationToken cancellationToken)
         {
             var tcs = new TaskCompletionSource<System.Text.Json.JsonElement>();
-            lock(responses)
+            lock (responses)
             {
                 responses.Add(id, tcs);
             }
@@ -169,7 +169,7 @@ namespace Ibasa.Ripple
             }
 
             await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
-            var response = await ReceiveAsync(thisId, cancellationToken);            
+            var response = await ReceiveAsync(thisId, cancellationToken);
             return new LedgerResponse(response);
         }
 
@@ -334,6 +334,26 @@ namespace Ibasa.Ripple
                 await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
                 return await ReceiveAsync(thisId, cancellationToken);
             });
+        }
+
+        public override async Task<SubmitResponse> Submit(SubmitRequest request = default, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "submit");
+                writer.WriteString("tx_blob", request.TxBlob);
+                writer.WriteBoolean("fail_hard", request.FailHard);
+                writer.WriteEndObject();
+            }
+
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new SubmitResponse(response);
         }
     }
 }

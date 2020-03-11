@@ -5,7 +5,6 @@ namespace Ibasa.Ripple.Tests
 {
     public class Base58Tests
     {
-
         [Theory]
         [InlineData("")]
         [InlineData("bpHzbE")]

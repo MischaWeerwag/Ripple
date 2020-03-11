@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Xunit;
@@ -126,6 +127,24 @@ namespace Ibasa.Ripple.Tests
             Assert.Null(response.PubkeyValidator);
             Assert.NotEqual(TimeSpan.Zero, response.ServerStateDuration);
             Assert.NotEqual(TimeSpan.Zero, response.Uptime);
+        }
+
+        [Fact]
+        public async Task TestAccountLines()
+        {
+            // TODO: This isn't a very interesting test. We should get Submit TrustSet working and then use this to see the result.
+
+            var request = new AccountLinesRequest();
+            request.Account = new AccountID(TestAccounts.TestAccountOne.Address);
+            var response = await Api.AccountLines(request);
+
+            Assert.Equal(request.Account, response.Account);
+            var lines = new List<TrustLine>();
+            await foreach(var line in response)
+            {
+                lines.Add(line);
+            }
+            Assert.Empty(lines);
         }
     }
 }

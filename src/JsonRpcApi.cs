@@ -100,7 +100,54 @@ namespace Ibasa.Ripple
 
         public override async Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "account_lines");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                if (request.Peer.HasValue)
+                {
+                    writer.WriteString("peer", request.Peer.Value.ToString());
+                }
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new AccountLinesResponse(response, async (marker, cancellationToken) =>
+            {
+                jsonBuffer.Clear();
+                var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+                using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("method", "account_lines");
+                    writer.WritePropertyName("params");
+                    writer.WriteStartArray();
+                    writer.WriteStartObject();
+                    LedgerSpecification.Write(writer, request.Ledger);
+                    writer.WriteString("account", request.Account.ToString());
+                    if (request.Peer.HasValue)
+                    {
+                        writer.WriteString("peer", request.Peer.Value.ToString());
+                    }
+                    writer.WritePropertyName("marker");
+                    marker.WriteTo(writer);
+                    writer.WriteEndObject();
+                    writer.WriteEndArray();
+                    writer.WriteEndObject();
+                }
+
+                var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+                return await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            });
         }
         public override async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)
         {
@@ -226,6 +273,28 @@ namespace Ibasa.Ripple
             var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
             return new ServerStateResponse(response);
+        }
+
+        public override async Task<SubmitResponse> Submit(SubmitRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "submit");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                writer.WriteString("tx_blob", request.TxBlob);
+                writer.WriteBoolean("fail_hard", request.FailHard);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new SubmitResponse(response);
         }
     }
 }

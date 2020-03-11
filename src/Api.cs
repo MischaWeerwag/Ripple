@@ -38,10 +38,21 @@ namespace Ibasa.Ripple
         /// <returns>Random 256-bit hex value.</returns>
         public abstract Task<Hash256> Random(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Retrieve information about the public ledger.
+        /// </summary>
         public abstract Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// The ledger_closed method returns the unique identifiers of the most recently closed ledger. 
+        /// (This ledger is not necessarily validated and immutable yet.)
+        /// </summary>
         public abstract Task<LedgerClosedResponse> LedgerClosed(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// The ledger_current method returns the unique identifiers of the current in-progress ledger. 
+        /// This command is mostly useful for testing, because the ledger returned is still in flux.
+        /// </summary>
         public abstract Task<uint> LedgerCurrent(CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -56,7 +67,8 @@ namespace Ibasa.Ripple
         public abstract Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// The account_currencies command retrieves a list of currencies that an account can send or receive, based on its trust lines. (This is not a thoroughly confirmed list, but it can be used to populate user interfaces.)
+        /// The account_currencies command retrieves a list of currencies that an account can send or receive, based on its trust lines. 
+        /// (This is not a thoroughly confirmed list, but it can be used to populate user interfaces.)
         /// </summary>
         public abstract Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default);
 
@@ -70,5 +82,12 @@ namespace Ibasa.Ripple
         /// All information retrieved is relative to a particular version of the ledger.
         /// </summary>
         public abstract Task<AccountLinesResponse> AccountLines(AccountLinesRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// The submit method applies a transaction and sends it to the network to be confirmed and included in future ledgers.
+        /// Submit-only mode takes a signed, serialized transaction as a binary blob, and submits it to the network as-is. 
+        /// Since signed transaction objects are immutable, no part of the transaction can be modified or automatically filled in after submission.
+        /// </summary>
+        public abstract Task<SubmitResponse> Submit(SubmitRequest request, CancellationToken cancellationToken = default);
     }
 }

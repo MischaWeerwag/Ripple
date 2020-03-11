@@ -3,6 +3,8 @@ using System.Buffers;
 
 namespace Ibasa.Ripple
 {
+    // TODO: Maybe this should write to an ArrayBuffer? Could write directly to the json streams we send.
+
     public static class Base58
     {
         private static string alphabet = "rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz";

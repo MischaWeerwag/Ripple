@@ -77,8 +77,8 @@ namespace Ibasa.Ripple
             if (code.Length == 3)
             {
                 // Standard Currency Code
-                
-                for(var i = 0; i < 3; ++i)
+
+                for (var i = 0; i < 3; ++i)
                 {
                     var c = (ushort)code[i];
 
@@ -90,13 +90,13 @@ namespace Ibasa.Ripple
                     else
                     {
                         throw new ArgumentException(string.Format("'{0}' is not a valid standard currency code character", (char)c), "code");
-                    }                    
+                    }
                 }
             }
             else if (code.Length == 40)
             {
                 // Nonstandard Currency Code
-                
+
                 for (int i = 0; i < bytes.Length; ++i)
                 {
                     var hi = (int)code[i * 2];
@@ -110,7 +110,7 @@ namespace Ibasa.Ripple
                     bytes[i] = (byte)(((hi - (hi < 58 ? 48 : (hi < 97 ? 55 : 87))) << 4) | (lo - (lo < 58 ? 48 : (lo < 97 ? 55 : 87))));
                 }
 
-                if(bytes[0] == 0x0)
+                if (bytes[0] == 0x0)
                 {
                     throw new ArgumentException("hex code first byte can not be zero", "code");
                 }
@@ -136,12 +136,12 @@ namespace Ibasa.Ripple
             {
                 // Standard Currency Code
                 return System.Text.Encoding.ASCII.GetString(bytes.Slice(12, 3));
-            } 
+            }
             else
             {
                 // Nonstandard Currency Code
                 Span<char> chars = stackalloc char[bytes.Length * 2];
-                
+
                 for (int i = 0; i < bytes.Length; i++)
                 {
                     var b = bytes[i] >> 4;
@@ -157,7 +157,7 @@ namespace Ibasa.Ripple
 
         public override bool Equals(object obj)
         {
-            if(obj is CurrencyCode)
+            if (obj is CurrencyCode)
             {
                 return Equals((CurrencyCode)obj);
             }
@@ -186,7 +186,7 @@ namespace Ibasa.Ripple
 
         public Amount(ulong drops)
         {
-            if((drops & 0x1FFFFFFFFFFFFFFUL) != 0)
+            if ((drops & 0x1FFFFFFFFFFFFFFUL) != 0)
             {
                 throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 144,115,188,075,855,872");
             }
@@ -634,7 +634,7 @@ namespace Ibasa.Ripple
 
         internal AccountCurrenciesResponse(JsonElement json)
         {
-            if(json.TryGetProperty("ledger_hash", out var hash))
+            if (json.TryGetProperty("ledger_hash", out var hash))
             {
                 LedgerHash = new Hash256(hash.GetString());
             }
@@ -642,7 +642,7 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
             {
                 LedgerIndex = ledgerCurrentIndex.GetUInt32();
-            } 
+            }
             else
             {
                 LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
@@ -656,7 +656,7 @@ namespace Ibasa.Ripple
             json_array = json.GetProperty("receive_currencies");
             codes = new CurrencyCode[json_array.GetArrayLength()];
             index = 0;
-            foreach(var code in json_array.EnumerateArray())
+            foreach (var code in json_array.EnumerateArray())
             {
                 codes[index++] = new CurrencyCode(code.GetString());
             }
@@ -836,93 +836,93 @@ namespace Ibasa.Ripple
             ServerStateDuration = TimeSpan.FromTicks(server_state_duration_us * ticksPerMicrosecond);
             Uptime = TimeSpan.FromSeconds(state.GetProperty("uptime").GetUInt32());
         }
-            //"state": {
-            //    "build_version": "0.30.1-rc3",
-            //    "complete_ledgers": "18611104-18615049",
-            //    "io_latency_ms": 1,
-            //    "last_close": {
-            //      "converge_time": 3003,
-            //      "proposers": 5
-            //    },
-            //    "load": {
-            //      "job_types": [
-            //          {
-            //          "job_type": "untrustedProposal",
-            //          "peak_time": 1,
-            //          "per_second": 3
-            //          },
-            //          {
-            //          "in_progress": 1,
-            //          "job_type": "clientCommand"
-            //          },
-            //          {
-            //          "avg_time": 12,
-            //          "job_type": "writeObjects",
-            //          "peak_time": 345,
-            //          "per_second": 2
-            //          },
-            //          {
-            //          "job_type": "trustedProposal",
-            //          "per_second": 1
-            //          },
-            //          {
-            //          "job_type": "peerCommand",
-            //          "per_second": 64
-            //          },
-            //          {
-            //          "avg_time": 33,
-            //          "job_type": "diskAccess",
-            //          "peak_time": 526
-            //          },
-            //          {
-            //          "job_type": "WriteNode",
-            //          "per_second": 55
-            //          }
-            //      ],
-            //      "threads": 6
-            //    },
-            //    "load_base": 256,
-            //    "load_factor": 256000,
-            //    "peers": 10,
-            //    "pubkey_node": "n94UE1ukbq6pfZY9j54sv2A1UrEeHZXLbns3xK5CzU9NbNREytaa",
-            //    "pubkey_validator": "n9KM73uq5BM3Fc6cxG3k5TruvbLc8Ffq17JZBmWC4uP4csL4rFST",
-            //    "server_state": "proposing",
-            //    "server_state_duration_us": 92762334,
-            //    "state_accounting": {
-            //      "connected": {
-            //          "duration_us": "150510079",
-            //          "transitions": 1
-            //      },
-            //      "disconnected": {
-            //          "duration_us": "1827731",
-            //          "transitions": 1
-            //      },
-            //      "full": {
-            //          "duration_us": "168295542987",
-            //          "transitions": 1865
-            //      },
-            //      "syncing": {
-            //          "duration_us": "6294237352",
-            //          "transitions": 1866
-            //      },
-            //      "tracking": {
-            //          "duration_us": "13035524",
-            //          "transitions": 1866
-            //      }
-            //    },
-            //    "uptime": 174748,
-            //    "validated_ledger": {
-            //      "base_fee": 10,
-            //      "close_time": 507693650,
-            //      "hash": "FEB17B15FB64E3AF8D371E6AAFCFD8B92775BB80AB953803BD73EA8EC75ECA34",
-            //      "reserve_base": 20000000,
-            //      "reserve_inc": 5000000,
-            //      "seq": 18615049
-            //    },
-            //    "validation_quorum": 4,
-            //    "validator_list_expires": 561139596
-            //}
-            //}
+        //"state": {
+        //    "build_version": "0.30.1-rc3",
+        //    "complete_ledgers": "18611104-18615049",
+        //    "io_latency_ms": 1,
+        //    "last_close": {
+        //      "converge_time": 3003,
+        //      "proposers": 5
+        //    },
+        //    "load": {
+        //      "job_types": [
+        //          {
+        //          "job_type": "untrustedProposal",
+        //          "peak_time": 1,
+        //          "per_second": 3
+        //          },
+        //          {
+        //          "in_progress": 1,
+        //          "job_type": "clientCommand"
+        //          },
+        //          {
+        //          "avg_time": 12,
+        //          "job_type": "writeObjects",
+        //          "peak_time": 345,
+        //          "per_second": 2
+        //          },
+        //          {
+        //          "job_type": "trustedProposal",
+        //          "per_second": 1
+        //          },
+        //          {
+        //          "job_type": "peerCommand",
+        //          "per_second": 64
+        //          },
+        //          {
+        //          "avg_time": 33,
+        //          "job_type": "diskAccess",
+        //          "peak_time": 526
+        //          },
+        //          {
+        //          "job_type": "WriteNode",
+        //          "per_second": 55
+        //          }
+        //      ],
+        //      "threads": 6
+        //    },
+        //    "load_base": 256,
+        //    "load_factor": 256000,
+        //    "peers": 10,
+        //    "pubkey_node": "n94UE1ukbq6pfZY9j54sv2A1UrEeHZXLbns3xK5CzU9NbNREytaa",
+        //    "pubkey_validator": "n9KM73uq5BM3Fc6cxG3k5TruvbLc8Ffq17JZBmWC4uP4csL4rFST",
+        //    "server_state": "proposing",
+        //    "server_state_duration_us": 92762334,
+        //    "state_accounting": {
+        //      "connected": {
+        //          "duration_us": "150510079",
+        //          "transitions": 1
+        //      },
+        //      "disconnected": {
+        //          "duration_us": "1827731",
+        //          "transitions": 1
+        //      },
+        //      "full": {
+        //          "duration_us": "168295542987",
+        //          "transitions": 1865
+        //      },
+        //      "syncing": {
+        //          "duration_us": "6294237352",
+        //          "transitions": 1866
+        //      },
+        //      "tracking": {
+        //          "duration_us": "13035524",
+        //          "transitions": 1866
+        //      }
+        //    },
+        //    "uptime": 174748,
+        //    "validated_ledger": {
+        //      "base_fee": 10,
+        //      "close_time": 507693650,
+        //      "hash": "FEB17B15FB64E3AF8D371E6AAFCFD8B92775BB80AB953803BD73EA8EC75ECA34",
+        //      "reserve_base": 20000000,
+        //      "reserve_inc": 5000000,
+        //      "seq": 18615049
+        //    },
+        //    "validation_quorum": 4,
+        //    "validator_list_expires": 561139596
+        //}
+        //}
     }
 
     public sealed class AccountLinesRequest
@@ -1007,7 +1007,7 @@ namespace Ibasa.Ripple
             PostAsync = postAsync;
             Account = new AccountId(json.GetProperty("account").GetString());
 
-            if(json.TryGetProperty("marker", out var marker))
+            if (json.TryGetProperty("marker", out var marker))
             {
                 Marker = marker;
             }
@@ -1092,5 +1092,32 @@ namespace Ibasa.Ripple
             TxBlob = json.GetProperty("tx_blob").GetString();
             TxJson = json.GetProperty("tx_json").Clone();
         }
+    }
+
+    public abstract class Transaction
+    {
+        //Account String  Account(Required) The unique address of the account that initiated the transaction.
+        //TransactionType String UInt16  (Required) The type of transaction.Valid types include: Payment, OfferCreate, OfferCancel, TrustSet, AccountSet, SetRegularKey, SignerListSet, EscrowCreate, EscrowFinish, EscrowCancel, PaymentChannelCreate, PaymentChannelFund, PaymentChannelClaim, and DepositPreauth.
+        //Fee String  Amount  (Required; auto-fillable) Integer amount of XRP, in drops, to be destroyed as a cost for distributing this transaction to the network. Some transaction types have different minimum requirements.See Transaction Cost for details.
+        //Sequence Unsigned Integer UInt32  (Required; auto-fillable) The sequence number of the account sending the transaction. A transaction is only valid if the Sequence number is exactly 1 greater than the previous transaction from the same account.
+        //AccountTxnID String Hash256 (Optional) Hash value identifying another transaction.If provided, this transaction is only valid if the sending account's previously-sent transaction matches the provided hash.
+        //Flags Unsigned Integer UInt32  (Optional) Set of bit-flags for this transaction.
+        //LastLedgerSequence Number  UInt32  (Optional; strongly recommended) Highest ledger index this transaction can appear in. Specifying this field places a strict upper limit on how long the transaction can wait to be validated or rejected. See Reliable Transaction Submission for more details.
+        //Memos Array of Objects    Array   (Optional) Additional arbitrary information used to identify this transaction.
+        //Signers Array   Array   (Optional) Array of objects that represent a multi-signature which authorizes this transaction.
+        //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
+        //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
+        //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
+    }
+
+    public sealed class AccountSet : Transaction
+    {
+        //ClearFlag Number  UInt32(Optional) Unique identifier of a flag to disable for this account.
+        //Domain String  Blob(Optional) The domain that owns this account, as a string of hex representing the ASCII for the domain in lowercase.
+        //EmailHash String  Hash128(Optional) Hash of an email address to be used for generating an avatar image.Conventionally, clients use Gravatar to display this image.
+        //MessageKey String  Blob    (Optional) Public key for sending encrypted messages to this account.
+        //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
+        //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
+        //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
     }
 }

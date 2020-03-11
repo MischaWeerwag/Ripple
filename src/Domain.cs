@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Ibasa.Ripple
 {
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
-    public unsafe struct AccountId
+    public struct AccountId
     {
         public AccountId(string base58) : this()
         {
@@ -25,7 +25,7 @@ namespace Ibasa.Ripple
 
         public override string ToString()
         {
-            Span<byte> content = stackalloc byte[21];            
+            Span<byte> content = stackalloc byte[21];
             content[0] = 0x0;
             var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
             span.CopyTo(content.Slice(1));
@@ -33,6 +33,34 @@ namespace Ibasa.Ripple
             return Base58Check.ConvertTo(content);
         }
     }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 16)]
+    public struct Seed
+    {
+        public Seed(string base58) : this()
+        {
+            Span<byte> content = stackalloc byte[17];
+            Base58Check.ConvertFrom(base58, content);
+            if (content[0] != 0x21)
+            {
+                throw new Exception("Expected 0x21 prefix byte");
+            }
+
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            content.Slice(1).CopyTo(span);
+        }
+
+        public override string ToString()
+        {
+            Span<byte> content = stackalloc byte[17];
+            content[0] = 0x21;
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            span.CopyTo(content.Slice(1));
+
+            return Base58Check.ConvertTo(content);
+        }
+    }
+
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct CurrencyCode : IEquatable<CurrencyCode>

@@ -89,7 +89,7 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccount()
         {
-            var account = new AccountID(TestAccounts.TestAccountOne.Address);
+            var account = new AccountId(TestAccounts.TestAccountOne.Address);
 
             var request = new AccountInfoRequest()
             {
@@ -104,7 +104,7 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccountCurrencies()
         {
-            var account = new AccountID(TestAccounts.TestAccountOne.Address);
+            var account = new AccountId(TestAccounts.TestAccountOne.Address);
             var request = new AccountCurrenciesRequest()
             {
                 Ledger = LedgerSpecification.Current,
@@ -135,7 +135,7 @@ namespace Ibasa.Ripple.Tests
             // TODO: This isn't a very interesting test. We should get Submit TrustSet working and then use this to see the result.
 
             var request = new AccountLinesRequest();
-            request.Account = new AccountID(TestAccounts.TestAccountOne.Address);
+            request.Account = new AccountId(TestAccounts.TestAccountOne.Address);
             var response = await Api.AccountLines(request);
 
             Assert.Equal(request.Account, response.Account);

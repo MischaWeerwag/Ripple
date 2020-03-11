@@ -8,13 +8,9 @@ using System.Threading.Tasks;
 namespace Ibasa.Ripple
 {
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
-    public struct AccountID
+    public unsafe struct AccountId
     {
-        readonly ulong a;
-        readonly ulong b;
-        readonly uint c;
-
-        public AccountID(string base58) : this()
+        public AccountId(string base58) : this()
         {
             Span<byte> content = stackalloc byte[21];
             Base58Check.ConvertFrom(base58, content);
@@ -22,19 +18,17 @@ namespace Ibasa.Ripple
             {
                 throw new Exception("Expected 0x0 prefix byte");
             }
-            a = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(content.Slice(1));
-            b = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(content.Slice(9));
-            c = System.Buffers.Binary.BinaryPrimitives.ReadUInt32LittleEndian(content.Slice(17));
+
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            content.Slice(1).CopyTo(span);
         }
 
         public override string ToString()
         {
-            Span<byte> content = stackalloc byte[21];
-
+            Span<byte> content = stackalloc byte[21];            
             content[0] = 0x0;
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64LittleEndian(content.Slice(1), a);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64LittleEndian(content.Slice(9), b);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(content.Slice(17), c);
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            span.CopyTo(content.Slice(1));
 
             return Base58Check.ConvertTo(content);
         }
@@ -160,7 +154,7 @@ namespace Ibasa.Ripple
     {
         private ulong amount;
         private CurrencyCode code;
-        private AccountID account;
+        private AccountId account;
 
         public Amount(ulong drops)
         {
@@ -170,7 +164,7 @@ namespace Ibasa.Ripple
             }
             this.amount = 0x4000000000000000UL | drops;
             this.code = CurrencyCode.XRP;
-            this.account = new AccountID();
+            this.account = new AccountId();
         }
     }
 
@@ -195,7 +189,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The identifying address of this account, such as rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn.
         /// </summary>
-        public AccountID Account { get; private set; }
+        public AccountId Account { get; private set; }
 
         /// <summary>
         /// The account's current XRP balance in drops.
@@ -209,7 +203,7 @@ namespace Ibasa.Ripple
 
         internal AccountRoot(JsonElement json)
         {
-            Account = new AccountID(json.GetProperty("Account").GetString());
+            Account = new AccountId(json.GetProperty("Account").GetString());
             Balance = ulong.Parse(json.GetProperty("Balance").GetString());
             OwnerCount = json.GetProperty("OwnerCount").GetUInt32();
         }
@@ -373,7 +367,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// A unique identifier for the account, most commonly the account's Address.
         /// </summary>
-        public AccountID Account { get; set; }
+        public AccountId Account { get; set; }
 
         /// <summary>
         /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
@@ -656,7 +650,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// A unique identifier for the account, most commonly the account's Address.
         /// </summary>
-        public AccountID Account { get; set; }
+        public AccountId Account { get; set; }
 
         /// <summary>
         /// If true, only accept an address or public key for the account parameter.
@@ -908,7 +902,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// A unique identifier for the account, most commonly the account's Address.
         /// </summary>
-        public AccountID Account { get; set; }
+        public AccountId Account { get; set; }
 
         /// <summary>
         /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
@@ -919,7 +913,7 @@ namespace Ibasa.Ripple
         /// The Address of a second account.
         /// If provided, show only lines of trust connecting the two accounts.
         /// </summary>
-        public AccountID? Peer { get; set; }
+        public AccountId? Peer { get; set; }
 
     }
 
@@ -928,7 +922,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The unique Address of the counterparty to this trust line.
         /// </summary>
-        public AccountID Account { get; private set; }
+        public AccountId Account { get; private set; }
 
         /// <summary>
         /// Representation of the numeric balance currently held against this line.
@@ -953,7 +947,7 @@ namespace Ibasa.Ripple
         //freeze_peer Boolean (May be omitted) true if the peer account has frozen this trust line. If omitted, that is the same as false.
         internal TrustLine(JsonElement json)
         {
-            Account = new AccountID(json.GetProperty("account").GetString());
+            Account = new AccountId(json.GetProperty("account").GetString());
             Balance = json.GetProperty("balance").GetString();
             Currency = new CurrencyCode(json.GetProperty("currency").GetString());
         }
@@ -973,7 +967,7 @@ namespace Ibasa.Ripple
         /// Unique Address of the account this request corresponds to.
         /// This is the "perspective account" for purpose of the trust lines.
         /// </summary>
-        public AccountID Account { get; private set; }
+        public AccountId Account { get; private set; }
 
         private Func<JsonElement, CancellationToken, Task<JsonElement>> PostAsync;
         private JsonElement? Marker;
@@ -983,7 +977,7 @@ namespace Ibasa.Ripple
         internal AccountLinesResponse(JsonElement json, Func<JsonElement, CancellationToken, Task<JsonElement>> postAsync)
         {
             PostAsync = postAsync;
-            Account = new AccountID(json.GetProperty("account").GetString());
+            Account = new AccountId(json.GetProperty("account").GetString());
 
             if(json.TryGetProperty("marker", out var marker))
             {

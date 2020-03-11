@@ -7,10 +7,11 @@ namespace Ibasa.Ripple.Tests
     {
         [Theory]
         [InlineData("snoPBrXtMeMyMHUVTgbuqAfg1SUTb")]
+        [InlineData("sp6JS7f14BuwFY8Mw6bTtLKWauoUs")]
         public void TestRoundTrip(string base58)
         {
-            var account = new Seed(base58);
-            Assert.Equal(base58, account.ToString());
+            var seed = new Seed(base58);
+            Assert.Equal(base58, seed.ToString());
         }
     }
 }

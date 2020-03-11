@@ -9,6 +9,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData("r4nmanwKSE6GpkTCrBjz8uanrGZabbpSfp")]
         [InlineData("r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV")]
         [InlineData("rEopG7qc7ZWFMvCSH3GYeJJ7GPAQnKmxgw")]
+        [InlineData("rrrrrrrrrrrrrrrrrrrrrhoLvTp")]
         public void TestRoundTrip(string base58)
         {
             var account = new AccountId(base58);

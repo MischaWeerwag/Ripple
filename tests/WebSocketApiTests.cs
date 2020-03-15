@@ -7,11 +7,12 @@ using Xunit;
 
 namespace Ibasa.Ripple.Tests
 {
-    public class webSocketApiSetup : IDisposable
+    public class WebSocketApiTestsSetup : ApiTestsSetup, IDisposable
     {
         public readonly WebSocketApi SocketApi;
+        public override Api Api { get { return SocketApi; } }
 
-        public webSocketApiSetup()
+        public WebSocketApiTestsSetup()
         {
             var address = new Uri("wss://s.altnet.rippletest.net:51233");
             var clientWebSocket = new ClientWebSocket();
@@ -26,13 +27,13 @@ namespace Ibasa.Ripple.Tests
     }
 
     [Collection("WebSocket")]
-    public class WebSocketApiTests : ApiTests, IClassFixture<webSocketApiSetup>
+    public class WebSocketApiTests : ApiTests, IClassFixture<WebSocketApiTestsSetup>
     {
         readonly new WebSocketApi Api;
 
-        public WebSocketApiTests(webSocketApiSetup uut, TestAccountSetup testAccountSetup) : base(uut.SocketApi, testAccountSetup)
+        public WebSocketApiTests(WebSocketApiTestsSetup setup) : base(setup)
         {
-            this.Api = uut.SocketApi;
+            this.Api = setup.SocketApi;
         }
     }
 }

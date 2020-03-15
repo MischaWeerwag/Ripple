@@ -148,7 +148,7 @@ namespace Ibasa.Ripple
             return new Hash256(response.GetProperty("random").GetString());
         }
 
-        public override async Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<LedgerResponse> Ledger(LedgerRequest request, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -227,7 +227,7 @@ namespace Ibasa.Ripple
             return new FeeResponse(response);
         }
 
-        public override async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -250,7 +250,7 @@ namespace Ibasa.Ripple
             return new AccountInfoResponse(response);
         }
 
-        public override async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -336,7 +336,7 @@ namespace Ibasa.Ripple
             });
         }
 
-        public override async Task<SubmitResponse> Submit(SubmitRequest request = default, CancellationToken cancellationToken = default)
+        public override async Task<SubmitResponse> Submit(SubmitRequest request, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -354,6 +354,25 @@ namespace Ibasa.Ripple
             await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new SubmitResponse(response);
+        }
+
+        public override async Task<TxResponse> Tx(Hash256 transaction, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "tx");
+                writer.WriteString("transaction", transaction.ToString());
+                writer.WriteEndObject();
+            }
+
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new TxResponse(response);
         }
     }
 }

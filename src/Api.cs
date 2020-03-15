@@ -41,7 +41,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Retrieve information about the public ledger.
         /// </summary>
-        public abstract Task<LedgerResponse> Ledger(LedgerRequest request = default, CancellationToken cancellationToken = default);
+        public abstract Task<LedgerResponse> Ledger(LedgerRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// The ledger_closed method returns the unique identifiers of the most recently closed ledger. 
@@ -64,13 +64,13 @@ namespace Ibasa.Ripple
         /// The account_info command retrieves information about an account, its activity, and its XRP balance. 
         /// All information retrieved is relative to a particular version of the ledger.
         /// </summary>
-        public abstract Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request = default, CancellationToken cancellationToken = default);
+        public abstract Task<AccountInfoResponse> AccountInfo(AccountInfoRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// The account_currencies command retrieves a list of currencies that an account can send or receive, based on its trust lines. 
         /// (This is not a thoroughly confirmed list, but it can be used to populate user interfaces.)
         /// </summary>
-        public abstract Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request = default, CancellationToken cancellationToken = default);
+        public abstract Task<AccountCurrenciesResponse> AccountCurrencies(AccountCurrenciesRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// The server_state command asks the server for various machine-readable information about the rippled server's current state.
@@ -89,5 +89,10 @@ namespace Ibasa.Ripple
         /// Since signed transaction objects are immutable, no part of the transaction can be modified or automatically filled in after submission.
         /// </summary>
         public abstract Task<SubmitResponse> Submit(SubmitRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// The tx method retrieves information on a single transaction.
+        /// </summary>
+        public abstract Task<TxResponse> Tx(Hash256 transaction, CancellationToken cancellationToken = default);
     }
 }

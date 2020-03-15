@@ -59,6 +59,14 @@ namespace Ibasa.Ripple
 
             return Base58Check.ConvertTo(content);
         }
+
+        public byte[] ToArray()
+        {
+            var bytes = new byte[16];
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            span.CopyTo(bytes);
+            return bytes;
+        }
     }
 
 
@@ -203,9 +211,8 @@ namespace Ibasa.Ripple
         //Flags Number  UInt32 A bit-map of boolean flags enabled for this account.
         //PreviousTxnID String  Hash256 The identifying hash of the transaction that most recently modified this object.
         //PreviousTxnLgrSeq Number  UInt32 The index of the ledger that contains the transaction that most recently modified this object.
-        //Sequence Number  UInt32 The sequence number of the next valid transaction for this account. (Each account starts with Sequence = 1 and increases each time a transaction is made.)
         //AccountTxnID String Hash256 (Optional) The identifying hash of the transaction most recently sent by this account.This field must be enabled to use the AccountTxnID transaction field.To enable it, send an AccountSet transaction with the asfAccountTxnID flag enabled.
-        //Domain String  VariableLength  (Optional) A domain associated with this account.In JSON, this is the hexadecimal for the ASCII representation of the domain.
+        //
         //EmailHash String  Hash128 (Optional) The md5 hash of an email address. Clients can use this to look up an avatar through services such as Gravatar.
         //MessageKey String  VariableLength  (Optional) A public key that may be used to send encrypted messages to this account.In JSON, uses hexadecimal.No more than 33 bytes.
         //RegularKey String  AccountID(Optional) The address of a key pair that can be used to sign transactions for this account instead of the master key.Use a SetRegularKey transaction to change this value.
@@ -229,11 +236,29 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint OwnerCount { get; private set; }
 
+        /// <summary>
+        /// (Optional) A domain associated with this account.In JSON, this is the hexadecimal for the ASCII representation of the domain.
+        /// </summary>
+        public string Domain { get; private set; }
+
+        /// <summary>
+        /// The sequence number of the next valid transaction for this account. 
+        /// (Each account starts with Sequence = 1 and increases each time a transaction is made.)
+        /// </summary>
+        public uint Sequence { get; private set; }
+
         internal AccountRoot(JsonElement json)
         {
+            JsonElement element;
+
             Account = new AccountId(json.GetProperty("Account").GetString());
             Balance = ulong.Parse(json.GetProperty("Balance").GetString());
             OwnerCount = json.GetProperty("OwnerCount").GetUInt32();
+            Sequence = json.GetProperty("Sequence").GetUInt32();
+            if (json.TryGetProperty("Domain", out element))
+            {
+                Domain = element.GetString();
+            }
         }
 
         //{id: 1,…}
@@ -300,6 +325,14 @@ namespace Ibasa.Ripple
             b = long.Parse(hex.Substring(16, 16), System.Globalization.NumberStyles.HexNumber);
             c = long.Parse(hex.Substring(32, 16), System.Globalization.NumberStyles.HexNumber);
             d = long.Parse(hex.Substring(48, 16), System.Globalization.NumberStyles.HexNumber);
+        }
+
+        public Hash256(Span<byte> bytes)
+        {
+            a = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(0, 8));
+            b = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(8, 8));
+            c = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(16, 8));
+            d = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(24, 8));
         }
 
         public override string ToString()
@@ -1054,7 +1087,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Hex representation of the signed transaction to submit. This can be a multi-signed transaction.
         /// </summary>
-        public string TxBlob { get; private set; }
+        public string TxBlob { get; set; }
         /// <summary>
         /// If true, and the transaction fails locally, do not retry or relay the transaction to other servers
         /// </summary>
@@ -1096,10 +1129,25 @@ namespace Ibasa.Ripple
 
     public abstract class Transaction
     {
-        //Account String  Account(Required) The unique address of the account that initiated the transaction.
+        /// <summary>
+        /// The unique address of the account that initiated the transaction.
+        /// </summary>
+        public AccountId Account { get; set; }
+
+        /// <summary>
+        /// Integer amount of XRP, in drops, to be destroyed as a cost for distributing this transaction to the network. 
+        /// Some transaction types have different minimum requirements.
+        /// See Transaction Cost for details.
+        /// </summary>
+        public ulong Fee { get; set; }
+
+        /// <summary>
+        /// The sequence number of the account sending the transaction. 
+        /// A transaction is only valid if the Sequence number is exactly 1 greater than the previous transaction from the same account.
+        /// </summary>
+        public uint Sequence { get; set; }
+
         //TransactionType String UInt16  (Required) The type of transaction.Valid types include: Payment, OfferCreate, OfferCancel, TrustSet, AccountSet, SetRegularKey, SignerListSet, EscrowCreate, EscrowFinish, EscrowCancel, PaymentChannelCreate, PaymentChannelFund, PaymentChannelClaim, and DepositPreauth.
-        //Fee String  Amount  (Required; auto-fillable) Integer amount of XRP, in drops, to be destroyed as a cost for distributing this transaction to the network. Some transaction types have different minimum requirements.See Transaction Cost for details.
-        //Sequence Unsigned Integer UInt32  (Required; auto-fillable) The sequence number of the account sending the transaction. A transaction is only valid if the Sequence number is exactly 1 greater than the previous transaction from the same account.
         //AccountTxnID String Hash256 (Optional) Hash value identifying another transaction.If provided, this transaction is only valid if the sending account's previously-sent transaction matches the provided hash.
         //Flags Unsigned Integer UInt32  (Optional) Set of bit-flags for this transaction.
         //LastLedgerSequence Number  UInt32  (Optional; strongly recommended) Highest ledger index this transaction can appear in. Specifying this field places a strict upper limit on how long the transaction can wait to be validated or rejected. See Reliable Transaction Submission for more details.
@@ -1108,16 +1156,66 @@ namespace Ibasa.Ripple
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
         //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
+
+        public abstract string Sign(Seed secret, out Hash256 hash);
     }
 
     public sealed class AccountSet : Transaction
     {
+        /// <summary>
+        /// (Optional) The domain that owns this account, as a string of hex representing the ASCII for the domain in lowercase.
+        /// </summary>
+        public string Domain { get; set; }
+
         //ClearFlag Number  UInt32(Optional) Unique identifier of a flag to disable for this account.
-        //Domain String  Blob(Optional) The domain that owns this account, as a string of hex representing the ASCII for the domain in lowercase.
         //EmailHash String  Hash128(Optional) Hash of an email address to be used for generating an avatar image.Conventionally, clients use Gravatar to display this image.
         //MessageKey String  Blob    (Optional) Public key for sending encrypted messages to this account.
         //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
         //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
         //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
+
+        public override string Sign(Seed secret, out Hash256 hash)
+        {
+            Chaos.NaCl.Ed25519.KeyPairFromSeed(out var publicKey, out var privateKey, secret.ToArray());
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+
+
+            var signed = Chaos.NaCl.Ed25519.Sign(buffer.WrittenSpan.ToArray(), privateKey);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[32];
+                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan);
+            }
+
+            return BitConverter.ToString(buffer.WrittenMemory.ToArray());
+        }
+    }
+    public sealed class TxResponse
+    {
+        /// <summary>
+        /// The SHA-512 hash of the transaction
+        /// </summary>
+        public Hash256 Hash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger that includes this transaction.
+        /// </summary>
+        public uint LedgeIndex { get; private set; }
+
+        // meta Object  Various metadata about the transaction.
+
+        /// <summary>
+        /// True if this data is from a validated ledger version; if omitted or set to false, this data is not final.
+        /// </summary>
+        public bool Validated { get; private set; }
+
+        internal TxResponse(JsonElement json)
+        {
+            Hash = new Hash256(json.GetProperty("hash").GetString());
+            LedgeIndex = json.GetProperty("ledger_index").GetUInt32();
+            Validated = json.GetProperty("validated").GetBoolean();
+        }
     }
 }

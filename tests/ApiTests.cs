@@ -20,14 +20,16 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
-    public class TestAccountSetup
+    public abstract class ApiTestsSetup
     {
         static readonly HttpClient HttpClient = new HttpClient();
 
         public readonly TestAccount TestAccountOne;
         public readonly TestAccount TestAccountTwo;
 
-        public TestAccountSetup()
+        public abstract Api Api { get; }
+
+        public ApiTestsSetup()
         {
             TestAccountOne = CreateAccount();
             TestAccountTwo = CreateAccount();
@@ -45,15 +47,14 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
-    public abstract class ApiTests : IClassFixture<TestAccountSetup>
+    public abstract class ApiTests
     {
-        protected readonly TestAccountSetup TestAccounts;
-        protected readonly Api Api;
+        protected readonly ApiTestsSetup Setup;
+        protected Api Api { get { return Setup.Api; } }
 
-        public ApiTests(Api api, TestAccountSetup testAccounts)
+        public ApiTests(ApiTestsSetup setup)
         {
-            Api = api;
-            TestAccounts = testAccounts;
+            Setup = setup;
         }
 
         [Fact]
@@ -89,7 +90,7 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccount()
         {
-            var account = new AccountId(TestAccounts.TestAccountOne.Address);
+            var account = new AccountId(Setup.TestAccountOne.Address);
 
             var request = new AccountInfoRequest()
             {
@@ -98,13 +99,13 @@ namespace Ibasa.Ripple.Tests
             };
             var response = await Api.AccountInfo(request);
             Assert.Equal(account, response.AccountData.Account);
-            Assert.Equal(TestAccounts.TestAccountOne.Amount, response.AccountData.Balance);
+            Assert.Equal(Setup.TestAccountOne.Amount, response.AccountData.Balance);
         }
 
         [Fact]
         public async Task TestAccountCurrencies()
         {
-            var account = new AccountId(TestAccounts.TestAccountOne.Address);
+            var account = new AccountId(Setup.TestAccountOne.Address);
             var request = new AccountCurrenciesRequest()
             {
                 Ledger = LedgerSpecification.Current,
@@ -135,7 +136,7 @@ namespace Ibasa.Ripple.Tests
             // TODO: This isn't a very interesting test. We should get Submit TrustSet working and then use this to see the result.
 
             var request = new AccountLinesRequest();
-            request.Account = new AccountId(TestAccounts.TestAccountOne.Address);
+            request.Account = new AccountId(Setup.TestAccountOne.Address);
             var response = await Api.AccountLines(request);
 
             Assert.Equal(request.Account, response.Account);
@@ -145,6 +146,56 @@ namespace Ibasa.Ripple.Tests
                 lines.Add(line);
             }
             Assert.Empty(lines);
+        }
+
+        [Fact]
+        public async Task TestAccountSet()
+        {
+            var account = new AccountId(Setup.TestAccountOne.Address);
+            var secret = new Seed(Setup.TestAccountOne.Secret);
+
+            var infoRequest = new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = account,
+            };
+            var infoResponse = await Api.AccountInfo(infoRequest);
+            var feeResponse = await Api.Fee();
+
+            var transaction = new AccountSet();
+            transaction.Account = account;
+            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Domain = "6578616D706C652E636F6D";
+            transaction.Fee = feeResponse.Drops.MedianFee;
+            var submitRequest = new SubmitRequest();
+            submitRequest.TxBlob = transaction.Sign(secret, out var transactionHash);
+            var submitResponse = await Api.Submit(submitRequest);
+
+            Assert.Equal(submitRequest.TxBlob, submitResponse.TxBlob);
+            Assert.Equal("tesSUCCESS", submitResponse.EngineResult);
+
+            while(true)
+            {
+                try
+                {
+                    var tx = await Api.Tx(transactionHash);
+                    Assert.Equal(tx.Hash, transactionHash);
+                    break;
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            infoRequest = new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = account,
+            };
+            infoResponse = await Api.AccountInfo(infoRequest);
+            Assert.Equal(account, infoResponse.AccountData.Account);
+            Assert.Equal(transaction.Domain, infoResponse.AccountData.Domain);
         }
     }
 }

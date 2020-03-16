@@ -8,34 +8,20 @@ namespace Ibasa.Ripple.Tests
 {
     public struct TestAccount
     {
+        static readonly HttpClient HttpClient = new HttpClient();
+
         public readonly string Address;
         public readonly string Secret;
         public readonly ulong Amount;
 
-        public TestAccount(string address, string secret, ulong amount)
+        private TestAccount(string address, string secret, ulong amount)
         {
             Address = address;
             Secret = secret;
             Amount = amount;
         }
-    }
 
-    public abstract class ApiTestsSetup
-    {
-        static readonly HttpClient HttpClient = new HttpClient();
-
-        public readonly TestAccount TestAccountOne;
-        public readonly TestAccount TestAccountTwo;
-
-        public abstract Api Api { get; }
-
-        public ApiTestsSetup()
-        {
-            TestAccountOne = CreateAccount();
-            TestAccountTwo = CreateAccount();
-        }
-
-        TestAccount CreateAccount()
+        public static TestAccount Create()
         {
             var response = HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null).Result;
             var json = response.Content.ReadAsStringAsync().Result;
@@ -44,6 +30,20 @@ namespace Ibasa.Ripple.Tests
                 document.RootElement.GetProperty("account").GetProperty("address").GetString(),
                 document.RootElement.GetProperty("account").GetProperty("secret").GetString(),
                 document.RootElement.GetProperty("balance").GetUInt64() * 1000000UL);
+        }
+    }
+
+    public abstract class ApiTestsSetup
+    {
+        public readonly TestAccount TestAccountOne;
+        public readonly TestAccount TestAccountTwo;
+
+        public abstract Api Api { get; }
+
+        public ApiTestsSetup()
+        {
+            TestAccountOne = TestAccount.Create();
+            TestAccountTwo = TestAccount.Create();
         }
     }
 

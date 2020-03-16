@@ -13,5 +13,17 @@ namespace Ibasa.Ripple.Tests
             var seed = new Seed(base58);
             Assert.Equal(base58, seed.ToString());
         }
+
+        [Fact]
+        public void TestKeyPair()
+        {
+            var account = TestAccount.Create();
+            var secret = new Seed(account.Secret);
+            var address = new AccountId(account.Address);
+
+            secret.KeyPair(out var publicKey, out var privateKey);
+
+            Assert.Equal(address, new AccountId(publicKey));
+        }
     }
 }

@@ -16,11 +16,21 @@ namespace Ibasa.Ripple
             Base58Check.ConvertFrom(base58, content);
             if (content[0] != 0x0)
             {
-                throw new Exception("Expected 0x0 prefix byte");
+                throw new ArgumentException("Expected 0x0 prefix byte", "base58");
             }
 
             var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
             content.Slice(1).CopyTo(span);
+        }
+
+        public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
+        {
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var riper = RIPEMD160.Create();
+                bytes = hash.ComputeHash(bytes, 0, bytes.Length);
+                return riper.ComputeHash(bytes, 0, bytes.Length);
+            }
         }
 
         public override string ToString()
@@ -66,12 +76,18 @@ namespace Ibasa.Ripple
             return Base58Check.ConvertTo(content);
         }
 
-        public byte[] ToArray()
+        public void KeyPair(out byte[] publicKey, out byte[] privateKey)
         {
-            var bytes = new byte[16];
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            span.CopyTo(bytes);
-            return bytes;
+            var edSecret = new byte[32];
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+                Span<byte> destination = stackalloc byte[64];
+                var done = sha512.TryComputeHash(span, destination, out var bytesWritten);
+                destination.Slice(0, 32).CopyTo(edSecret);
+            }
+
+            Chaos.NaCl.Ed25519.KeyPairFromSeed(out publicKey, out privateKey, edSecret);
         }
     }
 
@@ -1256,7 +1272,7 @@ namespace Ibasa.Ripple
 
         public override byte[] Sign(Seed secret, out Hash256 hash)
         {
-            Chaos.NaCl.Ed25519.KeyPairFromSeed(out var publicKey, out var privateKey, secret.ToArray());
+            secret.KeyPair(out var publicKey, out var privateKey);
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
 
             WriteFieldId(1, 2, buffer);
@@ -1272,9 +1288,13 @@ namespace Ibasa.Ripple
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length, buffer);
-            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
-            buffer.Advance(publicKey.Length);
+            WriteLengthPrefix(publicKey.Length + 1, buffer);
+            {
+                var span = buffer.GetSpan(publicKey.Length + 1);
+                span[0] = 0xed;
+                publicKey.CopyTo(span.Slice(1));
+            }
+            buffer.Advance(publicKey.Length + 1);
             
             // Need signature here
 
@@ -1304,9 +1324,13 @@ namespace Ibasa.Ripple
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length, buffer);
-            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
-            buffer.Advance(publicKey.Length);
+            WriteLengthPrefix(publicKey.Length + 1, buffer);
+            {
+                var span = buffer.GetSpan(publicKey.Length + 1);
+                span[0] = 0xed;
+                publicKey.CopyTo(span.Slice(1));
+            }
+            buffer.Advance(publicKey.Length + 1);
 
             WriteFieldId(7, 6, buffer);
             WriteLengthPrefix(signature.Length, buffer);
@@ -1324,9 +1348,9 @@ namespace Ibasa.Ripple
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
-                Span<byte> hashSpan = stackalloc byte[32];
+                Span<byte> hashSpan = stackalloc byte[64];
                 sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                hash = new Hash256(hashSpan);
+                hash = new Hash256(hashSpan.Slice(0, 32));
             }
 
             return buffer.WrittenMemory.ToArray();

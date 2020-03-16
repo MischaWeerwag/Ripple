@@ -165,7 +165,7 @@ namespace Ibasa.Ripple.Tests
             var transaction = new AccountSet();
             transaction.Account = account;
             transaction.Sequence = infoResponse.AccountData.Sequence;
-            transaction.Domain = "6578616D706C652E636F6D";
+            transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
             transaction.Fee = feeResponse.Drops.MedianFee;
             var submitRequest = new SubmitRequest();
             submitRequest.TxBlob = transaction.Sign(secret, out var transactionHash);

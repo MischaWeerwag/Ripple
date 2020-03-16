@@ -29,7 +29,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(bytes.Length, bytesConsumed);
             Assert.Equal(utf8.Length, bytesWritten);
 
-            Assert.Equal(data, System.Text.Encoding.UTF8.GetString(utf8));
+            Assert.Equal(data.ToUpper(), System.Text.Encoding.UTF8.GetString(utf8));
         }
 
         [Theory]

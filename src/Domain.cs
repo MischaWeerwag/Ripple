@@ -10,12 +10,9 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct AccountId : IEquatable<AccountId>
     {
-        private Span<byte> Span
-        {
-            get
-            {
-                return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            }
+        private static Span<byte> AsSpan(ref AccountId account)
+        { 
+            return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref account, 1));
         }
 
         public AccountId(string base58) : this()
@@ -27,11 +24,11 @@ namespace Ibasa.Ripple
                 throw new ArgumentException("Expected 0x0 prefix byte", "base58");
             }
 
-            content.Slice(1).CopyTo(Span);
+            content.Slice(1).CopyTo(AsSpan(ref this));
         }
         public AccountId(ReadOnlySpan<byte> bytes) : this()
         {
-            bytes.CopyTo(Span);
+            bytes.CopyTo(AsSpan(ref this));
         }
 
         public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
@@ -54,20 +51,20 @@ namespace Ibasa.Ripple
         {
             Span<byte> content = stackalloc byte[21];
             content[0] = 0x0;
-            Span.CopyTo(content.Slice(1));
+            AsSpan(ref this).CopyTo(content.Slice(1));
 
             return Base58Check.ConvertTo(content);
         }
 
         public void CopyTo(Span<byte> destination)
         {
-            Span.CopyTo(destination);
+            AsSpan(ref this).CopyTo(destination);
         }
 
         public bool Equals(AccountId other)
         {
-            var a = Span;
-            var b = other.Span;
+            var a = AsSpan(ref this);
+            var b = AsSpan(ref other);
             for(int i = 0; i < 20; ++i)
             {
                 if(a[i] != b[i])
@@ -81,7 +78,7 @@ namespace Ibasa.Ripple
         public override int GetHashCode()
         {
             var hash = new System.HashCode();
-            foreach(var b in Span)
+            foreach(var b in AsSpan(ref this))
             {
                 hash.Add(b);
             }
@@ -182,6 +179,7 @@ namespace Ibasa.Ripple
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
                 rootPublicKey.CopyTo(intermediateSource);
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(33), 0);
 
                 Org.BouncyCastle.Math.BigInteger secpIntermediateSecret = default;
                 for (i = 0; i < uint.MaxValue; ++i)

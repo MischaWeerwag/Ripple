@@ -19,11 +19,13 @@ namespace Ibasa.Ripple.Tests
         {
             var account = TestAccount.Create();
             var secret = new Seed(account.Secret);
+            Assert.Equal(account.Secret, secret.ToString());
             var address = new AccountId(account.Address);
+            Assert.Equal(account.Address, address.ToString());
 
-            secret.KeyPair(out var publicKey, out var privateKey);
+            secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
 
-            Assert.Equal(address, new AccountId(publicKey));
+            Assert.Equal(address, AccountId.FromPublicKey(publicKey));
         }
     }
 }

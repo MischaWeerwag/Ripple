@@ -22,15 +22,26 @@ namespace Ibasa.Ripple
             var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
             content.Slice(1).CopyTo(span);
         }
+        public AccountId(ReadOnlySpan<byte> bytes) : this()
+        {
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            bytes.CopyTo(span);
+        }
 
         public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
         {
+            Span<byte> hashA = stackalloc byte[32];
             using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                var riper = RIPEMD160.Create();
-                bytes = hash.ComputeHash(bytes, 0, bytes.Length);
-                return riper.ComputeHash(bytes, 0, bytes.Length);
+                var done = sha256.TryComputeHash(publicKey, hashA, out var bytesWritten);
             }
+            Span<byte> hashB = stackalloc byte[20];
+            using (var riper = System.Security.Cryptography.RIPEMD160.Create())
+            {
+                var done = riper.TryComputeHash(hashA, hashB, out var bytesWrittne);
+            }
+
+            return new AccountId(hashB);
         }
 
         public override string ToString()

@@ -8,8 +8,16 @@ using System.Threading.Tasks;
 namespace Ibasa.Ripple
 {
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
-    public struct AccountId
+    public struct AccountId : IEquatable<AccountId>
     {
+        private Span<byte> Span
+        {
+            get
+            {
+                return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            }
+        }
+
         public AccountId(string base58) : this()
         {
             Span<byte> content = stackalloc byte[21];
@@ -19,13 +27,11 @@ namespace Ibasa.Ripple
                 throw new ArgumentException("Expected 0x0 prefix byte", "base58");
             }
 
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            content.Slice(1).CopyTo(span);
+            content.Slice(1).CopyTo(Span);
         }
         public AccountId(ReadOnlySpan<byte> bytes) : this()
         {
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            bytes.CopyTo(span);
+            bytes.CopyTo(Span);
         }
 
         public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
@@ -48,16 +54,47 @@ namespace Ibasa.Ripple
         {
             Span<byte> content = stackalloc byte[21];
             content[0] = 0x0;
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            span.CopyTo(content.Slice(1));
+            Span.CopyTo(content.Slice(1));
 
             return Base58Check.ConvertTo(content);
         }
 
         public void CopyTo(Span<byte> destination)
         {
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            span.CopyTo(destination);
+            Span.CopyTo(destination);
+        }
+
+        public bool Equals(AccountId other)
+        {
+            var a = Span;
+            var b = other.Span;
+            for(int i = 0; i < 20; ++i)
+            {
+                if(a[i] != b[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new System.HashCode();
+            foreach(var b in Span)
+            {
+                hash.Add(b);
+            }
+            return hash.ToHashCode();
+        }
+
+        public override bool Equals(object other)
+        {
+            if(other is AccountId)
+            {
+                return Equals((AccountId)other);
+            }
+            return false;
         }
     }
 
@@ -87,18 +124,88 @@ namespace Ibasa.Ripple
             return Base58Check.ConvertTo(content);
         }
 
-        public void KeyPair(out byte[] publicKey, out byte[] privateKey)
+        public void Ed25519KeyPair(out byte[] publicKey, out byte[] privateKey)
         {
-            var edSecret = new byte[32];
+            privateKey = new byte[32];
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
                 var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
                 Span<byte> destination = stackalloc byte[64];
                 var done = sha512.TryComputeHash(span, destination, out var bytesWritten);
-                destination.Slice(0, 32).CopyTo(edSecret);
+                destination.Slice(0, 32).CopyTo(privateKey);
             }
 
-            Chaos.NaCl.Ed25519.KeyPairFromSeed(out publicKey, out privateKey, edSecret);
+            var priv = new Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters(privateKey, 0);
+            var pub = priv.GeneratePublicKey();
+            publicKey = new byte[33];
+            publicKey[0] = 0xed;
+            pub.Encode(publicKey, 1);
+        }
+
+        public void Secp256k1KeyPair(out byte[] rootPublicKey, out byte[] rootPrivateKey, out byte[] publicKey, out byte[] privateKey)
+        {
+            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+
+            var secpSecretBytes = new byte[32];
+            var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
+                new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
+            var k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            var ecParams = new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(
+                k1Params.Curve, k1Params.G, k1Params.N, k1Params.H);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> rootSource = stackalloc byte[20];
+                span.CopyTo(rootSource);
+
+                uint i;
+                Org.BouncyCastle.Math.BigInteger secpRootSecret = default;
+                for (i = 0; i < uint.MaxValue; ++i)
+                {
+                    System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(rootSource.Slice(16), i);
+                    Span<byte> destination = stackalloc byte[64];
+                    var done = sha512.TryComputeHash(rootSource, destination, out var bytesWritten);
+                    destination.Slice(0, 32).CopyTo(secpSecretBytes);
+
+                    secpRootSecret = new Org.BouncyCastle.Math.BigInteger(secpSecretBytes);
+                    if (secpRootSecret.CompareTo(Org.BouncyCastle.Math.BigInteger.Zero) == 1 && secpRootSecret.CompareTo(k1Params.N) == -1)
+                    {
+                        break;
+                    }
+                }
+
+                var rootPublicKeyPoint = k1Params.G.Multiply(secpRootSecret);
+
+                rootPublicKey = rootPublicKeyPoint.GetEncoded(true);
+                rootPrivateKey = secpRootSecret.ToByteArray();
+
+                // Calculate intermediate
+                Span<byte> intermediateSource = stackalloc byte[41];
+                rootPublicKey.CopyTo(intermediateSource);
+
+                Org.BouncyCastle.Math.BigInteger secpIntermediateSecret = default;
+                for (i = 0; i < uint.MaxValue; ++i)
+                {
+                    System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(37), i);
+                    Span<byte> destination = stackalloc byte[64];
+                    var done = sha512.TryComputeHash(intermediateSource, destination, out var bytesWritten);
+                    destination.Slice(0, 32).CopyTo(secpSecretBytes);
+
+                    secpIntermediateSecret = new Org.BouncyCastle.Math.BigInteger(secpSecretBytes);
+                    if (secpIntermediateSecret.CompareTo(Org.BouncyCastle.Math.BigInteger.Zero) == 1 && secpIntermediateSecret.CompareTo(k1Params.N) == -1)
+                    {
+                        break;
+                    }
+                }
+
+                var masterPrivateKey = secpRootSecret.Add(secpIntermediateSecret).Mod(k1Params.N);
+                privateKey = masterPrivateKey.ToByteArray();
+
+                var intermediatePublicKeyPoint = k1Params.G.Multiply(secpIntermediateSecret);
+
+                var masterPublicKey = rootPublicKeyPoint.Add(intermediatePublicKeyPoint);
+                publicKey = masterPublicKey.GetEncoded(true);
+            }
         }
     }
 
@@ -1283,7 +1390,7 @@ namespace Ibasa.Ripple
 
         public override byte[] Sign(Seed secret, out Hash256 hash)
         {
-            secret.KeyPair(out var publicKey, out var privateKey);
+            secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
 
             WriteFieldId(1, 2, buffer);
@@ -1319,7 +1426,7 @@ namespace Ibasa.Ripple
             buffer.Advance(20);
 
             // Calculate signature and build again
-            var signature = Chaos.NaCl.Ed25519.Sign(buffer.WrittenSpan.ToArray(), privateKey);
+            var signature = new byte[32]; // Chaos.NaCl.Ed25519.Sign(buffer.WrittenSpan.ToArray(), privateKey);
             buffer.Clear();
 
             WriteFieldId(1, 2, buffer);

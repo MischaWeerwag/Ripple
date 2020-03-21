@@ -10,9 +10,11 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct AccountId : IEquatable<AccountId>
     {
-        private static Span<byte> AsSpan(ref AccountId account)
+        private uint _data0, _data1, _data2, _data3, _data4;
+
+        private static Span<byte> UnsafeAsSpan(ref AccountId account)
         { 
-            return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref account, 1));
+            return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref account._data0, 5));
         }
 
         public AccountId(string base58) : this()
@@ -24,11 +26,11 @@ namespace Ibasa.Ripple
                 throw new ArgumentException("Expected 0x0 prefix byte", "base58");
             }
 
-            content.Slice(1).CopyTo(AsSpan(ref this));
+            content.Slice(1).CopyTo(UnsafeAsSpan(ref this));
         }
         public AccountId(ReadOnlySpan<byte> bytes) : this()
         {
-            bytes.CopyTo(AsSpan(ref this));
+            bytes.CopyTo(UnsafeAsSpan(ref this));
         }
 
         public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
@@ -51,20 +53,20 @@ namespace Ibasa.Ripple
         {
             Span<byte> content = stackalloc byte[21];
             content[0] = 0x0;
-            AsSpan(ref this).CopyTo(content.Slice(1));
+            UnsafeAsSpan(ref this).CopyTo(content.Slice(1));
 
             return Base58Check.ConvertTo(content);
         }
 
         public void CopyTo(Span<byte> destination)
         {
-            AsSpan(ref this).CopyTo(destination);
+            UnsafeAsSpan(ref this).CopyTo(destination);
         }
 
         public bool Equals(AccountId other)
         {
-            var a = AsSpan(ref this);
-            var b = AsSpan(ref other);
+            var a = UnsafeAsSpan(ref this);
+            var b = UnsafeAsSpan(ref other);
             for(int i = 0; i < 20; ++i)
             {
                 if(a[i] != b[i])
@@ -78,7 +80,7 @@ namespace Ibasa.Ripple
         public override int GetHashCode()
         {
             var hash = new System.HashCode();
-            foreach(var b in AsSpan(ref this))
+            foreach(var b in UnsafeAsSpan(ref this))
             {
                 hash.Add(b);
             }
@@ -98,6 +100,13 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 16)]
     public struct Seed
     {
+        private uint _data0, _data1, _data2, _data3;
+
+        private static Span<byte> UnsafeAsSpan(ref Seed seed)
+        {
+            return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref seed._data0, 4));
+        }
+
         public Seed(string base58) : this()
         {
             Span<byte> content = stackalloc byte[17];
@@ -107,16 +116,14 @@ namespace Ibasa.Ripple
                 throw new Exception("Expected 0x21 prefix byte");
             }
 
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            content.Slice(1).CopyTo(span);
+            content.Slice(1).CopyTo(UnsafeAsSpan(ref this));
         }
 
         public override string ToString()
         {
             Span<byte> content = stackalloc byte[17];
             content[0] = 0x21;
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
-            span.CopyTo(content.Slice(1));
+            UnsafeAsSpan(ref this).CopyTo(content.Slice(1));
 
             return Base58Check.ConvertTo(content);
         }
@@ -124,9 +131,9 @@ namespace Ibasa.Ripple
         public void Ed25519KeyPair(out byte[] publicKey, out byte[] privateKey)
         {
             privateKey = new byte[32];
+            var span = UnsafeAsSpan(ref this);
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
-                var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
                 Span<byte> destination = stackalloc byte[64];
                 var done = sha512.TryComputeHash(span, destination, out var bytesWritten);
                 destination.Slice(0, 32).CopyTo(privateKey);
@@ -141,7 +148,7 @@ namespace Ibasa.Ripple
 
         public void Secp256k1KeyPair(out byte[] rootPublicKey, out byte[] rootPrivateKey, out byte[] publicKey, out byte[] privateKey)
         {
-            var span = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            var span = UnsafeAsSpan(ref this);
 
             var secpSecretBytes = new byte[32];
             var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
@@ -205,15 +212,51 @@ namespace Ibasa.Ripple
                 publicKey = masterPublicKey.GetEncoded(true);
             }
         }
+
+        public bool Equals(Seed other)
+        {
+            var a = UnsafeAsSpan(ref this);
+            var b = UnsafeAsSpan(ref other);
+            for (int i = 0; i < 16; ++i)
+            {
+                if (a[i] != b[i])
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            var hash = new System.HashCode();
+            foreach (var b in UnsafeAsSpan(ref this))
+            {
+                hash.Add(b);
+            }
+            return hash.ToHashCode();
+        }
+
+        public override bool Equals(object other)
+        {
+            if (other is Seed)
+            {
+                return Equals((Seed)other);
+            }
+            return false;
+        }
     }
 
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct CurrencyCode : IEquatable<CurrencyCode>
     {
-        readonly ulong a;
-        readonly ulong b;
-        readonly uint c;
+        private uint _data0, _data1, _data2, _data3, _data4;
+
+        private static Span<byte> UnsafeAsSpan(ref CurrencyCode currencyCode)
+        {
+            return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref currencyCode._data0, 5));
+        }
 
         public static readonly CurrencyCode XRP = new CurrencyCode();
 
@@ -271,7 +314,7 @@ namespace Ibasa.Ripple
         {
             get
             {
-                return (a & 0xFF00000000000000UL) == 0;
+                return UnsafeAsSpan(ref this)[0] == 0;
             }
         }
 
@@ -301,23 +344,37 @@ namespace Ibasa.Ripple
 
         }
 
-        public override bool Equals(object obj)
+        public bool Equals(CurrencyCode other)
         {
-            if (obj is CurrencyCode)
+            var a = UnsafeAsSpan(ref this);
+            var b = UnsafeAsSpan(ref other);
+            for (int i = 0; i < 16; ++i)
             {
-                return Equals((CurrencyCode)obj);
+                if (a[i] != b[i])
+                {
+                    return false;
+                }
             }
-            return false;
+            return true;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(a, b, c);
+            var hash = new System.HashCode();
+            foreach (var b in UnsafeAsSpan(ref this))
+            {
+                hash.Add(b);
+            }
+            return hash.ToHashCode();
         }
 
-        public bool Equals(CurrencyCode other)
+        public override bool Equals(object other)
         {
-            return a == other.a && b == other.b && c == other.c;
+            if (other is CurrencyCode)
+            {
+                return Equals((CurrencyCode)other);
+            }
+            return false;
         }
     }
 

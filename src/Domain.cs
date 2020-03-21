@@ -35,18 +35,16 @@ namespace Ibasa.Ripple
 
         public static AccountId FromPublicKey(ReadOnlySpan<byte> publicKey)
         {
-            Span<byte> hashA = stackalloc byte[32];
+            var shaHash = new byte[32];
             using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                var done = sha256.TryComputeHash(publicKey, hashA, out var bytesWritten);
+                var done = sha256.TryComputeHash(publicKey, shaHash, out var bytesWritten);
             }
-            Span<byte> hashB = stackalloc byte[20];
-            using (var riper = System.Security.Cryptography.RIPEMD160.Create())
-            {
-                var done = riper.TryComputeHash(hashA, hashB, out var bytesWrittne);
-            }
-
-            return new AccountId(hashB);
+            var ripe = new Org.BouncyCastle.Crypto.Digests.RipeMD160Digest();
+            ripe.BlockUpdate(shaHash, 0, 32);
+            var ripeHash = new byte[20];
+            var ok = ripe.DoFinal(ripeHash, 0);
+            return new AccountId(ripeHash);
         }
 
         public override string ToString()

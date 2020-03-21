@@ -42,5 +42,15 @@ namespace Ibasa.Ripple.Tests
             var copy = (object)account;
             Assert.Equal(account.ToString(), copy.ToString());
         }
+
+        [Theory]
+        [InlineData("0330E7FC9D56BB25D6893BA3F317AE5BCF33B3291BD63DB32654A313222F7FD020", "rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh")]
+        public void TestFromPublicKey(string publicKey, string expected)
+        {
+            var bytes = new byte[33];
+            Base16.DecodeFromUtf8(System.Text.Encoding.UTF8.GetBytes(publicKey), bytes, out var bytesConsumed, out var bytesWritten);
+            var account = AccountId.FromPublicKey(bytes);
+            Assert.Equal(expected, account.ToString());
+        }
     }
 }

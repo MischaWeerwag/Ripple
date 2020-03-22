@@ -41,16 +41,19 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(seed.ToString(), copy.ToString());
         }
 
-        [Fact]
-        public void TestKeyPair()
+        [Theory]
+        [InlineData("shF2uPgigYYtNf18Hr3T3vcz56qQA", "rpA1ah984RJuHQD62Af9aLZSXetMoVkxoN")]
+        [InlineData("saw6aVtyPq5GoYQyELPGExwigH8sX", "rsUc54BeaqwZmbdFByUpi17koAXEFbRpaL")]
+        [InlineData("snY7jedC5sCqREpRt99y6f4aKxWJe", "rJzPvpe6biTPHrTB11DuQDnfU6jEzLgheZ")]
+        [InlineData("shHHvEhCC6WdkJNV1AfBmqw3XJ3Uv", "rJgzgUKLw6dUoDFXgbHNb2euXdMcNn6ioh")]
+        [InlineData("shbwxB2QWXVwviXArd8tNTu2Yu9LD", "r4q4qa57DsL6p6RtTwmh3WEmLZnP6jqdez")]
+        [InlineData("snMp2HgqGPR2iWrGPt7FjYvBmRvNN", "rDq6a58wfbANJsR2H44zttaMihHFkV9hbm")]
+        public void TestSeedToAccountId(string seed, string account)
         {
-            var account = TestAccount.Create();
-            var secret = new Seed(account.Secret);
-            Assert.Equal(account.Secret, secret.ToString());
-            var address = new AccountId(account.Address);
-            Assert.Equal(account.Address, address.ToString());
+            var secret = new Seed(seed);
+            var address = new AccountId(account);
 
-            secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
+            secret.Secp256k1KeyPair(out var _, out var _, out var publicKey, out var _);
 
             Assert.Equal(address, AccountId.FromPublicKey(publicKey));
         }

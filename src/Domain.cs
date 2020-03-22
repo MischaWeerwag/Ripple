@@ -146,7 +146,8 @@ namespace Ibasa.Ripple
 
         public void Secp256k1KeyPair(out byte[] rootPublicKey, out byte[] rootPrivateKey, out byte[] publicKey, out byte[] privateKey)
         {
-            var span = UnsafeAsSpan(ref this);
+            Span<byte> rootSource = stackalloc byte[20];
+            UnsafeAsSpan(ref this).CopyTo(rootSource);
 
             var secpSecretBytes = new byte[32];
             var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
@@ -157,9 +158,6 @@ namespace Ibasa.Ripple
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
-                Span<byte> rootSource = stackalloc byte[20];
-                span.CopyTo(rootSource);
-
                 uint i;
                 Org.BouncyCastle.Math.BigInteger secpRootSecret = default;
                 for (i = 0; i < uint.MaxValue; ++i)

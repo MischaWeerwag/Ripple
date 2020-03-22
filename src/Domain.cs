@@ -150,11 +150,7 @@ namespace Ibasa.Ripple
             UnsafeAsSpan(ref this).CopyTo(rootSource);
 
             var secpSecretBytes = new byte[32];
-            var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
-                new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
             var k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-            var ecParams = new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(
-                k1Params.Curve, k1Params.G, k1Params.N, k1Params.H);
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
@@ -167,7 +163,7 @@ namespace Ibasa.Ripple
                     var done = sha512.TryComputeHash(rootSource, destination, out var bytesWritten);
                     destination.Slice(0, 32).CopyTo(secpSecretBytes);
 
-                    secpRootSecret = new Org.BouncyCastle.Math.BigInteger(secpSecretBytes);
+                    secpRootSecret = new Org.BouncyCastle.Math.BigInteger(1, secpSecretBytes);
                     if (secpRootSecret.CompareTo(Org.BouncyCastle.Math.BigInteger.Zero) == 1 && secpRootSecret.CompareTo(k1Params.N) == -1)
                     {
                         break;
@@ -177,7 +173,7 @@ namespace Ibasa.Ripple
                 var rootPublicKeyPoint = k1Params.G.Multiply(secpRootSecret);
 
                 rootPublicKey = rootPublicKeyPoint.GetEncoded(true);
-                rootPrivateKey = secpRootSecret.ToByteArray();
+                rootPrivateKey = secpRootSecret.ToByteArrayUnsigned();
 
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
@@ -192,7 +188,7 @@ namespace Ibasa.Ripple
                     var done = sha512.TryComputeHash(intermediateSource, destination, out var bytesWritten);
                     destination.Slice(0, 32).CopyTo(secpSecretBytes);
 
-                    secpIntermediateSecret = new Org.BouncyCastle.Math.BigInteger(secpSecretBytes);
+                    secpIntermediateSecret = new Org.BouncyCastle.Math.BigInteger(1, secpSecretBytes);
                     if (secpIntermediateSecret.CompareTo(Org.BouncyCastle.Math.BigInteger.Zero) == 1 && secpIntermediateSecret.CompareTo(k1Params.N) == -1)
                     {
                         break;
@@ -200,7 +196,7 @@ namespace Ibasa.Ripple
                 }
 
                 var masterPrivateKey = secpRootSecret.Add(secpIntermediateSecret).Mod(k1Params.N);
-                privateKey = masterPrivateKey.ToByteArray();
+                privateKey = masterPrivateKey.ToByteArrayUnsigned();
 
                 var intermediatePublicKeyPoint = k1Params.G.Multiply(secpIntermediateSecret);
 

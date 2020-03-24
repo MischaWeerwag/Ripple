@@ -148,7 +148,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Empty(lines);
         }
 
-        [Fact(Skip = "Currently failing until signing is fixed")]
+        [Fact]
         public async Task TestAccountSet()
         {
             var account = new AccountId(Setup.TestAccountOne.Address);

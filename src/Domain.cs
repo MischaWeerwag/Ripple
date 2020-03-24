@@ -1473,7 +1473,40 @@ namespace Ibasa.Ripple
             buffer.Advance(20);
 
             // Calculate signature and build again
-            var signature = new byte[32]; // Chaos.NaCl.Ed25519.Sign(buffer.WrittenSpan.ToArray(), privateKey);
+            // SHA512Half -> secp256k1
+
+            var k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
+                new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(
+                    new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
+            var parameters = new Org.BouncyCastle.Crypto.Parameters.ECPrivateKeyParameters(
+                new Org.BouncyCastle.Math.BigInteger(1, privateKey),
+                new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(k1Params.Curve, k1Params.G, k1Params.N, k1Params.H));
+            signer.Init(true, parameters);
+
+            byte[] signature;
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
+                var hash256 = hashSpan.Slice(0, 32).ToArray();
+
+                var signatures = signer.GenerateSignature(hash256);
+                var r = signatures[0];
+                var s = signatures[1];
+                var sprime = k1Params.N.Subtract(s);
+                if(s.CompareTo(sprime) == 1)
+                {
+                    s = sprime;
+                }
+
+                var bos = new System.IO.MemoryStream(72);
+                var generator = new Org.BouncyCastle.Asn1.DerSequenceGenerator(bos);
+                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(r));
+                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(s));
+                generator.Close();
+                signature = bos.ToArray();
+            }
             buffer.Clear();
 
             WriteFieldId(1, 2, buffer);

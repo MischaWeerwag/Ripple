@@ -1453,13 +1453,9 @@ namespace Ibasa.Ripple
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length + 1, buffer);
-            {
-                var span = buffer.GetSpan(publicKey.Length + 1);
-                span[0] = 0xed;
-                publicKey.CopyTo(span.Slice(1));
-            }
-            buffer.Advance(publicKey.Length + 1);
+            WriteLengthPrefix(publicKey.Length, buffer);
+            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
+            buffer.Advance(publicKey.Length);
             
             // Need signature here
 
@@ -1522,13 +1518,9 @@ namespace Ibasa.Ripple
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length + 1, buffer);
-            {
-                var span = buffer.GetSpan(publicKey.Length + 1);
-                span[0] = 0xed;
-                publicKey.CopyTo(span.Slice(1));
-            }
-            buffer.Advance(publicKey.Length + 1);
+            WriteLengthPrefix(publicKey.Length, buffer);
+            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
+            buffer.Advance(publicKey.Length);
 
             WriteFieldId(7, 6, buffer);
             WriteLengthPrefix(signature.Length, buffer);

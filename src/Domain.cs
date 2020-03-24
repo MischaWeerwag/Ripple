@@ -1292,7 +1292,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Numeric code indicating the preliminary result of the transaction, directly correlated to engine_result
         /// </summary>
-        public uint EngineResultCode { get; private set; }
+        public int EngineResultCode { get; private set; }
         /// <summary>
         /// Human-readable explanation of the transaction's preliminary result
         /// </summary>
@@ -1309,7 +1309,7 @@ namespace Ibasa.Ripple
         internal SubmitResponse(JsonElement json)
         {
             EngineResult = json.GetProperty("engine_result").GetString();
-            EngineResultCode = json.GetProperty("engine_result_code").GetUInt32();
+            EngineResultCode = json.GetProperty("engine_result_code").GetInt32();
             EngineResultMessage = json.GetProperty("engine_result_message").GetString();
             {
                 var utf8 = System.Text.Encoding.UTF8.GetBytes(json.GetProperty("tx_blob").GetString());
@@ -1439,6 +1439,9 @@ namespace Ibasa.Ripple
         {
             secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+                        
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
+            buffer.Advance(4);
 
             WriteFieldId(1, 2, buffer);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer.GetSpan(2), 3);
@@ -1465,6 +1468,7 @@ namespace Ibasa.Ripple
             buffer.Advance(Domain.Length);
 
             WriteFieldId(8, 1, buffer);
+            WriteLengthPrefix(20, buffer);
             Account.CopyTo(buffer.GetSpan(20));
             buffer.Advance(20);
 
@@ -1505,6 +1509,9 @@ namespace Ibasa.Ripple
             }
             buffer.Clear();
 
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
+            buffer.Advance(4);
+
             WriteFieldId(1, 2, buffer);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer.GetSpan(2), 3);
             buffer.Advance(2);
@@ -1533,6 +1540,7 @@ namespace Ibasa.Ripple
             buffer.Advance(Domain.Length);
 
             WriteFieldId(8, 1, buffer);
+            WriteLengthPrefix(20, buffer);
             Account.CopyTo(buffer.GetSpan(20));
             buffer.Advance(20);
 
@@ -1543,7 +1551,7 @@ namespace Ibasa.Ripple
                 hash = new Hash256(hashSpan.Slice(0, 32));
             }
 
-            return buffer.WrittenMemory.ToArray();
+            return buffer.WrittenMemory.Slice(4).ToArray();
         }
     }
     public sealed class TxResponse

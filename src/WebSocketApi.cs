@@ -346,11 +346,7 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "submit");
-                {
-                    var hex = new byte[Base16.GetMaxEncodedToUtf8Length(request.TxBlob.Length)];
-                    var _ = Base16.EncodeToUtf8(request.TxBlob, hex, out var _, out var _);
-                    writer.WriteString("tx_blob", hex);
-                }
+                writer.WriteBase16String("tx_blob", request.TxBlob);
                 writer.WriteBoolean("fail_hard", request.FailHard);
                 writer.WriteEndObject();
             }

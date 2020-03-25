@@ -1446,7 +1446,7 @@ namespace Ibasa.Ripple
             buffer.Advance(4);
 
             WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee | 0x4000000000000000);
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
@@ -1515,7 +1515,7 @@ namespace Ibasa.Ripple
             buffer.Advance(4);
 
             WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee | 0x4000000000000000);
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
@@ -1523,7 +1523,7 @@ namespace Ibasa.Ripple
             publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
             buffer.Advance(publicKey.Length);
 
-            WriteFieldId(7, 6, buffer);
+            WriteFieldId(7, 4, buffer);
             WriteLengthPrefix(signature.Length, buffer);
             signature.CopyTo(buffer.GetSpan(signature.Length));
             buffer.Advance(signature.Length);

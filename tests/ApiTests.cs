@@ -99,7 +99,6 @@ namespace Ibasa.Ripple.Tests
             };
             var response = await Api.AccountInfo(request);
             Assert.Equal(account, response.AccountData.Account);
-            Assert.Equal(Setup.TestAccountOne.Amount, response.AccountData.Balance);
         }
 
         [Fact]

@@ -444,9 +444,7 @@ namespace Ibasa.Ripple
             Sequence = json.GetProperty("Sequence").GetUInt32();
             if (json.TryGetProperty("Domain", out element))
             {
-                var utf8 = System.Text.Encoding.UTF8.GetBytes(element.GetString());
-                Domain = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length)];
-                var status = Base16.DecodeFromUtf8(utf8, Domain, out var bytesConsumed, out var bytesWritten);
+                Domain = element.GetBytesFromBase16();
             }
         }
 
@@ -1311,11 +1309,7 @@ namespace Ibasa.Ripple
             EngineResult = json.GetProperty("engine_result").GetString();
             EngineResultCode = json.GetProperty("engine_result_code").GetInt32();
             EngineResultMessage = json.GetProperty("engine_result_message").GetString();
-            {
-                var utf8 = System.Text.Encoding.UTF8.GetBytes(json.GetProperty("tx_blob").GetString());
-                TxBlob = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length)];
-                var status = Base16.DecodeFromUtf8(utf8, TxBlob, out var bytesConsumed, out var bytesWritten);
-            }
+            TxBlob = json.GetProperty("tx_blob").GetBytesFromBase16();
             TxJson = json.GetProperty("tx_json").Clone();
         }
     }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Ibasa.Ripple
 {
-    public class RippleException : System.Exception
+    public class RippleException : Exception
     {
         public RippleException(string error) 
             : base(error) 
@@ -15,9 +15,15 @@ namespace Ibasa.Ripple
     public sealed class RippleRequestException : RippleException
     {
         public System.Text.Json.JsonElement Request { get; private set; }
-        public RippleRequestException(string error, System.Text.Json.JsonElement request)
-            : base(error)
+
+        public string Error { get; private set; }
+        public string ErrorException { get; private set; }
+
+        public RippleRequestException(string error, string errorException, System.Text.Json.JsonElement request)
+            : base(errorException == null ? error : error + ": "+ errorException)
         {
+            Error = error;
+            ErrorException = errorException;
             Request = request;
         }
     }

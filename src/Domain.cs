@@ -592,7 +592,7 @@ namespace Ibasa.Ripple
         public AccountId Account { get; set; }
 
         /// <summary>
-        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
 
@@ -640,7 +640,7 @@ namespace Ibasa.Ripple
     public sealed class LedgerRequest
     {
         /// <summary>
-        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
         /// <summary>
@@ -880,7 +880,7 @@ namespace Ibasa.Ripple
         public bool Strict { get; set; }
 
         /// <summary>
-        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
     }
@@ -1127,7 +1127,7 @@ namespace Ibasa.Ripple
         public AccountId Account { get; set; }
 
         /// <summary>
-        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
 
@@ -1553,7 +1553,7 @@ namespace Ibasa.Ripple
         internal static TransactionResponse ReadJson(JsonElement json)
         {
             var transactionType = json.GetProperty("TransactionType").GetString();
-            if(transactionType == "AccountSet")
+            if (transactionType == "AccountSet")
             {
                 return new AccountSetResponse(json);
             }
@@ -1565,13 +1565,18 @@ namespace Ibasa.Ripple
     public sealed class AccountSetResponse : TransactionResponse
     {
         /// <summary>
-        /// The domain that owns this account, the ASCII for the domain in lowercase.
+        /// (Optional) The domain that owns this account, the ASCII for the domain in lowercase.
         /// </summary>
         public byte[] Domain { get; private set; }
 
         internal AccountSetResponse(JsonElement json) : base(json)
         {
-            Domain = json.GetProperty("Domain").GetBytesFromBase16();
+            JsonElement element;
+
+            if (json.TryGetProperty("Domain", out element))
+            {
+                Domain = element.GetBytesFromBase16();
+            }
         }
     }
 
@@ -1584,7 +1589,7 @@ namespace Ibasa.Ripple
         public Hash256 TxHash { get; set; }
 
         /// <summary>
-        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
     }

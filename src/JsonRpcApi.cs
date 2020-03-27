@@ -322,5 +322,27 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
             return new TxResponse(response);
         }
+
+        public override async Task<TxResponse> TransactionEntry(TransactionEntryRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "transaction_entry");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                writer.WriteString("tx_hash", request.TxHash.ToString());
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new TxResponse(response);
+        }
     }
 }

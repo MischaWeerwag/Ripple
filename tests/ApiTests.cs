@@ -188,7 +188,6 @@ namespace Ibasa.Ripple.Tests
             submitRequest.TxBlob = transaction.Sign(secret, out var transactionHash);
             var submitResponse = await Api.Submit(submitRequest);
 
-            //Assert.Equal(submitRequest.TxBlob, submitResponse.TxBlob);
             Assert.Equal("tesSUCCESS", submitResponse.EngineResult);
 
             uint ledger_index = 0;

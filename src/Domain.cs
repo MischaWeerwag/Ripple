@@ -1599,4 +1599,17 @@ namespace Ibasa.Ripple
             }
         }
     }
+
+    public sealed class TransactionEntryRequest
+    {
+        /// <summary>
+        /// Unique hash of the transaction you are looking up.
+        /// </summary>
+        public Hash256 TxHash { get; set; }
+
+        /// <summary>
+        /// A 20-byte hex strinh, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+    }
 }

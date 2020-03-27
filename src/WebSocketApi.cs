@@ -47,13 +47,16 @@ namespace Ibasa.Ripple
                             else if (status == "error")
                             {
                                 var error = json.RootElement.GetProperty("error").GetString();
-                                string error_exception = null;
-                                if(json.RootElement.TryGetProperty("error_exception", out var element))
+                                var request = json.RootElement.GetProperty("request").Clone();
+                                RippleException exception;
+                                if (json.RootElement.TryGetProperty("error_exception", out var element))
                                 {
-                                    error_exception = element.GetString();
+                                    exception = new RippleSubmitRequestException(error, element.GetString(), request);
                                 }
-
-                                var exception = new RippleRequestException(error, error_exception, json.RootElement.GetProperty("request").Clone());
+                                else
+                                {
+                                    exception = new RippleRequestException(error, request);
+                                }
 
                                 lock (responses)
                                 {

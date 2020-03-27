@@ -31,12 +31,18 @@ namespace Ibasa.Ripple
                 else if (status == "error")
                 {
                     var error = result.GetProperty("error").GetString();
-                    string error_exception = null;
+                    var request = result.GetProperty("request");
+                    RippleException exception;
                     if (result.TryGetProperty("error_exception", out var element))
                     {
-                        error_exception = element.GetString();
+                        exception = new RippleSubmitRequestException(error, element.GetString(), request);
                     }
-                    throw new RippleRequestException(error, error_exception, result.GetProperty("request"));
+                    else
+                    {
+                        exception = new RippleRequestException(error, request);
+                    }
+
+                    throw exception;
                 }
                 else
                 {

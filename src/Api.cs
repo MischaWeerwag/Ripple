@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,24 +6,40 @@ namespace Ibasa.Ripple
 {
     public class RippleException : Exception
     {
-        public RippleException(string error) 
-            : base(error) 
+        public RippleException(string message)
+            : base(message)
         {
         }
     }
-    public sealed class RippleRequestException : RippleException
+    public class RippleRequestException : RippleException
     {
         public System.Text.Json.JsonElement Request { get; private set; }
 
         public string Error { get; private set; }
-        public string ErrorException { get; private set; }
 
-        public RippleRequestException(string error, string errorException, System.Text.Json.JsonElement request)
-            : base(errorException == null ? error : error + ": "+ errorException)
+        protected RippleRequestException(string message, string error, System.Text.Json.JsonElement request)
+            : base(message)
         {
             Error = error;
-            ErrorException = errorException;
             Request = request;
+        }
+
+        public RippleRequestException(string error, System.Text.Json.JsonElement request)
+            : base(error)
+        {
+            Error = error;
+            Request = request;
+        }
+    }
+
+    public class RippleSubmitRequestException : RippleRequestException
+    {
+        public string ErrorException { get; private set; }
+
+        public RippleSubmitRequestException(string error, string errorException, System.Text.Json.JsonElement request)
+            : base(errorException == null ? error : error + ": " + errorException, error, request)
+        {
+            ErrorException = errorException;
         }
     }
 

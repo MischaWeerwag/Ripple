@@ -11,6 +11,7 @@ namespace Ibasa.Ripple
         {
         }
     }
+
     public class RippleRequestException : RippleException
     {
         public System.Text.Json.JsonElement Request { get; private set; }
@@ -42,7 +43,6 @@ namespace Ibasa.Ripple
             ErrorException = errorException;
         }
     }
-
 
     public abstract class Api : IAsyncDisposable
     {

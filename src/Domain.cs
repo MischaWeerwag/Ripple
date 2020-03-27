@@ -571,7 +571,7 @@ namespace Ibasa.Ripple
 
     public struct LedgerSpecification
     {
-        private int index;
+        private uint index;
         private string shortcut;
         private Hash256? hash;
 
@@ -590,9 +590,9 @@ namespace Ibasa.Ripple
         /// </summary>
         public static LedgerSpecification Current = new LedgerSpecification();
 
-        public LedgerSpecification(int index)
+        public LedgerSpecification(uint index)
         {
-            if (index < 1)
+            if (index == 0)
             {
                 throw new ArgumentOutOfRangeException("index", index, "index must be greater than zero");
             }

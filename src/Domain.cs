@@ -1580,7 +1580,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The ledger index of the ledger that includes this transaction.
         /// </summary>
-        public uint LedgerIndex { get; private set; }
+        public uint? LedgerIndex { get; private set; }
 
         // meta Object  Various metadata about the transaction.
 
@@ -1592,8 +1592,11 @@ namespace Ibasa.Ripple
         internal TxResponse(JsonElement json)
         {
             Hash = new Hash256(json.GetProperty("hash").GetString());
-            LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
             Validated = json.GetProperty("validated").GetBoolean();
+            if (json.TryGetProperty("ledger_index", out var element))
+            {
+                LedgerIndex = element.GetUInt32();
+            }
         }
     }
 }

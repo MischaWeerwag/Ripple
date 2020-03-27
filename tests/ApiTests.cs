@@ -191,23 +191,20 @@ namespace Ibasa.Ripple.Tests
             //Assert.Equal(submitRequest.TxBlob, submitResponse.TxBlob);
             Assert.Equal("tesSUCCESS", submitResponse.EngineResult);
 
-            while(true)
+            uint ledger_index = 0;
+            do
             {
-                try
+                var tx = await Api.Tx(transactionHash);
+                Assert.Equal(transactionHash, tx.Hash);
+                if (tx.LedgerIndex.HasValue)
                 {
-                    var tx = await Api.Tx(transactionHash);
-                    Assert.Equal(transactionHash, tx.Hash);
-                    break;
+                    ledger_index = tx.LedgerIndex.Value;
                 }
-                catch
-                {
-                    continue;
-                }
-            }
+            } while (ledger_index == 0);
 
             infoRequest = new AccountInfoRequest()
             {
-                Ledger = LedgerSpecification.Current,
+                Ledger = new LedgerSpecification(ledger_index),
                 Account = account,
             };
             infoResponse = await Api.AccountInfo(infoRequest);

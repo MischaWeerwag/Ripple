@@ -144,7 +144,7 @@ namespace Ibasa.Ripple
             pub.Encode(publicKey, 1);
         }
 
-        public void Secp256k1KeyPair(out byte[] rootPublicKey, out byte[] rootPrivateKey, out byte[] publicKey, out byte[] privateKey)
+        public void Secp256k1KeyPair(out Secp256k1KeyPair rootKeyPair, out Secp256k1KeyPair keyPair)
         {
             Span<byte> rootSource = stackalloc byte[20];
             UnsafeAsSpan(ref this).CopyTo(rootSource);
@@ -171,13 +171,11 @@ namespace Ibasa.Ripple
                 }
 
                 var rootPublicKeyPoint = k1Params.G.Multiply(secpRootSecret);
-
-                rootPublicKey = rootPublicKeyPoint.GetEncoded(true);
-                rootPrivateKey = secpRootSecret.ToByteArrayUnsigned();
+                rootKeyPair = new Secp256k1KeyPair(secpRootSecret, rootPublicKeyPoint);
 
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
-                rootPublicKey.CopyTo(intermediateSource);
+                rootKeyPair.GetCanonicalPublicKey().CopyTo(intermediateSource);
                 System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(33), 0);
 
                 Org.BouncyCastle.Math.BigInteger secpIntermediateSecret = default;
@@ -196,12 +194,9 @@ namespace Ibasa.Ripple
                 }
 
                 var masterPrivateKey = secpRootSecret.Add(secpIntermediateSecret).Mod(k1Params.N);
-                privateKey = masterPrivateKey.ToByteArrayUnsigned();
-
                 var intermediatePublicKeyPoint = k1Params.G.Multiply(secpIntermediateSecret);
-
                 var masterPublicKey = rootPublicKeyPoint.Add(intermediatePublicKeyPoint);
-                publicKey = masterPublicKey.GetEncoded(true);
+                keyPair = new Secp256k1KeyPair(masterPrivateKey, masterPublicKey);
             }
         }
 
@@ -1297,7 +1292,7 @@ namespace Ibasa.Ripple
         //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
 
-        public abstract byte[] Sign(Seed secret, out Hash256 hash);
+        public abstract byte[] Sign(KeyPair keyPair, out Hash256 hash);
         protected static void WriteFieldId(int typeCode, int fieldCode, System.Buffers.IBufferWriter<byte> writer)
         {
             if (typeCode < 16 && fieldCode < 16)
@@ -1381,9 +1376,9 @@ namespace Ibasa.Ripple
         //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
         //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
 
-        public override byte[] Sign(Seed secret, out Hash256 hash)
+        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
         {
-            secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
+            var publicKey = keyPair.GetCanonicalPublicKey();
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
@@ -1419,40 +1414,7 @@ namespace Ibasa.Ripple
             buffer.Advance(20);
 
             // Calculate signature and build again
-            // SHA512Half -> secp256k1
-
-            var k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
-            var signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
-                new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(
-                    new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
-            var parameters = new Org.BouncyCastle.Crypto.Parameters.ECPrivateKeyParameters(
-                new Org.BouncyCastle.Math.BigInteger(1, privateKey),
-                new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(k1Params.Curve, k1Params.G, k1Params.N, k1Params.H));
-            signer.Init(true, parameters);
-
-            byte[] signature;
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
-            {
-                Span<byte> hashSpan = stackalloc byte[64];
-                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                var hash256 = hashSpan.Slice(0, 32).ToArray();
-
-                var signatures = signer.GenerateSignature(hash256);
-                var r = signatures[0];
-                var s = signatures[1];
-                var sprime = k1Params.N.Subtract(s);
-                if (s.CompareTo(sprime) == 1)
-                {
-                    s = sprime;
-                }
-
-                var bos = new System.IO.MemoryStream(72);
-                var generator = new Org.BouncyCastle.Asn1.DerSequenceGenerator(bos);
-                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(r));
-                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(s));
-                generator.Close();
-                signature = bos.ToArray();
-            }
+            var signature = keyPair.Sign(buffer.WrittenSpan);
             buffer.Clear();
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
@@ -1500,6 +1462,7 @@ namespace Ibasa.Ripple
             return buffer.WrittenMemory.Slice(4).ToArray();
         }
     }
+
     public abstract class TransactionResponse
     {
         /// <summary>

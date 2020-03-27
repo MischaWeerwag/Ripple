@@ -53,8 +53,8 @@ namespace Ibasa.Ripple.Tests
             var secret = new Seed(seed);
             var address = new AccountId(account);
 
-            secret.Secp256k1KeyPair(out var _, out var _, out var publicKey, out var _);
-
+            secret.Secp256k1KeyPair(out var _, out var keyPair);
+            var publicKey = keyPair.GetCanonicalPublicKey();
             Assert.Equal(address, AccountId.FromPublicKey(publicKey));
         }
     }

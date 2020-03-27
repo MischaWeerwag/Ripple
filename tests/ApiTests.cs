@@ -185,7 +185,8 @@ namespace Ibasa.Ripple.Tests
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
             transaction.Fee = feeResponse.Drops.MedianFee;
             var submitRequest = new SubmitRequest();
-            submitRequest.TxBlob = transaction.Sign(secret, out var transactionHash);
+            secret.Secp256k1KeyPair(out var rootKeyPair, out var keyPair);
+            submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
             var submitResponse = await Api.Submit(submitRequest);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);

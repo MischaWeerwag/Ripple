@@ -195,6 +195,8 @@ namespace Ibasa.Ripple.Tests
             {
                 var tx = await Api.Tx(transactionHash);
                 Assert.Equal(transactionHash, tx.Hash);
+                var acr = Assert.IsType<AccountSetResponse>(tx);
+                Assert.Equal(transaction.Domain, acr.Domain);
                 if (tx.LedgerIndex.HasValue)
                 {
                     ledger_index = tx.LedgerIndex.Value;

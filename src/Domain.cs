@@ -1521,7 +1521,7 @@ namespace Ibasa.Ripple
             return buffer.WrittenMemory.Slice(4).ToArray();
         }
     }
-    public sealed class TxResponse
+    public abstract class TransactionResponse
     {
         /// <summary>
         /// The SHA-512 hash of the transaction
@@ -1540,7 +1540,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public bool Validated { get; private set; }
 
-        internal TxResponse(JsonElement json)
+        protected TransactionResponse(JsonElement json)
         {
             Hash = new Hash256(json.GetProperty("hash").GetString());
             Validated = json.GetProperty("validated").GetBoolean();
@@ -1549,7 +1549,32 @@ namespace Ibasa.Ripple
                 LedgerIndex = element.GetUInt32();
             }
         }
+
+        internal static TransactionResponse ReadJson(JsonElement json)
+        {
+            var transactionType = json.GetProperty("TransactionType").GetString();
+            if(transactionType == "AccountSet")
+            {
+                return new AccountSetResponse(json);
+            }
+
+            throw new NotImplementedException();
+        }
     }
+
+    public sealed class AccountSetResponse : TransactionResponse
+    {
+        /// <summary>
+        /// The domain that owns this account, the ASCII for the domain in lowercase.
+        /// </summary>
+        public byte[] Domain { get; private set; }
+
+        internal AccountSetResponse(JsonElement json) : base(json)
+        {
+            Domain = json.GetProperty("Domain").GetBytesFromBase16();
+        }
+    }
+
 
     public sealed class TransactionEntryRequest
     {

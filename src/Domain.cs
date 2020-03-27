@@ -1317,7 +1317,7 @@ namespace Ibasa.Ripple
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
         //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
-        
+
         public abstract byte[] Sign(Seed secret, out Hash256 hash);
         protected static void WriteFieldId(int typeCode, int fieldCode, System.Buffers.IBufferWriter<byte> writer)
         {
@@ -1401,12 +1401,12 @@ namespace Ibasa.Ripple
         //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
         //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
         //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
-        
+
         public override byte[] Sign(Seed secret, out Hash256 hash)
         {
             secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-                        
+
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
             buffer.Advance(4);
 
@@ -1426,7 +1426,7 @@ namespace Ibasa.Ripple
             WriteLengthPrefix(publicKey.Length, buffer);
             publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
             buffer.Advance(publicKey.Length);
-            
+
             // Need signature here
 
             WriteFieldId(7, 7, buffer);
@@ -1462,7 +1462,7 @@ namespace Ibasa.Ripple
                 var r = signatures[0];
                 var s = signatures[1];
                 var sprime = k1Params.N.Subtract(s);
-                if(s.CompareTo(sprime) == 1)
+                if (s.CompareTo(sprime) == 1)
                 {
                     s = sprime;
                 }

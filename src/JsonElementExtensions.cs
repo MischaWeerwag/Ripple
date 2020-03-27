@@ -9,7 +9,7 @@ namespace Ibasa.Ripple
         {
             var str = element.GetString();
             var utf8 = System.Text.Encoding.UTF8.GetBytes(str);
-            
+
             var count = Base16.GetMaxDecodedFromUtf8Length(utf8.Length);
             var bytes = new byte[count];
             var _ = Base16.DecodeFromUtf8(utf8, bytes, out var _, out var _);

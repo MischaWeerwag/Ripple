@@ -48,11 +48,11 @@ namespace Ibasa.Ripple
                 {
                     throw new NotSupportedException(string.Format("{0} not a supported status", status));
                 }
-            } 
+            }
             else
             {
                 throw new RippleException(body);
-            }           
+            }
         }
 
         public override ValueTask DisposeAsync()

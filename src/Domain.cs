@@ -381,13 +381,35 @@ namespace Ibasa.Ripple
 
         public Amount(ulong drops)
         {
-            if ((drops & 0x1FFFFFFFFFFFFFFUL) != 0)
+            if ((drops & 0x4000000000000000) != 0)
             {
                 throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 144,115,188,075,855,872");
             }
             this.amount = 0x4000000000000000UL | drops;
             this.code = CurrencyCode.XRP;
             this.account = new AccountId();
+        }
+    }
+
+    /// <summary>
+    /// An "Amount" that must be in XRP.
+    /// </summary>
+    public struct XrpAmount
+    {
+        public readonly ulong Drops;
+
+        public XrpAmount(ulong drops)
+        {
+            if ((drops & 0x4000000000000000) != 0)
+            {
+                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 144,115,188,075,855,872");
+            }
+            Drops = drops;
+        }
+
+        public static XrpAmount Parse(string s)
+        {
+            return new XrpAmount(ulong.Parse(s));
         }
     }
 
@@ -416,7 +438,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The account's current XRP balance in drops.
         /// </summary>
-        public ulong Balance { get; private set; }
+        public XrpAmount Balance { get; private set; }
 
         /// <summary>
         /// The number of objects this account owns in the ledger, which contributes to its owner reserve.
@@ -439,7 +461,7 @@ namespace Ibasa.Ripple
             JsonElement element;
 
             Account = new AccountId(json.GetProperty("Account").GetString());
-            Balance = ulong.Parse(json.GetProperty("Balance").GetString());
+            Balance = XrpAmount.Parse(json.GetProperty("Balance").GetString());
             OwnerCount = json.GetProperty("OwnerCount").GetUInt32();
             Sequence = json.GetProperty("Sequence").GetUInt32();
             if (json.TryGetProperty("Domain", out element))
@@ -723,30 +745,30 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The transaction cost required for a reference transaction to be included in a ledger under minimum load, represented in drops of XRP.
         /// </summary>
-        public ulong BaseFee { get; private set; }
+        public XrpAmount BaseFee { get; private set; }
 
         /// <summary>
         /// An approximation of the median transaction cost among transactions included in the previous validated ledger, represented in drops of XRP.
         /// </summary>
-        public ulong MedianFee { get; private set; }
+        public XrpAmount MedianFee { get; private set; }
 
         /// <summary>
         /// The minimum transaction cost for a reference transaction to be queued for a later ledger, represented in drops of XRP.
         /// If greater than base_fee, the transaction queue is full.
         /// </summary>
-        public ulong MinimumFee { get; private set; }
+        public XrpAmount MinimumFee { get; private set; }
 
         /// <summary>
         /// The minimum transaction cost that a reference transaction must pay to be included in the current open ledger, represented in drops of XRP.
         /// </summary>
-        public ulong OpenLedgerFee { get; private set; }
+        public XrpAmount OpenLedgerFee { get; private set; }
 
         internal FeeResponseDrops(JsonElement json)
         {
-            BaseFee = ulong.Parse(json.GetProperty("base_fee").GetString());
-            MedianFee = ulong.Parse(json.GetProperty("median_fee").GetString());
-            MinimumFee = ulong.Parse(json.GetProperty("minimum_fee").GetString());
-            OpenLedgerFee = ulong.Parse(json.GetProperty("open_ledger_fee").GetString());
+            BaseFee = XrpAmount.Parse(json.GetProperty("base_fee").GetString());
+            MedianFee = XrpAmount.Parse(json.GetProperty("median_fee").GetString());
+            MinimumFee = XrpAmount.Parse(json.GetProperty("minimum_fee").GetString());
+            OpenLedgerFee = XrpAmount.Parse(json.GetProperty("open_ledger_fee").GetString());
         }
     }
 
@@ -1326,7 +1348,7 @@ namespace Ibasa.Ripple
         /// Some transaction types have different minimum requirements.
         /// See Transaction Cost for details.
         /// </summary>
-        public ulong Fee { get; set; }
+        public XrpAmount Fee { get; set; }
 
         /// <summary>
         /// The sequence number of the account sending the transaction. 
@@ -1446,7 +1468,7 @@ namespace Ibasa.Ripple
             buffer.Advance(4);
 
             WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee | 0x4000000000000000);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee.Drops | 0x4000000000000000);
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);
@@ -1515,7 +1537,7 @@ namespace Ibasa.Ripple
             buffer.Advance(4);
 
             WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee | 0x4000000000000000);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee.Drops | 0x4000000000000000);
             buffer.Advance(8);
 
             WriteFieldId(7, 3, buffer);

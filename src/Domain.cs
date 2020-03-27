@@ -1319,23 +1319,7 @@ namespace Ibasa.Ripple
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
         
         public abstract byte[] Sign(Seed secret, out Hash256 hash);
-    }
-
-    public sealed class AccountSet : Transaction
-    {
-        /// <summary>
-        /// (Optional) The domain that owns this account, the ASCII for the domain in lowercase.
-        /// </summary>
-        public byte[] Domain { get; set; }
-
-        //ClearFlag Number  UInt32(Optional) Unique identifier of a flag to disable for this account.
-        //EmailHash String  Hash128(Optional) Hash of an email address to be used for generating an avatar image.Conventionally, clients use Gravatar to display this image.
-        //MessageKey String  Blob    (Optional) Public key for sending encrypted messages to this account.
-        //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
-        //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
-        //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
-
-        private static void WriteFieldId(int typeCode, int fieldCode, System.Buffers.IBufferWriter<byte> writer)
+        protected static void WriteFieldId(int typeCode, int fieldCode, System.Buffers.IBufferWriter<byte> writer)
         {
             if (typeCode < 16 && fieldCode < 16)
             {
@@ -1367,7 +1351,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        private static void WriteLengthPrefix(int length, System.Buffers.IBufferWriter<byte> writer)
+        protected static void WriteLengthPrefix(int length, System.Buffers.IBufferWriter<byte> writer)
         {
             if (length <= 192)
             {
@@ -1402,7 +1386,22 @@ namespace Ibasa.Ripple
                 writer.Advance(3);
             }
         }
+    }
 
+    public sealed class AccountSet : Transaction
+    {
+        /// <summary>
+        /// (Optional) The domain that owns this account, the ASCII for the domain in lowercase.
+        /// </summary>
+        public byte[] Domain { get; set; }
+
+        //ClearFlag Number  UInt32(Optional) Unique identifier of a flag to disable for this account.
+        //EmailHash String  Hash128(Optional) Hash of an email address to be used for generating an avatar image.Conventionally, clients use Gravatar to display this image.
+        //MessageKey String  Blob    (Optional) Public key for sending encrypted messages to this account.
+        //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
+        //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
+        //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
+        
         public override byte[] Sign(Seed secret, out Hash256 hash)
         {
             secret.Secp256k1KeyPair(out var rootPublicKey, out var rootPrivateKey, out var publicKey, out var privateKey);

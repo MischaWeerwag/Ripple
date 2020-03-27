@@ -162,7 +162,7 @@ namespace Ibasa.Ripple.Tests
             var submitResponse = await Api.Submit(submitRequest);
 
             Assert.Equal(submitRequest.TxBlob, submitResponse.TxBlob);
-            Assert.Equal("terPRE_SEQ", submitResponse.EngineResult);
+            Assert.Equal(EngineResult.terPRE_SEQ, submitResponse.EngineResult);
         }
 
         [Fact]
@@ -188,7 +188,7 @@ namespace Ibasa.Ripple.Tests
             submitRequest.TxBlob = transaction.Sign(secret, out var transactionHash);
             var submitResponse = await Api.Submit(submitRequest);
 
-            Assert.Equal("tesSUCCESS", submitResponse.EngineResult);
+            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             uint ledger_index = 0;
             do

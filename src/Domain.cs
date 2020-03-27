@@ -13,7 +13,7 @@ namespace Ibasa.Ripple
         private uint _data0, _data1, _data2, _data3, _data4;
 
         private static Span<byte> UnsafeAsSpan(ref AccountId account)
-        { 
+        {
             return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref account._data0, 5));
         }
 
@@ -65,9 +65,9 @@ namespace Ibasa.Ripple
         {
             var a = UnsafeAsSpan(ref this);
             var b = UnsafeAsSpan(ref other);
-            for(int i = 0; i < 20; ++i)
+            for (int i = 0; i < 20; ++i)
             {
-                if(a[i] != b[i])
+                if (a[i] != b[i])
                 {
                     return false;
                 }
@@ -78,7 +78,7 @@ namespace Ibasa.Ripple
         public override int GetHashCode()
         {
             var hash = new System.HashCode();
-            foreach(var b in UnsafeAsSpan(ref this))
+            foreach (var b in UnsafeAsSpan(ref this))
             {
                 hash.Add(b);
             }
@@ -87,7 +87,7 @@ namespace Ibasa.Ripple
 
         public override bool Equals(object other)
         {
-            if(other is AccountId)
+            if (other is AccountId)
             {
                 return Equals((AccountId)other);
             }
@@ -1303,16 +1303,138 @@ namespace Ibasa.Ripple
         public bool FailHard { get; set; }
     }
 
+    public enum EngineResult
+    {
+        telLOCAL_ERROR = -399,
+        telBAD_DOMAIN = -398,
+        telBAD_PATH_COUNT = -397,
+        telBAD_PUBLIC_KEY = -396,
+        telFAILED_PROCESSING = -395,
+        telINSUF_FEE_P = -394,
+        telNO_DST_PARTIAL = -393,
+        telCAN_NOT_QUEUE = -392,
+        telCAN_NOT_QUEUE_BALANCE = -391,
+        telCAN_NOT_QUEUE_BLOCKS = -390,
+        telCAN_NOT_QUEUE_BLOCKED = -389,
+        telCAN_NOT_QUEUE_FEE = -388,
+        telCAN_NOT_QUEUE_FULL = -387,
+
+        temMALFORMED = -299,
+        temBAD_AMOUNT = -298,
+        temBAD_CURRENCY = -297,
+        temBAD_EXPIRATION = -296,
+        temBAD_FEE = -295,
+        temBAD_ISSUER = -294,
+        temBAD_LIMIT = -293,
+        temBAD_OFFER = -292,
+        temBAD_PATH = -291,
+        temBAD_PATH_LOOP = -290,
+        temBAD_REGKEY = -289,
+        temBAD_SEND_XRP_LIMIT = -288,
+        temBAD_SEND_XRP_MAX = -287,
+        temBAD_SEND_XRP_NO_DIRECT = -286,
+        temBAD_SEND_XRP_PARTIAL = -285,
+        temBAD_SEND_XRP_PATHS = -284,
+        temBAD_SEQUENCE = -283,
+        temBAD_SIGNATURE = -282,
+        temBAD_SRC_ACCOUNT = -281,
+        temBAD_TRANSFER_RATE = -280,
+        temDST_IS_SRC = -279,
+        temDST_NEEDED = -278,
+        temINVALID = -277,
+        temINVALID_FLAG = -276,
+        temREDUNDANT = -275,
+        temRIPPLE_EMPTY = -274,
+        temDISABLED = -273,
+        temBAD_SIGNER = -272,
+        temBAD_QUORUM = -271,
+        temBAD_WEIGHT = -270,
+        temBAD_TICK_SIZE = -269,
+        temINVALID_ACCOUNT_ID = -268,
+        temCANNOT_PREAUTH_SELF = -267,
+        temUNCERTAIN = -266,
+        temUNKNOWN = -265,
+
+        tefFAILURE = -199,
+        tefALREADY = -198,
+        tefBAD_ADD_AUTH = -197,
+        tefBAD_AUTH = -196,
+        tefBAD_LEDGER = -195,
+        tefCREATED = -194,
+        tefEXCEPTION = -193,
+        tefINTERNAL = -192,
+        tefNO_AUTH_REQUIRED = -191,
+        tefPAST_SEQ = -190,
+        tefWRONG_PRIOR = -189,
+        tefMASTER_DISABLED = -188,
+        tefMAX_LEDGER = -187,
+        tefBAD_SIGNATURE = -186,
+        tefBAD_QUORUM = -185,
+        tefNOT_MULTI_SIGNING = -184,
+        tefBAD_AUTH_MASTER = -183,
+        tefINVARIANT_FAILED = -182,
+        tefTOO_BIG = -181,
+
+        terRETRY = -99,
+        terFUNDS_SPENT = -98,
+        terINSUF_FEE_B = -97,
+        terNO_ACCOUNT = -96,
+        terNO_AUTH = -95,
+        terNO_LINE = -94,
+        terOWNERS = -93,
+        terPRE_SEQ = -92,
+        terLAST = -91,
+        terNO_RIPPLE = -90,
+        terQUEUED = -89,
+
+        tesSUCCESS = 0,
+
+        tecCLAIM = 100,
+        tecPATH_PARTIAL = 101,
+        tecUNFUNDED_ADD = 102,
+        tecUNFUNDED_OFFER = 103,
+        tecUNFUNDED_PAYMENT = 104,
+        tecFAILED_PROCESSING = 105,
+        tecDIR_FULL = 121,
+        tecINSUF_RESERVE_LINE = 122,
+        tecINSUF_RESERVE_OFFER = 123,
+        tecNO_DST = 124,
+        tecNO_DST_INSUF_XRP = 125,
+        tecNO_LINE_INSUF_RESERVE = 126,
+        tecNO_LINE_REDUNDANT = 127,
+        tecPATH_DRY = 128,
+        tecUNFUNDED = 129,
+        tecNO_ALTERNATIVE_KEY = 130,
+        tecNO_REGULAR_KEY = 131,
+        tecOWNERS = 132,
+        tecNO_ISSUER = 133,
+        tecNO_AUTH = 134,
+        tecNO_LINE = 135,
+        tecINSUFF_FEE = 136,
+        tecFROZEN = 137,
+        tecNO_TARGET = 138,
+        tecNO_PERMISSION = 139,
+        tecNO_ENTRY = 140,
+        tecINSUFFICIENT_RESERVE = 141,
+        tecNEED_MASTER_KEY = 142,
+        tecDST_TAG_NEEDED = 143,
+        tecINTERNAL = 144,
+        tecOVERSIZE = 145,
+        tecCRYPTOCONDITION_ERROR = 146,
+        tecINVARIANT_FAILED = 147,
+        tecEXPIRED = 148,
+        tecDUPLICATE = 149,
+        tecKILLED = 150,
+        tecHAS_OBLIGATIONS = 151,
+        tecTOO_SOON = 152
+    }
+
     public sealed class SubmitResponse
     {
         /// <summary>
         /// Code indicating the preliminary result of the transaction, for example tesSUCCESS
         /// </summary>
-        public string EngineResult { get; private set; }
-        /// <summary>
-        /// Numeric code indicating the preliminary result of the transaction, directly correlated to engine_result
-        /// </summary>
-        public int EngineResultCode { get; private set; }
+        public EngineResult EngineResult { get; private set; }
         /// <summary>
         /// Human-readable explanation of the transaction's preliminary result
         /// </summary>
@@ -1328,8 +1450,12 @@ namespace Ibasa.Ripple
 
         internal SubmitResponse(JsonElement json)
         {
-            EngineResult = json.GetProperty("engine_result").GetString();
-            EngineResultCode = json.GetProperty("engine_result_code").GetInt32();
+            EngineResult = (EngineResult)json.GetProperty("engine_result_code").GetInt32();
+            var engine_result = json.GetProperty("engine_result").GetString();
+            if (engine_result != EngineResult.ToString())
+            {
+                throw new RippleException($"{EngineResult} did not match {engine_result}");
+            }
             EngineResultMessage = json.GetProperty("engine_result_message").GetString();
             TxBlob = json.GetProperty("tx_blob").GetBytesFromBase16();
             TxJson = json.GetProperty("tx_json").Clone();

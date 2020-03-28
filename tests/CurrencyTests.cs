@@ -25,21 +25,24 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(expected, CurrencyValue.FromIssued(value).ToString());
         }
 
-        [Fact]
-        public void TestIssuedRoundTrip()
+        [Theory]
+        [InlineData(true, -96, 1000_0000_0000_0000)]
+        [InlineData(true, -96, 9999_9999_9999_9999)]
+        [InlineData(true, 0, 1000_0000_0000_0000)]
+        [InlineData(true, 0, 9999_9999_9999_9999)]
+        [InlineData(true, 80, 1000_0000_0000_0000)]
+        [InlineData(true, 80, 9999_9999_9999_9999)]
+        [InlineData(false, -96, 1000_0000_0000_0000)]
+        [InlineData(false, -96, 9999_9999_9999_9999)]
+        [InlineData(false, 0, 1000_0000_0000_0000)]
+        [InlineData(false, 0, 9999_9999_9999_9999)]
+        [InlineData(false, 80, 1000_0000_0000_0000)]
+        [InlineData(false, 80, 9999_9999_9999_9999)]
+        public void TestIssuedRoundTrip(bool isPositive, int exponent, ulong mantissa)
         {
-            foreach (var sign in new bool[] { true, false })
-            {
-                for (int exponent = -96; exponent <= 80; ++exponent)
-                {
-                    for (ulong mantissa = 1000_0000_0000_0000; mantissa <= 9999_9999_9999_9999; ++mantissa)
-                    {
-                        var currency = CurrencyValue.FromIssued(sign, exponent, mantissa);
-                        var str = currency.ToString();
-                        Assert.Equal(currency, CurrencyValue.ParseIssued(str));
-                    }
-                }
-            }
+            var currency = CurrencyValue.FromIssued(isPositive, exponent, mantissa);
+            var str = currency.ToString();
+            Assert.Equal(currency, CurrencyValue.ParseIssued(str));
         }
 
         [Theory]

@@ -580,12 +580,22 @@ namespace Ibasa.Ripple
                 }
             }
 
-            var exponent = int.Parse(exponentChars.Slice(0, exponentCount));
+            var exponent = int.Parse(exponentChars.Slice(0, exponentCount)) - fraction;
             var iMantissa = long.Parse(mantissaChars.Slice(0, mantissaCount));
             var isPositive = iMantissa > 0;
             var mantissa = (ulong)Math.Abs(iMantissa);
 
+            while (mantissa < 1000_0000_0000_0000)
+            {
+                exponent -= 1;
+                mantissa *= 10;
+            }
 
+            while (mantissa > 9999_9999_9999_9999)
+            {
+                exponent += 1;
+                mantissa /= 10;
+            }
 
             return FromIssued(isPositive, exponent, mantissa);
         }

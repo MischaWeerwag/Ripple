@@ -304,6 +304,11 @@ namespace Ibasa.Ripple
             }
         }
 
+        public void CopyTo(Span<byte> destination)
+        {
+            UnsafeAsSpan(ref this).CopyTo(destination);
+        }
+
         public override string ToString()
         {
             var bytes = UnsafeAsSpan(ref this);
@@ -637,6 +642,21 @@ namespace Ibasa.Ripple
             this.value = drops | 0x4000_0000_0000_0000;
             this.CurrencyCode = CurrencyCode.XRP;
             this.account = new AccountId();
+        }
+
+        internal Amount(JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.String)
+            {
+                // Just plain xrp
+                this.value = UInt64.Parse(element.GetString()) | 0x4000_0000_0000_0000;
+                this.CurrencyCode = CurrencyCode.XRP;
+                this.account = new AccountId();
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
 
         public Amount(AccountId issuer, CurrencyCode currencyCode, CurrencyValue value)
@@ -1626,9 +1646,23 @@ namespace Ibasa.Ripple
             System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
             bufferWriter.Advance(8);
         }
+
         public void WriteAmount(uint fieldCode, Amount value)
         {
-            throw new NotImplementedException();
+            WriteFieldId(6, fieldCode);
+            if (value.Drops.HasValue)
+            {
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops.Value | 0x4000000000000000);
+                bufferWriter.Advance(8);
+            }
+            else
+            {
+                var span = bufferWriter.GetSpan(48);
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), CurrencyValue.ToUInt64Bits(value.Value.Value));
+                value.CurrencyCode.CopyTo(span.Slice(8));
+                value.Issuer.Value.CopyTo(span.Slice(28));
+                bufferWriter.Advance(48);
+            }
         }
 
         public void WriteVl(uint fieldCode, byte[] value)
@@ -1854,6 +1888,10 @@ namespace Ibasa.Ripple
             {
                 return new AccountSetResponse(json);
             }
+            else if (transactionType == "Payment")
+            {
+                return new PaymentResponse(json);
+            }
 
             throw new NotImplementedException();
         }
@@ -1876,7 +1914,20 @@ namespace Ibasa.Ripple
             }
         }
     }
+    public sealed class PaymentResponse : TransactionResponse
+    {
+        public Amount Amount{ get; private set; }
 
+        internal PaymentResponse(JsonElement json) : base(json)
+        {
+            JsonElement element;
+
+            if (json.TryGetProperty("Amount", out element))
+            {
+                Amount = new Amount(element);
+            }
+        }
+    }
 
     public sealed class TransactionEntryRequest
     {

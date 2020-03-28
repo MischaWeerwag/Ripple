@@ -182,8 +182,9 @@ namespace Ibasa.Ripple.Tests
             var transaction = new AccountSet();
             transaction.Account = account;
             transaction.Sequence = infoResponse.AccountData.Sequence;
-            transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
             transaction.Fee = feeResponse.Drops.MedianFee;
+            transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
+
             var submitRequest = new SubmitRequest();
             secret.Secp256k1KeyPair(out var rootKeyPair, out var keyPair);
             submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
@@ -212,6 +213,73 @@ namespace Ibasa.Ripple.Tests
             infoResponse = await Api.AccountInfo(infoRequest);
             Assert.Equal(account, infoResponse.AccountData.Account);
             Assert.Equal(transaction.Domain, infoResponse.AccountData.Domain);
+        }
+
+        [Fact]
+        public async Task TestXrpPayment()
+        {
+            var accountOne = new AccountId(Setup.TestAccountOne.Address);
+            var accountTwo = new AccountId(Setup.TestAccountTwo.Address);
+            var secret = new Seed(Setup.TestAccountOne.Secret);
+
+            ulong startingDrops;
+            {
+                var response = await Api.AccountInfo(new AccountInfoRequest()
+                {
+                    Ledger = LedgerSpecification.Current,
+                    Account = accountTwo,
+                });
+                startingDrops = response.AccountData.Balance.Drops;
+            }
+
+            var infoRequest = new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = accountOne,
+            };
+            var infoResponse = await Api.AccountInfo(infoRequest);
+            var feeResponse = await Api.Fee();
+
+            var transaction = new Payment();
+            transaction.Account = accountOne;
+            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Fee = feeResponse.Drops.MedianFee;
+            transaction.Destination = accountTwo;
+            transaction.DestinationTag = 1;
+            transaction.Amount = new Amount(100);
+
+            var submitRequest = new SubmitRequest();
+            secret.Secp256k1KeyPair(out var rootKeyPair, out var keyPair);
+            submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
+            var submitResponse = await Api.Submit(submitRequest);
+
+            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
+
+            uint ledger_index = 0;
+            do
+            {
+                var tx = await Api.Tx(transactionHash);
+                Assert.Equal(transactionHash, tx.Hash);
+                var pr = Assert.IsType<PaymentResponse>(tx);
+                Assert.Equal(transaction.Amount, pr.Amount);
+                if (tx.LedgerIndex.HasValue)
+                {
+                    ledger_index = tx.LedgerIndex.Value;
+                }
+            } while (ledger_index == 0);
+
+
+            ulong endingDrops;
+            {
+                var response = await Api.AccountInfo(new AccountInfoRequest()
+                {
+                    Ledger = LedgerSpecification.Current,
+                    Account = accountTwo,
+                });
+                endingDrops = response.AccountData.Balance.Drops;
+            }
+
+            Assert.Equal(100ul, endingDrops - startingDrops);
         }
     }
 }

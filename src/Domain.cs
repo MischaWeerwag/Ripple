@@ -364,6 +364,7 @@ namespace Ibasa.Ripple
         {
             this.bits = bits;
         }
+
         public override bool Equals(object obj)
         {
             if (obj is CurrencyValue)
@@ -374,20 +375,12 @@ namespace Ibasa.Ripple
             return false;
         }
 
-        public static CurrencyValue FromDrops(ulong drops)
-        {
-            if ((drops & 0xC000_0000_0000_0000) != 0)
-            {
-                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 4,611,686,018,427,387,904");
-            }
-            return new CurrencyValue(drops | 0x4000_0000_0000_0000);
-        }
-
-        public static CurrencyValue FromIssued(decimal amount)
+        public CurrencyValue(decimal amount)
         {
             if (amount == 0m)
             {
-                return new CurrencyValue(0x8000_0000_0000_0000u);
+                this.bits = 0;
+                return;
             }
 
             var bits = Decimal.GetBits(amount);
@@ -411,8 +404,8 @@ namespace Ibasa.Ripple
                 exponent -= 1;
                 bigmantissa *= 10;
             }
-            
-            while(bigmantissa > 9999_9999_9999_9999)
+
+            while (bigmantissa > 9999_9999_9999_9999)
             {
                 exponent += 1;
                 bigmantissa /= 10;
@@ -424,17 +417,24 @@ namespace Ibasa.Ripple
             System.Diagnostics.Debug.Assert(ok);
             System.Diagnostics.Debug.Assert(bytesWritten <= 7);
             var mantissa = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(mantissabytes);
-            return FromIssued(isPositive, exponent, mantissa);
+
+            System.Diagnostics.Debug.Assert(-96 <= exponent && exponent <= 80);
+            System.Diagnostics.Debug.Assert(1000_0000_0000_0000 <= mantissa && mantissa <= 9999_9999_9999_9999);
+
+            var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
+            var exponentbits = ((ulong)exponent + 97) << 54;
+            this.bits = signbit | exponentbits | mantissa;
         }
 
-        public static CurrencyValue FromIssued(bool isPositive, int exponent, ulong mantissa)
+        public CurrencyValue(bool isPositive, int exponent, ulong mantissa)
         {
-            if(exponent == 0 && mantissa == 0)
+            if (exponent == 0 && mantissa == 0)
             {
-                return new CurrencyValue(0x8000_0000_0000_0000u);
+                this.bits = 0;
+                return;
             }
 
-            if (exponent < -96  || 80 < exponent)
+            if (exponent < -96 || 80 < exponent)
             {
                 throw new ArgumentOutOfRangeException("exponent", exponent, "exponent must be between -96 and 80 (inclusive)");
             }
@@ -444,105 +444,83 @@ namespace Ibasa.Ripple
                 throw new ArgumentOutOfRangeException("mantissa", mantissa, "mantissa must be between 1,000,000,000,000,000 and 9,999,999,999,999,999 (inclusive)");
             }
 
-            var notxrpbit = 0x8000_0000_0000_0000u;
             var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
             var exponentbits = ((ulong)exponent + 97) << 54;
-            return new CurrencyValue(notxrpbit | signbit | exponentbits | mantissa);
+            this.bits = signbit | exponentbits | mantissa;
         }
 
         public static explicit operator decimal(CurrencyValue value)
         {
-            if((value.bits & 0x8000_0000_0000_0000) == 0)
-            {
-                // XRP just return the positive drops
-                return new decimal(value.bits & 0x3FFFFFFFFFFFFFFF);
-            }
-            else
-            {
-                var isNegative = (value.bits & 0x4000_0000_0000_0000) == 0;
-                var exponent = (int)((value.bits >> 54) & 0xFF) - 97;
+            var isNegative = (value.bits & 0x4000_0000_0000_0000) == 0;
+            var exponent = (int)((value.bits >> 54) & 0xFF) - 97;
 
-                // Exponent is only zero (and thus -97 translated) if the mantissa is also zero
-                if(exponent == -97)
+            // Exponent is only zero (and thus -97 translated) if the mantissa is also zero
+            if (exponent == -97)
+            {
+                return 0m;
+            }
+
+            Span<byte> mantissabytes = stackalloc byte[12];
+            System.Buffers.Binary.BinaryPrimitives.TryWriteUInt64LittleEndian(mantissabytes, value.bits & 0x3FFFFFFFFFFFFF);
+
+            // C# decimal is stored as 'mantissa / 10^exponent' where exponent must be (0, 28) and mantissa is 96 bits,
+            // while ripple stores decimals as 'mantissa * 10^exponent' where exponent must be (-96, 80) and mantissa is 54 bits.
+
+            // First flip the exponent (C# divides, ripple multiplies)
+            exponent = -exponent;
+
+            if (exponent < 0 || exponent > 28)
+            {
+                var bigmantissa = new System.Numerics.BigInteger(mantissabytes);
+
+                // We need to scale the exponent to be positive
+                if (exponent < 0)
                 {
-                    return 0m;
+                    bigmantissa *= System.Numerics.BigInteger.Pow(10, 0 - exponent);
+                    exponent = 0;
                 }
 
-                Span<byte> mantissabytes = stackalloc byte[12];
-                System.Buffers.Binary.BinaryPrimitives.TryWriteUInt64LittleEndian(mantissabytes, value.bits & 0x3FFFFFFFFFFFFF);
-
-                // C# decimal is stored as 'mantissa / 10^exponent' where exponent must be (0, 28) and mantissa is 96 bits,
-                // while ripple stores decimals as 'mantissa * 10^exponent' where exponent must be (-96, 80) and mantissa is 54 bits.
-
-                // First flip the exponent (C# divides, ripple multiplies)
-                exponent = -exponent;
-
-                if (exponent < 0 || exponent > 28)
+                // And less than or equal to 28
+                if (exponent > 28)
                 {
-                    var bigmantissa = new System.Numerics.BigInteger(mantissabytes);
-
-                    // We need to scale the exponent to be positive
-                    if (exponent < 0)
-                    {
-                        bigmantissa *= System.Numerics.BigInteger.Pow(10, 0-exponent);
-                        exponent = 0;
-                    }
-
-                    // And less than or equal to 28
-                    if (exponent > 28)
-                    {
-                        bigmantissa /= System.Numerics.BigInteger.Pow(10, exponent-28);
-                        exponent = 28;
-                    }
-
-                    mantissabytes.Clear();
-                    if(!bigmantissa.TryWriteBytes(mantissabytes, out var bytesWritten, true, false))
-                    {
-                        throw new OverflowException("Value was either too large or too small for a Decimal.");
-                    }
-                    System.Diagnostics.Debug.Assert(bytesWritten <= 12);
+                    bigmantissa /= System.Numerics.BigInteger.Pow(10, exponent - 28);
+                    exponent = 28;
                 }
 
-                return new decimal(
-                    System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(0, 4)),
-                    System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(4, 4)),
-                    System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(8, 4)),
-                    isNegative, (byte)exponent);
+                mantissabytes.Clear();
+                if (!bigmantissa.TryWriteBytes(mantissabytes, out var bytesWritten, true, false))
+                {
+                    throw new OverflowException("Value was either too large or too small for a Decimal.");
+                }
+                System.Diagnostics.Debug.Assert(bytesWritten <= 12);
             }
+
+            return new decimal(
+                System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(0, 4)),
+                System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(4, 4)),
+                System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(8, 4)),
+                isNegative, (byte)exponent);
         }
 
         public override string ToString()
         {
-            if ((bits & 0x8000_0000_0000_0000) == 0)
+            var isNegative = (bits & 0x4000_0000_0000_0000) == 0;
+            var exponent = (int)((bits >> 54) & 0xFF) - 97;
+            if (exponent == -97)
             {
-                // XRP just return the positive drops
-                return (bits & 0x3FFFFFFFFFFFFFFF).ToString();
+                return "0";
             }
-            else
+            var mantissa = bits & 0x3FFFFFFFFFFFFF;
+            while (mantissa % 10 == 0)
             {
-                var isNegative = (bits & 0x4000_0000_0000_0000) == 0;
-                var exponent = (int)((bits >> 54) & 0xFF) - 97;
-                if(exponent == -97)
-                {
-                    return "0";
-                }
-                var mantissa = bits & 0x3FFFFFFFFFFFFF;
-                while(mantissa % 10 == 0)
-                {
-                    mantissa /= 10;
-                    exponent += 1;
-                }
+                mantissa /= 10;
+                exponent += 1;
+            }
 
-                return (isNegative ? "-" : "") + mantissa.ToString() + (exponent == 0 ? "" : "E" + exponent.ToString());
-            }
+            return (isNegative ? "-" : "") + mantissa.ToString() + (exponent == 0 ? "" : "E" + exponent.ToString());
         }
 
-        public static CurrencyValue ParseDrops(string s)
-        {
-            return FromDrops(ulong.Parse(s));
-        }
-
-        public static CurrencyValue ParseIssued(string s)
+        public static CurrencyValue Parse(string s)
         {
             Span<char> mantissaChars = stackalloc char[17];
             int mantissaCount = 0;
@@ -553,7 +531,7 @@ namespace Ibasa.Ripple
             bool seenE = false;
             bool seenDecimal = false;
 
-            for(var i = 0; i < s.Length; ++i)
+            for (var i = 0; i < s.Length; ++i)
             {
                 var c = s[i];
 
@@ -565,16 +543,16 @@ namespace Ibasa.Ripple
                 {
                     seenE = true;
                 }
-                else 
+                else
                 {
-                    if(seenE)
+                    if (seenE)
                     {
                         exponentChars[exponentCount++] = c;
                     }
                     else
                     {
                         mantissaChars[mantissaCount++] = c;
-                        if(seenDecimal)
+                        if (seenDecimal)
                         {
                             ++fraction;
                         }
@@ -599,10 +577,20 @@ namespace Ibasa.Ripple
                 mantissa /= 10;
             }
 
-            return FromIssued(isPositive, exponent, mantissa);
+            return new CurrencyValue(isPositive, exponent, mantissa);
+        }
+
+        public static ulong ToUInt64Bits(CurrencyValue value)
+        {
+            // We don't store the 'not xrp' bit on the struct so that 'new CurrencyValue()' is a valid object (0).
+            return value.bits | 0x8000_0000_0000_0000u;
+        }
+
+        public static CurrencyValue FromUInt64Bits(ulong value)
+        {
+            return new CurrencyValue(value * ~0x8000_0000_0000_0000u);
         }
     }
-
 
     /// <summary>
     /// The "Amount" type is a special field type that represents an amount of currency, either XRP or an issued currency.
@@ -610,29 +598,52 @@ namespace Ibasa.Ripple
     public struct Amount
     {
         private readonly ulong value;
-        private readonly CurrencyCode code;
         private readonly AccountId account;
 
-        public CurrencyCode CurrencyCode { get { return code; } }
-        public AccountId? Issuer { get { return code.Equals(CurrencyCode.XRP) ? (AccountId?)null : account; } }
+        public CurrencyCode CurrencyCode { get; }
+        public AccountId? Issuer { get { return CurrencyCode.Equals(CurrencyCode.XRP) ? (AccountId?)null : account; } }
+
+        public ulong? Drops
+        {
+            get
+            {
+                if ((value & 0x8000_0000_0000_0000) == 0)
+                {
+                    // XRP just return the positive drops
+                    return (value & 0x3FFFFFFFFFFFFFFF);
+                }
+                return null;
+            }
+        }
+
+        public CurrencyValue? Value
+        {
+            get
+            {
+                if ((value & 0x8000_0000_0000_0000) != 0)
+                {
+                    return CurrencyValue.FromUInt64Bits(value);
+                }
+                return null;
+            }
+        }
 
         public Amount(ulong drops)
         {
-            if ((drops & 0x4000000000000000) != 0)
+            if ((drops & 0xC000_0000_0000_0000) != 0)
             {
-                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 144,115,188,075,855,872");
+                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 4,611,686,018,427,387,904");
             }
-            this.value = drops;
-            this.code = CurrencyCode.XRP;
+            this.value = drops | 0x4000_0000_0000_0000;
+            this.CurrencyCode = CurrencyCode.XRP;
             this.account = new AccountId();
         }
 
-        public Amount(AccountId issuer, CurrencyCode currencyCode, ulong value)
+        public Amount(AccountId issuer, CurrencyCode currencyCode, CurrencyValue value)
         {
-            this.value = value;
-            this.code = currencyCode;
+            this.value = CurrencyValue.ToUInt64Bits(value);
+            this.CurrencyCode = currencyCode;
             this.account = issuer;
-
         }
     }
 

@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using Xunit;
 
@@ -12,8 +11,8 @@ namespace Ibasa.Ripple.Tests
         [InlineData(false)]
         public void TestZero(bool sign)
         {
-            var currency = CurrencyValue.FromIssued(sign, 0, 0);
-            Assert.Equal(currency, CurrencyValue.FromIssued(0m));
+            var currency = new CurrencyValue(sign, 0, 0);
+            Assert.Equal(currency, new CurrencyValue(0m));
         }
 
         [Theory]
@@ -23,7 +22,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(true, 80, 9999_9999_9999_9999)]
         public void TestOutOfDecimalRange(bool isPositive, int exponent, ulong mantissa)
         {
-            var currency = CurrencyValue.FromIssued(isPositive, exponent, mantissa);
+            var currency = new CurrencyValue(isPositive, exponent, mantissa);
             var exc = Assert.Throws<OverflowException>(() => (decimal)currency);
             Assert.Equal("Value was either too large or too small for a Decimal.", exc.Message);
         }
@@ -34,7 +33,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(1, "1")]
         public void TestToString(decimal value, string expected)
         {
-            Assert.Equal(expected, CurrencyValue.FromIssued(value).ToString());
+            Assert.Equal(expected, new CurrencyValue(value).ToString());
         }
 
         [Theory]
@@ -52,23 +51,9 @@ namespace Ibasa.Ripple.Tests
         [InlineData(false, 80, 9999_9999_9999_9999)]
         public void TestIssuedRoundTrip(bool isPositive, int exponent, ulong mantissa)
         {
-            var currency = CurrencyValue.FromIssued(isPositive, exponent, mantissa);
+            var currency = new CurrencyValue(isPositive, exponent, mantissa);
             var str = currency.ToString();
-            Assert.Equal(currency, CurrencyValue.ParseIssued(str));
-        }
-
-        [Theory]
-        [InlineData(0)]
-        [InlineData(1)]
-        [InlineData(2)]
-        [InlineData(4_611_686_018_427_387_901)]
-        [InlineData(4_611_686_018_427_387_902)]
-        [InlineData(4_611_686_018_427_387_903)]
-        public void TestDropRoundTrip(ulong drops)
-        {
-            var currency = CurrencyValue.FromDrops(drops);
-            var str = currency.ToString();
-            Assert.Equal(currency, CurrencyValue.ParseDrops(str));
+            Assert.Equal(currency, CurrencyValue.Parse(str));
         }
 
         public static IEnumerable<object[]> decimals
@@ -89,7 +74,7 @@ namespace Ibasa.Ripple.Tests
         [MemberData(nameof(decimals))]
         public void TestDecimalRoundTrip(decimal value)
         {
-            var currency = CurrencyValue.FromIssued(value);
+            var currency = new CurrencyValue(value);
             Assert.Equal(value, (decimal)currency);
         }
     }

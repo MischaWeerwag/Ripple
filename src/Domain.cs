@@ -249,7 +249,7 @@ namespace Ibasa.Ripple
 
         public CurrencyCode(string code) : this()
         {
-            var bytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            var bytes = UnsafeAsSpan(ref this);
             if (code.Length == 3)
             {
                 // Standard Currency Code
@@ -272,7 +272,6 @@ namespace Ibasa.Ripple
             else if (code.Length == 40)
             {
                 // Nonstandard Currency Code
-
                 for (int i = 0; i < bytes.Length; ++i)
                 {
                     var hi = (int)code[i * 2];
@@ -307,7 +306,7 @@ namespace Ibasa.Ripple
 
         public override string ToString()
         {
-            var bytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref this, 1));
+            var bytes = UnsafeAsSpan(ref this);
             if (bytes[0] == 0x0)
             {
                 // Standard Currency Code
@@ -316,17 +315,9 @@ namespace Ibasa.Ripple
             else
             {
                 // Nonstandard Currency Code
-                Span<char> chars = stackalloc char[bytes.Length * 2];
-
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    var b = bytes[i] >> 4;
-                    chars[i * 2] = (char)(55 + b + (((b - 10) >> 31) & -7));
-                    b = bytes[i] & 0xF;
-                    chars[i * 2 + 1] = (char)(55 + b + (((b - 10) >> 31) & -7));
-                }
-
-                return new string(chars);
+                Span<byte> utf8 = stackalloc byte[Base16.GetMaxEncodedToUtf8Length(bytes.Length)];
+                var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var _);
+                return System.Text.Encoding.UTF8.GetString(utf8);
             }
 
         }

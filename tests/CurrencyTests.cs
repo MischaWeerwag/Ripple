@@ -16,8 +16,6 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(currency, CurrencyValue.FromIssued(0m));
         }
 
-        public static double x = double.Epsilon;
-
         [Theory]
         [InlineData(false, 80, 9999_9999_9999_9999)]
         [InlineData(false, 13, 7922_8162_5142_6434)]
@@ -80,9 +78,9 @@ namespace Ibasa.Ripple.Tests
                 yield return new object[] { -79228162514264330000000000000m };
                 yield return new object[] { -1m };
                 yield return new object[] { -1e-28m };
-                yield return new object[] { 0m};
+                yield return new object[] { 0m };
                 yield return new object[] { 1e-28m };
-                yield return new object[] { 1m};
+                yield return new object[] { 1m };
                 yield return new object[] { 79228162514264330000000000000m };
             }
         }

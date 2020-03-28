@@ -16,6 +16,20 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(currency, CurrencyValue.FromIssued(0m));
         }
 
+        public static double x = double.Epsilon;
+
+        [Theory]
+        [InlineData(false, 80, 9999_9999_9999_9999)]
+        [InlineData(false, 13, 7922_8162_5142_6434)]
+        [InlineData(true, 13, 7922_8162_5142_6434)]
+        [InlineData(true, 80, 9999_9999_9999_9999)]
+        public void TestOutOfDecimalRange(bool isPositive, int exponent, ulong mantissa)
+        {
+            var currency = CurrencyValue.FromIssued(isPositive, exponent, mantissa);
+            var exc = Assert.Throws<OverflowException>(() => (decimal)currency);
+            Assert.Equal("Value was either too large or too small for a Decimal.", exc.Message);
+        }
+
         [Theory]
         [InlineData(-1, "-1")]
         [InlineData(0, "0")]
@@ -69,7 +83,7 @@ namespace Ibasa.Ripple.Tests
                 yield return new object[] { 0m};
                 yield return new object[] { 1e-28m };
                 yield return new object[] { 1m};
-                yield return new object[] { 79228162514264330000000000000m};
+                yield return new object[] { 79228162514264330000000000000m };
             }
         }
 

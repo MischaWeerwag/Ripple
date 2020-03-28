@@ -496,8 +496,10 @@ namespace Ibasa.Ripple
                     }
 
                     mantissabytes.Clear();
-                    var ok = bigmantissa.TryWriteBytes(mantissabytes, out var bytesWritten, true, false);
-                    System.Diagnostics.Debug.Assert(ok);
+                    if(!bigmantissa.TryWriteBytes(mantissabytes, out var bytesWritten, true, false))
+                    {
+                        throw new OverflowException("Value was either too large or too small for a Decimal.");
+                    }
                     System.Diagnostics.Debug.Assert(bytesWritten <= 12);
                 }
 

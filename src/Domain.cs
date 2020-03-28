@@ -1262,6 +1262,124 @@ namespace Ibasa.Ripple
         }
     }
 
+    public sealed class StWriter
+    {
+        //System.Text.Json.Utf8JsonWriter
+        System.Buffers.IBufferWriter<byte> bufferWriter;
+
+        public StWriter(System.Buffers.IBufferWriter<byte> bufferWriter)
+        {
+            this.bufferWriter = bufferWriter;
+        }
+
+        void WriteFieldId(uint typeCode, uint fieldCode)
+        {
+            if (typeCode < 16 && fieldCode < 16)
+            {
+                var span = bufferWriter.GetSpan(1);
+                span[0] = (byte)(typeCode << 4 | fieldCode);
+                bufferWriter.Advance(1);
+            }
+            else if (typeCode < 16 && fieldCode >= 16)
+            {
+                var span = bufferWriter.GetSpan(2);
+                span[0] = (byte)(typeCode << 4);
+                span[1] = (byte)fieldCode;
+                bufferWriter.Advance(2);
+            }
+            else if (typeCode >= 16 && fieldCode < 16)
+            {
+                var span = bufferWriter.GetSpan(2);
+                span[0] = (byte)fieldCode;
+                span[1] = (byte)typeCode;
+                bufferWriter.Advance(2);
+            }
+            else // typeCode >= 16 && fieldCode >= 16
+            {
+                var span = bufferWriter.GetSpan(3);
+                span[0] = 0;
+                span[1] = (byte)typeCode;
+                span[2] = (byte)fieldCode;
+                bufferWriter.Advance(3);
+            }
+        }
+
+        void WriteLengthPrefix(int length)
+        {
+            if (length <= 192)
+            {
+                var span = bufferWriter.GetSpan(1);
+                span[0] = (byte)(length);
+                bufferWriter.Advance(1);
+            }
+            else if (length <= 12480)
+            {
+                var target = length - 193;
+                var byte1 = target / 256;
+                var byte2 = target - (byte1 * 256);
+
+                // 193 + ((byte1 - 193) * 256) + byte2
+                var span = bufferWriter.GetSpan(2);
+                span[0] = (byte)(byte1 - 193);
+                span[1] = (byte)byte2;
+                bufferWriter.Advance(2);
+            }
+            else
+            {
+                var target = length - 12481;
+                var byte1 = target / 65536;
+                var byte2 = (target - (byte1 * 65536)) / 256;
+                var byte3 = target - (byte1 * 65536) - (byte2 * 256);
+
+                //12481 + ((byte1 - 241) * 65536) + (byte2 * 256) + byte3
+                var span = bufferWriter.GetSpan(3);
+                span[0] = (byte)(byte1 - 241);
+                span[1] = (byte)byte2;
+                span[3] = (byte)byte3;
+                bufferWriter.Advance(3);
+            }
+        }
+
+        public void WriteUInt16(uint fieldCode, ushort value)
+        {
+            WriteFieldId(1, fieldCode);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), value);
+            bufferWriter.Advance(2);
+        }
+
+        public void WriteUInt32(uint fieldCode, uint value)
+        {
+            WriteFieldId(2, fieldCode);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), value);
+            bufferWriter.Advance(4);
+        }
+
+        public void WriteAmount(uint fieldCode, XrpAmount value)
+        {
+            WriteFieldId(6, fieldCode);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
+            bufferWriter.Advance(8);
+        }
+
+        public void WriteVl(uint fieldCode, byte[] value)
+        {
+            WriteFieldId(7, fieldCode);
+            WriteLengthPrefix(value.Length);
+            value.CopyTo(bufferWriter.GetSpan(value.Length));
+            bufferWriter.Advance(value.Length);
+        }
+
+        public void WriteAccount(uint fieldCode, AccountId value)
+        {
+            WriteFieldId(8, fieldCode);
+            WriteLengthPrefix(20);
+            value.CopyTo(bufferWriter.GetSpan(20));
+            bufferWriter.Advance(20);
+        }
+    }
+
+
+
     public abstract class Transaction
     {
         /// <summary>
@@ -1293,73 +1411,6 @@ namespace Ibasa.Ripple
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
 
         public abstract byte[] Sign(KeyPair keyPair, out Hash256 hash);
-        protected static void WriteFieldId(int typeCode, int fieldCode, System.Buffers.IBufferWriter<byte> writer)
-        {
-            if (typeCode < 16 && fieldCode < 16)
-            {
-                var span = writer.GetSpan(1);
-                span[0] = (byte)(typeCode << 4 | fieldCode);
-                writer.Advance(1);
-            }
-            else if (typeCode < 16 && fieldCode >= 16)
-            {
-                var span = writer.GetSpan(2);
-                span[0] = (byte)(typeCode << 4);
-                span[1] = (byte)fieldCode;
-                writer.Advance(2);
-            }
-            else if (typeCode >= 16 && fieldCode < 16)
-            {
-                var span = writer.GetSpan(2);
-                span[0] = (byte)fieldCode;
-                span[1] = (byte)typeCode;
-                writer.Advance(2);
-            }
-            else // typeCode >= 16 && fieldCode >= 16
-            {
-                var span = writer.GetSpan(3);
-                span[0] = 0;
-                span[1] = (byte)typeCode;
-                span[2] = (byte)fieldCode;
-                writer.Advance(3);
-            }
-        }
-
-        protected static void WriteLengthPrefix(int length, System.Buffers.IBufferWriter<byte> writer)
-        {
-            if (length <= 192)
-            {
-                var span = writer.GetSpan(1);
-                span[0] = (byte)(length);
-                writer.Advance(1);
-            }
-            else if (length <= 12480)
-            {
-                var target = length - 193;
-                var byte1 = target / 256;
-                var byte2 = target - (byte1 * 256);
-
-                // 193 + ((byte1 - 193) * 256) + byte2
-                var span = writer.GetSpan(2);
-                span[0] = (byte)(byte1 - 193);
-                span[1] = (byte)byte2;
-                writer.Advance(2);
-            }
-            else
-            {
-                var target = length - 12481;
-                var byte1 = target / 65536;
-                var byte2 = (target - (byte1 * 65536)) / 256;
-                var byte3 = target - (byte1 * 65536) - (byte2 * 256);
-
-                //12481 + ((byte1 - 241) * 65536) + (byte2 * 256) + byte3
-                var span = writer.GetSpan(3);
-                span[0] = (byte)(byte1 - 241);
-                span[1] = (byte)byte2;
-                span[3] = (byte)byte3;
-                writer.Advance(3);
-            }
-        }
     }
 
     public sealed class AccountSet : Transaction
@@ -1380,38 +1431,18 @@ namespace Ibasa.Ripple
         {
             var publicKey = keyPair.GetCanonicalPublicKey();
             var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            var writer = new StWriter(buffer);
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
             buffer.Advance(4);
 
-            WriteFieldId(1, 2, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer.GetSpan(2), 3);
-            buffer.Advance(2);
-
-            WriteFieldId(2, 4, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), Sequence);
-            buffer.Advance(4);
-
-            WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee.Drops | 0x4000000000000000);
-            buffer.Advance(8);
-
-            WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length, buffer);
-            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
-            buffer.Advance(publicKey.Length);
-
+            writer.WriteUInt16(2, 3);
+            writer.WriteUInt32(4, Sequence);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
             // Need signature here
-
-            WriteFieldId(7, 7, buffer);
-            WriteLengthPrefix(Domain.Length, buffer);
-            Domain.CopyTo(buffer.GetSpan(Domain.Length));
-            buffer.Advance(Domain.Length);
-
-            WriteFieldId(8, 1, buffer);
-            WriteLengthPrefix(20, buffer);
-            Account.CopyTo(buffer.GetSpan(20));
-            buffer.Advance(20);
+            writer.WriteVl(7, Domain);
+            writer.WriteAccount(1, Account);
 
             // Calculate signature and build again
             var signature = keyPair.Sign(buffer.WrittenSpan);
@@ -1420,37 +1451,13 @@ namespace Ibasa.Ripple
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
             buffer.Advance(4);
 
-            WriteFieldId(1, 2, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer.GetSpan(2), 3);
-            buffer.Advance(2);
-
-            WriteFieldId(2, 4, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), Sequence);
-            buffer.Advance(4);
-
-            WriteFieldId(6, 8, buffer);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.GetSpan(8), Fee.Drops | 0x4000000000000000);
-            buffer.Advance(8);
-
-            WriteFieldId(7, 3, buffer);
-            WriteLengthPrefix(publicKey.Length, buffer);
-            publicKey.CopyTo(buffer.GetSpan(publicKey.Length));
-            buffer.Advance(publicKey.Length);
-
-            WriteFieldId(7, 4, buffer);
-            WriteLengthPrefix(signature.Length, buffer);
-            signature.CopyTo(buffer.GetSpan(signature.Length));
-            buffer.Advance(signature.Length);
-
-            WriteFieldId(7, 7, buffer);
-            WriteLengthPrefix(Domain.Length, buffer);
-            Domain.CopyTo(buffer.GetSpan(Domain.Length));
-            buffer.Advance(Domain.Length);
-
-            WriteFieldId(8, 1, buffer);
-            WriteLengthPrefix(20, buffer);
-            Account.CopyTo(buffer.GetSpan(20));
-            buffer.Advance(20);
+            writer.WriteUInt16(2, 3);
+            writer.WriteUInt32(4, Sequence);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
+            writer.WriteVl(4, signature);
+            writer.WriteVl(7, Domain);
+            writer.WriteAccount(1, Account);
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {

@@ -462,13 +462,13 @@ namespace Ibasa.Ripple
                 var isNegative = (value.bits & 0x4000_0000_0000_0000) == 0;
                 var exponent = (int)((value.bits >> 54) & 0xFF) - 97;
 
-                // Exponent is only zero if the mantissa is also zero
-                if(exponent == 0)
+                // Exponent is only zero (and thus -97 translated) if the mantissa is also zero
+                if(exponent == -97)
                 {
                     return 0m;
                 }
 
-                Span<byte> mantissabytes = stackalloc byte[8];
+                Span<byte> mantissabytes = stackalloc byte[12];
                 System.Buffers.Binary.BinaryPrimitives.TryWriteUInt64LittleEndian(mantissabytes, value.bits & 0x3FFFFFFFFFFFFF);
 
                 // C# decimal is stored as 'mantissa / 10^exponent' where exponent must be (0, 28) and mantissa is 96 bits,
@@ -482,20 +482,18 @@ namespace Ibasa.Ripple
                     var bigmantissa = new System.Numerics.BigInteger(mantissabytes);
 
                     // We need to scale the exponent to be positive
-                    while (exponent < 0)
+                    if (exponent < 0)
                     {
-                        exponent += 1;
-                        bigmantissa *= 10;
+                        bigmantissa *= System.Numerics.BigInteger.Pow(10, 0-exponent);
+                        exponent = 0;
                     }
 
                     // And less than or equal to 28
-                    while (exponent > 28)
+                    if (exponent > 28)
                     {
-                        exponent -= 1;
-                        bigmantissa /= 10;
+                        bigmantissa /= System.Numerics.BigInteger.Pow(10, exponent-28);
+                        exponent = 28;
                     }
-
-                    System.Diagnostics.Debug.Assert(0 <= exponent && exponent <= 28);
 
                     mantissabytes.Clear();
                     var ok = bigmantissa.TryWriteBytes(mantissabytes, out var bytesWritten, true, false);
@@ -509,6 +507,87 @@ namespace Ibasa.Ripple
                     System.Buffers.Binary.BinaryPrimitives.ReadInt32LittleEndian(mantissabytes.Slice(8, 4)),
                     isNegative, (byte)exponent);
             }
+        }
+
+        public override string ToString()
+        {
+            if ((bits & 0x8000_0000_0000_0000) == 0)
+            {
+                // XRP just return the positive drops
+                return (bits & 0x3FFFFFFFFFFFFFFF).ToString();
+            }
+            else
+            {
+                var isNegative = (bits & 0x4000_0000_0000_0000) == 0;
+                var exponent = (int)((bits >> 54) & 0xFF) - 97;
+                if(exponent == -97)
+                {
+                    return "0";
+                }
+                var mantissa = bits & 0x3FFFFFFFFFFFFF;
+                while(mantissa % 10 == 0)
+                {
+                    mantissa /= 10;
+                    exponent += 1;
+                }
+
+                return (isNegative ? "-" : "") + mantissa.ToString() + (exponent == 0 ? "" : "E" + exponent.ToString());
+            }
+        }
+
+        public static CurrencyValue ParseDrops(string s)
+        {
+            return FromDrops(ulong.Parse(s));
+        }
+
+        public static CurrencyValue ParseIssued(string s)
+        {
+            Span<char> mantissaChars = stackalloc char[17];
+            int mantissaCount = 0;
+            Span<char> exponentChars = stackalloc char[3];
+            int exponentCount = 0;
+            int fraction = 0;
+
+            bool seenE = false;
+            bool seenDecimal = false;
+
+            for(var i = 0; i < s.Length; ++i)
+            {
+                var c = s[i];
+
+                if (c == '.')
+                {
+                    seenDecimal = true;
+                }
+                else if (c == 'E' || c == 'e')
+                {
+                    seenE = true;
+                }
+                else 
+                {
+                    if(seenE)
+                    {
+                        exponentChars[exponentCount++] = c;
+                    }
+                    else
+                    {
+                        mantissaChars[mantissaCount++] = c;
+                        if(seenDecimal)
+                        {
+                            ++fraction;
+                        }
+                    }
+                }
+            }
+
+            var exponent = int.Parse(exponentChars.Slice(0, exponentCount));
+            var iMantissa = long.Parse(mantissaChars.Slice(0, mantissaCount));
+            var isPositive = iMantissa > 0;
+            var mantissa = (ulong)Math.Abs(iMantissa);
+
+
+
+            return FromIssued(isPositive, exponent, mantissa);
         }
     }
 

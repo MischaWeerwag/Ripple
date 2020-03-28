@@ -16,8 +16,17 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(currency, CurrencyValue.FromIssued(0m));
         }
 
+        [Theory]
+        [InlineData(-1, "-1")]
+        [InlineData(0, "0")]
+        [InlineData(1, "1")]
+        public void TestToString(decimal value, string expected)
+        {
+            Assert.Equal(expected, CurrencyValue.FromIssued(value).ToString());
+        }
+
         [Fact]
-        public void TestRoundTrip()
+        public void TestIssuedRoundTrip()
         {
             foreach (var sign in new bool[] { true, false })
             {
@@ -26,12 +35,27 @@ namespace Ibasa.Ripple.Tests
                     for (ulong mantissa = 1000_0000_0000_0000; mantissa <= 9999_9999_9999_9999; ++mantissa)
                     {
                         var currency = CurrencyValue.FromIssued(sign, exponent, mantissa);
-                        var dec = (decimal)currency;
-                        Assert.Equal(currency, CurrencyValue.FromIssued(dec));
+                        var str = currency.ToString();
+                        Assert.Equal(currency, CurrencyValue.ParseIssued(str));
                     }
                 }
             }
         }
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(4_611_686_018_427_387_901)]
+        [InlineData(4_611_686_018_427_387_902)]
+        [InlineData(4_611_686_018_427_387_903)]
+        public void TestDropRoundTrip(ulong drops)
+        {
+            var currency = CurrencyValue.FromDrops(drops);
+            var str = currency.ToString();
+            Assert.Equal(currency, CurrencyValue.ParseDrops(str));
+        }
+
         public static IEnumerable<object[]> decimals
         {
             get

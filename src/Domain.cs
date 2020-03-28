@@ -1360,6 +1360,16 @@ namespace Ibasa.Ripple
             System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
             bufferWriter.Advance(8);
         }
+        public void WriteAmount(uint fieldCode, Amount value)
+        {
+            WriteFieldId(6, fieldCode);
+
+            if(value.)
+
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
+            bufferWriter.Advance(8);
+        }
 
         public void WriteVl(uint fieldCode, byte[] value)
         {
@@ -1375,6 +1385,13 @@ namespace Ibasa.Ripple
             WriteLengthPrefix(20);
             value.CopyTo(bufferWriter.GetSpan(20));
             bufferWriter.Advance(20);
+        }
+
+        public void WriteHash256(uint fieldCode, Hash256 value)
+        {
+            WriteFieldId(5, fieldCode);
+            value.CopyTo(bufferWriter.GetSpan(32));
+            bufferWriter.Advance(32);
         }
     }
 
@@ -1458,6 +1475,77 @@ namespace Ibasa.Ripple
             writer.WriteVl(4, signature);
             writer.WriteVl(7, Domain);
             writer.WriteAccount(1, Account);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan.Slice(0, 32));
+            }
+
+            return buffer.WrittenMemory.Slice(4).ToArray();
+        }
+    }
+
+    public sealed class Payment : Transaction
+    {
+        //Amount Currency Amount Amount  The amount of currency to deliver.For non-XRP amounts, the nested field names MUST be lower-case. If the tfPartialPayment flag is set, deliver up to this amount instead.
+        //Destination String  Account The unique address of the account receiving the payment.
+        //DestinationTag Number  UInt32  (Optional) Arbitrary tag that identifies the reason for the payment to the destination, or a hosted recipient to pay.
+        //InvoiceID String  Hash256 (Optional) Arbitrary 256-bit hash representing a specific reason or identifier for this payment.
+        //Paths Array of path arrays PathSet (Optional, auto-fillable) Array of payment paths to be used for this transaction.Must be omitted for XRP-to-XRP transactions.
+        //SendMax Currency Amount Amount  (Optional) Highest amount of source currency this transaction is allowed to cost, including transfer fees, exchange rates, and slippage . Does not include the XRP destroyed as a cost for submitting the transaction.For non-XRP amounts, the nested field names MUST be lower-case. Must be supplied for cross-currency/cross-issue payments. Must be omitted for XRP-to-XRP payments.
+        //DeliverMin Currency Amount Amount  (Optional) Minimum amount of destination currency this transaction should deliver.Only valid if this is a partial payment.For non-XRP amounts, the nested field names are lower-case.
+
+        public Amount Amount { get; set; }
+        public AccountId Destination { get; set; }
+        public UInt32? DestinationTag { get; set; }
+        public Hash256? InvoiceID { get; set; }
+        public Amount? SendMax { get; set; }
+        public Amount? DeliverMin { get; set; }
+
+        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        {
+            var publicKey = keyPair.GetCanonicalPublicKey();
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            var writer = new StWriter(buffer);
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
+            buffer.Advance(4);
+
+            writer.WriteUInt16(2, 0);
+            writer.WriteUInt32(4, Sequence);
+            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
+            if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
+            writer.WriteAmount(1, Amount);
+            writer.WriteAmount(8, Fee);
+            if (SendMax.HasValue) { writer.WriteUInt32(9, SendMax.Value); }
+            if (DeliverMin.HasValue) { writer.WriteUInt32(10, DeliverMin.Value); }
+            writer.WriteVl(3, publicKey);
+            // Need signature here
+            writer.WriteAccount(1, Account);
+            writer.WriteAccount(3, Destination);
+
+            // Calculate signature and build again
+            var signature = keyPair.Sign(buffer.WrittenSpan);
+            buffer.Clear();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
+            buffer.Advance(4);
+
+
+            writer.WriteUInt16(2, 0);
+            writer.WriteUInt32(4, Sequence);
+            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
+            if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
+            writer.WriteAmount(1, Amount);
+            writer.WriteAmount(8, Fee);
+            if (SendMax.HasValue) { writer.WriteUInt32(9, SendMax.Value); }
+            if (DeliverMin.HasValue) { writer.WriteUInt32(10, DeliverMin.Value); }
+            writer.WriteVl(3, publicKey);
+            writer.WriteVl(4, signature);
+            writer.WriteAccount(1, Account);
+            writer.WriteAccount(3, Destination);
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {

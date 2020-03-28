@@ -67,6 +67,14 @@ namespace Ibasa.Ripple
             d = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(24, 8));
         }
 
+        public void CopyTo(Span<byte> destination)
+        {
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(0, 8), a);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(8, 8), b);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(16, 8), c);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(24, 8), d);
+        }
+
         public override string ToString()
         {
             return String.Format("{0,16:X}{1,16:X}{2,16:X}{3,16:X}", a, b, c, d).Replace(' ', '0');

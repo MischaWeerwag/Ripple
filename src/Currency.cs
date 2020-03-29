@@ -316,12 +316,12 @@ namespace Ibasa.Ripple
         public static ulong ToUInt64Bits(Currency value)
         {
             // We don't store the 'not xrp' bit on the struct so that 'new CurrencyValue()' is a valid object (0).
-            return value.bits | 0x8000_0000_0000_0000u;
+            return value.bits | 0x8000_0000_0000_0000;
         }
 
         public static Currency FromUInt64Bits(ulong value)
         {
-            return new Currency(value * ~0x8000_0000_0000_0000u);
+            return new Currency(value & ~0x8000_0000_0000_0000);
         }
 
         /// <summary>

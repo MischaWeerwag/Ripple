@@ -27,6 +27,35 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal("Value was either too large or too small for a Decimal.", exc.Message);
         }
 
+        [Fact]
+        public void TestDecimalUnderflow()
+        {
+            var decimals = new decimal[]
+            {
+                1.0000000000000000000000000001m,
+                1.000000000000000000000000001m,
+                1.00000000000000000000000001m,
+                1.0000000000000000000000001m,
+                1.000000000000000000000001m,
+                1.00000000000000000000001m,
+                1.0000000000000000000001m,
+                1.000000000000000000001m,
+                1.00000000000000000001m,
+                1.0000000000000000001m,
+                1.000000000000000001m,
+                1.00000000000000001m,
+                1.0000000000000001m,
+            };
+            foreach (var d in decimals)
+            {
+                Assert.NotEqual(Decimal.One, d);
+                var c = new Currency(d);
+                Assert.Equal(Currency.One, c);
+            }
+                
+            Assert.NotEqual(Currency.One, new Currency(1.000000000000001m));
+        }
+
         [Theory]
         [InlineData(-1, "-1")]
         [InlineData(0, "0")]

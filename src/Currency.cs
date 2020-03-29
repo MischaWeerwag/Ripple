@@ -47,6 +47,11 @@ namespace Ibasa.Ripple
             return signbit | exponentbits | mantissa;
         }
 
+        public override int GetHashCode()
+        {
+            return bits.GetHashCode();
+        }
+
         public override bool Equals(object obj)
         {
             if (obj is Currency)

@@ -15,6 +15,14 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(currency, new Currency(0m));
         }
 
+        [Fact]
+        public void TestConstants()
+        {
+            Assert.Equal(new Currency(-1m), Currency.MinusOne);
+            Assert.Equal(new Currency(0m), Currency.Zero);
+            Assert.Equal(new Currency(1m), Currency.One);
+        }
+
         [Theory]
         [InlineData(false, 80, 9999_9999_9999_9999)]
         [InlineData(false, 13, 7922_8162_5142_6434)]

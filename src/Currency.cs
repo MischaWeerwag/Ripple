@@ -2,13 +2,49 @@
 
 namespace Ibasa.Ripple
 {
+    /// <summary>
+    /// Represents a 64-bit decimal floating-point number with 15 units of precision.
+    /// </summary>
     public struct Currency
     {
+        /// <summary>
+        /// Represents the largest possible value of Currency. This field is constant and read-only.
+        /// </summary>
+        public static readonly Currency MaxValue = new Currency(true, maxExponent, maxMantissa);
+        /// <summary>
+        /// Represents the number negative one (-1).
+        /// </summary>
+        public static readonly Currency MinusOne = new Currency(false, -15, minMantissa);
+        /// <summary>
+        /// Represents the smallest possible value of Currency. This field is constant and read-only.
+        /// </summary>
+        public static readonly Currency MinValue = new Currency(false, maxExponent, maxMantissa);
+        /// <summary>
+        /// Represents the number one (1).
+        /// </summary>
+        public static readonly Currency One = new Currency(true, -15, minMantissa);
+        /// <summary>
+        /// Represents the number zero (0).
+        /// </summary>
+        public static readonly Currency Zero = new Currency(true, 0, 0);
+
+        private const ulong minMantissa = 1000_0000_0000_0000;
+        private const ulong maxMantissa = 9999_9999_9999_9999;
+        private const int minExponent = -96;
+        private const int maxExponent = 80;
+
         private readonly ulong bits;
 
         private Currency(ulong bits)
         {
             this.bits = bits;
+        }
+
+        private static ulong Pack(bool isPositive, int exponent, ulong mantissa)
+        {
+            var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
+            var exponentbits = ((ulong)(exponent + 97)) << 54;
+            return signbit | exponentbits | mantissa;
         }
 
         public override bool Equals(object obj)
@@ -45,13 +81,13 @@ namespace Ibasa.Ripple
             exponent = -exponent;
 
             // We need to scale the mantissa to be between 1000_0000_0000_0000 and 9999_9999_9999_9999
-            while (bigmantissa < 1000_0000_0000_0000)
+            while (bigmantissa < minMantissa)
             {
                 exponent -= 1;
                 bigmantissa *= 10;
             }
 
-            while (bigmantissa > 9999_9999_9999_9999)
+            while (bigmantissa > maxMantissa)
             {
                 exponent += 1;
                 bigmantissa /= 10;
@@ -64,12 +100,10 @@ namespace Ibasa.Ripple
             System.Diagnostics.Debug.Assert(bytesWritten <= 7);
             var mantissa = System.Buffers.Binary.BinaryPrimitives.ReadUInt64LittleEndian(mantissabytes);
 
-            System.Diagnostics.Debug.Assert(-96 <= exponent && exponent <= 80);
-            System.Diagnostics.Debug.Assert(1000_0000_0000_0000 <= mantissa && mantissa <= 9999_9999_9999_9999);
+            System.Diagnostics.Debug.Assert(minExponent <= exponent && exponent <= maxExponent);
+            System.Diagnostics.Debug.Assert(minMantissa <= mantissa && mantissa <= maxMantissa);
 
-            var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
-            var exponentbits = ((ulong)exponent + 97) << 54;
-            this.bits = signbit | exponentbits | mantissa;
+            this.bits = Pack(isPositive, exponent, mantissa);
         }
 
         public Currency(bool isPositive, int exponent, ulong mantissa)
@@ -80,19 +114,17 @@ namespace Ibasa.Ripple
                 return;
             }
 
-            if (exponent < -96 || 80 < exponent)
+            if (exponent < minExponent || maxExponent < exponent)
             {
                 throw new ArgumentOutOfRangeException("exponent", exponent, "exponent must be between -96 and 80 (inclusive)");
             }
 
-            if (mantissa < 1000_0000_0000_0000 || 9999_9999_9999_9999 < mantissa)
+            if (mantissa < minMantissa || maxMantissa < mantissa)
             {
                 throw new ArgumentOutOfRangeException("mantissa", mantissa, "mantissa must be between 1,000,000,000,000,000 and 9,999,999,999,999,999 (inclusive)");
             }
 
-            var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
-            var exponentbits = ((ulong)exponent + 97) << 54;
-            this.bits = signbit | exponentbits | mantissa;
+            this.bits = Pack(isPositive, exponent, mantissa);
         }
 
         public static explicit operator decimal(Currency value)
@@ -211,13 +243,13 @@ namespace Ibasa.Ripple
             var isPositive = iMantissa > 0;
             var mantissa = (ulong)Math.Abs(iMantissa);
 
-            while (mantissa < 1000_0000_0000_0000)
+            while (mantissa < minMantissa)
             {
                 exponent -= 1;
                 mantissa *= 10;
             }
 
-            while (mantissa > 9999_9999_9999_9999)
+            while (mantissa > maxMantissa)
             {
                 exponent += 1;
                 mantissa /= 10;

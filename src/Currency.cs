@@ -28,8 +28,8 @@ namespace Ibasa.Ripple
         /// </summary>
         public static readonly Currency Zero = new Currency(true, 0, 0);
 
-        private const ulong minMantissa = 1000_0000_0000_0000;
-        private const ulong maxMantissa = 9999_9999_9999_9999;
+        private const long minMantissa = 1000_0000_0000_0000;
+        private const long maxMantissa = 9999_9999_9999_9999;
         private const int minExponent = -96;
         private const int maxExponent = 80;
 
@@ -45,6 +45,52 @@ namespace Ibasa.Ripple
             var signbit = isPositive ? 0x4000_0000_0000_0000u : 0x0u;
             var exponentbits = ((ulong)(exponent + 97)) << 54;
             return signbit | exponentbits | mantissa;
+        }
+
+        private static void Normalise(ref int exponent, ref long mantissa)
+        {
+            if(mantissa == 0)
+            {
+                exponent = 0;
+                return;
+            }
+            
+            bool negative = mantissa < 0;
+
+            if (negative)
+                mantissa = -mantissa;
+
+            while ((mantissa < minMantissa) && (exponent > minExponent))
+            {
+                mantissa *= 10;
+                --exponent;
+            }
+
+            while (mantissa > maxMantissa)
+            {
+                if (exponent >= maxExponent)
+                {
+                    throw new OverflowException("Value was either too large or too small for a Currency.");
+                }
+
+                mantissa /= 10;
+                ++exponent;
+            }
+
+            if ((exponent < minExponent) || (mantissa < minMantissa))
+            {
+                exponent = 0;
+                mantissa = 0;
+                return;
+            }
+
+            if (exponent > maxExponent)
+            {
+                throw new OverflowException("Value was either too large or too small for a Currency.");
+            }
+
+            if (negative)
+                mantissa = -mantissa;
         }
 
         public override int GetHashCode()

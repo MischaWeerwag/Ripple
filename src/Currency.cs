@@ -5,7 +5,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Represents a 64-bit decimal floating-point number with 15 units of precision.
     /// </summary>
-    public struct Currency
+    public struct Currency : IEquatable<Currency>
     {
         /// <summary>
         /// Represents the largest possible value of Currency. This field is constant and read-only.
@@ -52,12 +52,16 @@ namespace Ibasa.Ripple
             return bits.GetHashCode();
         }
 
+        public bool Equals(Currency other)
+        {
+            return bits == other.bits;
+        }
+
         public override bool Equals(object obj)
         {
             if (obj is Currency)
             {
-                var other = (Currency)obj;
-                return other.bits == this.bits;
+                return Equals((Currency)obj);
             }
             return false;
         }
@@ -272,6 +276,28 @@ namespace Ibasa.Ripple
         public static Currency FromUInt64Bits(ulong value)
         {
             return new Currency(value * ~0x8000_0000_0000_0000u);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Currency values are equal.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are equal; otherwise, false.</returns>
+        public static bool operator ==(Currency c1, Currency c2)
+        {
+            return c1.Equals(c2);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Currency objects have different values.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
+        public static bool operator !=(Currency c1, Currency c2)
+        {
+            return c1.Equals(c2);
         }
     }
 }

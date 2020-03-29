@@ -4,15 +4,15 @@ using Xunit;
 
 namespace Ibasa.Ripple.Tests
 {
-    public class Currencytests
+    public class CurrencyTests
     {
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
         public void TestZero(bool sign)
         {
-            var currency = new CurrencyValue(sign, 0, 0);
-            Assert.Equal(currency, new CurrencyValue(0m));
+            var currency = new Currency(sign, 0, 0);
+            Assert.Equal(currency, new Currency(0m));
         }
 
         [Theory]
@@ -22,7 +22,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(true, 80, 9999_9999_9999_9999)]
         public void TestOutOfDecimalRange(bool isPositive, int exponent, ulong mantissa)
         {
-            var currency = new CurrencyValue(isPositive, exponent, mantissa);
+            var currency = new Currency(isPositive, exponent, mantissa);
             var exc = Assert.Throws<OverflowException>(() => (decimal)currency);
             Assert.Equal("Value was either too large or too small for a Decimal.", exc.Message);
         }
@@ -33,7 +33,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(1, "1")]
         public void TestToString(decimal value, string expected)
         {
-            Assert.Equal(expected, new CurrencyValue(value).ToString());
+            Assert.Equal(expected, new Currency(value).ToString());
         }
 
         [Theory]
@@ -51,9 +51,9 @@ namespace Ibasa.Ripple.Tests
         [InlineData(false, 80, 9999_9999_9999_9999)]
         public void TestIssuedRoundTrip(bool isPositive, int exponent, ulong mantissa)
         {
-            var currency = new CurrencyValue(isPositive, exponent, mantissa);
+            var currency = new Currency(isPositive, exponent, mantissa);
             var str = currency.ToString();
-            Assert.Equal(currency, CurrencyValue.Parse(str));
+            Assert.Equal(currency, Currency.Parse(str));
         }
 
         public static IEnumerable<object[]> decimals
@@ -74,7 +74,7 @@ namespace Ibasa.Ripple.Tests
         [MemberData(nameof(decimals))]
         public void TestDecimalRoundTrip(decimal value)
         {
-            var currency = new CurrencyValue(value);
+            var currency = new Currency(value);
             Assert.Equal(value, (decimal)currency);
         }
     }

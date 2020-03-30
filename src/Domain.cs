@@ -1547,19 +1547,38 @@ namespace Ibasa.Ripple
 
     public sealed class Payment : Transaction
     {
-        //Amount Currency Amount Amount  The amount of currency to deliver.For non-XRP amounts, the nested field names MUST be lower-case. If the tfPartialPayment flag is set, deliver up to this amount instead.
-        //Destination String  Account The unique address of the account receiving the payment.
-        //DestinationTag Number  UInt32  (Optional) Arbitrary tag that identifies the reason for the payment to the destination, or a hosted recipient to pay.
-        //InvoiceID String  Hash256 (Optional) Arbitrary 256-bit hash representing a specific reason or identifier for this payment.
-        //Paths Array of path arrays PathSet (Optional, auto-fillable) Array of payment paths to be used for this transaction.Must be omitted for XRP-to-XRP transactions.
-        //SendMax Currency Amount Amount  (Optional) Highest amount of source currency this transaction is allowed to cost, including transfer fees, exchange rates, and slippage . Does not include the XRP destroyed as a cost for submitting the transaction.For non-XRP amounts, the nested field names MUST be lower-case. Must be supplied for cross-currency/cross-issue payments. Must be omitted for XRP-to-XRP payments.
-        //DeliverMin Currency Amount Amount  (Optional) Minimum amount of destination currency this transaction should deliver.Only valid if this is a partial payment.For non-XRP amounts, the nested field names are lower-case.
+        //TODO Paths support
+        //Paths Array of path arrays PathSet (Optional, auto-fillable) Array of payment paths to be used for this transaction.Must be omitted for XRP-to-XRP transactions.=
 
+        /// <summary>
+        /// The amount of currency to deliver.
+        /// If the tfPartialPayment flag is set, deliver up to this amount instead.
+        /// </summary>
         public Amount Amount { get; set; }
+        /// <summary>
+        /// The unique address of the account receiving the payment.
+        /// </summary>
         public AccountId Destination { get; set; }
+        /// <summary>
+        /// (Optional) Arbitrary tag that identifies the reason for the payment to the destination, or a hosted recipient to pay.
+        /// </summary>
         public UInt32? DestinationTag { get; set; }
+        /// <summary>
+        /// (Optional) Arbitrary 256-bit hash representing a specific reason or identifier for this payment.
+        /// </summary>
         public Hash256? InvoiceID { get; set; }
+        /// <summary>
+        /// (Optional) Highest amount of source currency this transaction is allowed to cost, including transfer fees, exchange rates, and slippage.
+        /// Does not include the XRP destroyed as a cost for submitting the transaction.
+        /// Must be supplied for cross-currency/cross-issue payments.
+        /// Must be omitted for XRP-to-XRP payments.
+        /// </summary>
         public Amount? SendMax { get; set; }
+        /// <summary>
+        /// (Optional) Minimum amount of destination currency this transaction should deliver.
+        /// Only valid if this is a partial payment.
+        /// For non-XRP amounts, the nested field names are lower-case.
+        /// </summary>
         public Amount? DeliverMin { get; set; }
 
         public override byte[] Sign(KeyPair keyPair, out Hash256 hash)

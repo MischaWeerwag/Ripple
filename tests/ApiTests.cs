@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Linq;
 using Xunit;
 
 namespace Ibasa.Ripple.Tests
@@ -51,6 +52,38 @@ namespace Ibasa.Ripple.Tests
     {
         protected readonly ApiTestsSetup Setup;
         protected Api Api { get { return Setup.Api; } }
+
+        private async Task<uint> GetAccountSequnce(AccountId account)
+        {
+            var request = new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = account,
+            };
+            var response = await Api.AccountInfo(request);
+            return response.AccountData.Sequence;
+        }
+
+        private async Task<TransactionResponse> WaitForTransaction(Hash256 transaction)
+        {
+            while (true)
+            {
+                var transactionResponse = await Api.Tx(transaction);
+                Assert.Equal(transaction, transactionResponse.Hash);
+                if (transactionResponse.LedgerIndex.HasValue)
+                {
+                    return transactionResponse;
+                }
+            }
+        }
+
+        private Task<SubmitResponse> SubmitTransaction(Seed secret, Transaction transaction, out Hash256 transactionHash)
+        {
+            var request = new SubmitRequest();
+            secret.Secp256k1KeyPair(out var _, out var keyPair);
+            request.TxBlob = transaction.Sign(keyPair, out transactionHash);
+            return Api.Submit(request);
+        }
 
         public ApiTests(ApiTestsSetup setup)
         {
@@ -170,47 +203,28 @@ namespace Ibasa.Ripple.Tests
         {
             var account = new AccountId(Setup.TestAccountOne.Address);
             var secret = new Seed(Setup.TestAccountOne.Secret);
-
-            var infoRequest = new AccountInfoRequest()
-            {
-                Ledger = LedgerSpecification.Current,
-                Account = account,
-            };
-            var infoResponse = await Api.AccountInfo(infoRequest);
             var feeResponse = await Api.Fee();
 
             var transaction = new AccountSet();
             transaction.Account = account;
-            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Sequence = await GetAccountSequnce(account);
             transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
 
-            var submitRequest = new SubmitRequest();
-            secret.Secp256k1KeyPair(out var _, out var keyPair);
-            submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
-            var submitResponse = await Api.Submit(submitRequest);
+            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
-            uint ledger_index = 0;
-            do
-            {
-                var tx = await Api.Tx(transactionHash);
-                Assert.Equal(transactionHash, tx.Hash);
-                var acr = Assert.IsType<AccountSetResponse>(tx);
-                Assert.Equal(transaction.Domain, acr.Domain);
-                if (tx.LedgerIndex.HasValue)
-                {
-                    ledger_index = tx.LedgerIndex.Value;
-                }
-            } while (ledger_index == 0);
+            var transactionResponse = await WaitForTransaction(transactionHash);
+            var acr = Assert.IsType<AccountSetResponse>(transactionResponse);
+            Assert.Equal(transaction.Domain, acr.Domain);
 
-            infoRequest = new AccountInfoRequest()
+            var infoRequest = new AccountInfoRequest()
             {
-                Ledger = new LedgerSpecification(ledger_index),
+                Ledger = new LedgerSpecification(transactionResponse.LedgerIndex.Value),
                 Account = account,
             };
-            infoResponse = await Api.AccountInfo(infoRequest);
+            var infoResponse = await Api.AccountInfo(infoRequest);
             Assert.Equal(account, infoResponse.AccountData.Account);
             Assert.Equal(transaction.Domain, infoResponse.AccountData.Domain);
         }
@@ -232,42 +246,23 @@ namespace Ibasa.Ripple.Tests
                 startingDrops = response.AccountData.Balance.Drops;
             }
 
-            var infoRequest = new AccountInfoRequest()
-            {
-                Ledger = LedgerSpecification.Current,
-                Account = accountOne,
-            };
-            var infoResponse = await Api.AccountInfo(infoRequest);
             var feeResponse = await Api.Fee();
 
             var transaction = new Payment();
             transaction.Account = accountOne;
-            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Sequence = await GetAccountSequnce(accountOne);
             transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(100);
 
-            var submitRequest = new SubmitRequest();
-            secret.Secp256k1KeyPair(out var _, out var keyPair);
-            submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
-            var submitResponse = await Api.Submit(submitRequest);
+            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
-            uint ledger_index = 0;
-            do
-            {
-                var tx = await Api.Tx(transactionHash);
-                Assert.Equal(transactionHash, tx.Hash);
-                var pr = Assert.IsType<PaymentResponse>(tx);
-                Assert.Equal(transaction.Amount, pr.Amount);
-                if (tx.LedgerIndex.HasValue)
-                {
-                    ledger_index = tx.LedgerIndex.Value;
-                }
-            } while (ledger_index == 0);
-
+            var transactionResponse = await WaitForTransaction(transactionHash);
+            var pr = Assert.IsType<PaymentResponse>(transactionResponse);
+            Assert.Equal(transaction.Amount, pr.Amount);
 
             ulong endingDrops;
             {
@@ -287,66 +282,51 @@ namespace Ibasa.Ripple.Tests
         {
             var accountOne = new AccountId(Setup.TestAccountOne.Address);
             var accountTwo = new AccountId(Setup.TestAccountTwo.Address);
-            var secret = new Seed(Setup.TestAccountOne.Secret);
-
-            ulong startingDrops;
-            {
-                var response = await Api.AccountInfo(new AccountInfoRequest()
-                {
-                    Ledger = LedgerSpecification.Current,
-                    Account = accountTwo,
-                });
-                startingDrops = response.AccountData.Balance.Drops;
-            }
-
-            var infoRequest = new AccountInfoRequest()
-            {
-                Ledger = LedgerSpecification.Current,
-                Account = accountOne,
-            };
-            var infoResponse = await Api.AccountInfo(infoRequest);
+            var secretOne = new Seed(Setup.TestAccountOne.Secret);
+            var secretTwo = new Seed(Setup.TestAccountTwo.Secret);
             var feeResponse = await Api.Fee();
 
+            // Set up a trust line
+            var trustSet = new TrustSet();
+            trustSet.Account = accountTwo;
+            trustSet.Sequence = await GetAccountSequnce(accountTwo);
+            trustSet.Fee = feeResponse.Drops.MedianFee;
+            trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("GBP"), new Currency(1000m));
+
+            // Submit and wait for the trust line
+            var submitResponse = await SubmitTransaction(secretTwo, trustSet, out var transactionHash);
+            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
+            var _ = await WaitForTransaction(transactionHash);
+
+            // Send 100GBP
             var transaction = new Payment();
             transaction.Account = accountOne;
-            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Sequence = await GetAccountSequnce(accountOne);
             transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
 
-            var submitRequest = new SubmitRequest();
-            secret.Secp256k1KeyPair(out var _, out var keyPair);
-            submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
-            var submitResponse = await Api.Submit(submitRequest);
-
+            submitResponse = await SubmitTransaction(secretOne, transaction, out transactionHash);
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
-            uint ledger_index = 0;
-            do
+            var transactionResponse = await WaitForTransaction(transactionHash);
+            var pr = Assert.IsType<PaymentResponse>(transactionResponse);
+            Assert.Equal(transaction.Amount, pr.Amount);
+            
+            // Check we have +100 GBP on our trust line
+            var linesRequest = new AccountLinesRequest();
+            linesRequest.Account = accountTwo;
+            var linesResponse = await Api.AccountLines(linesRequest);
+            var lines = new List<TrustLine>();
+            await foreach (var line in linesResponse)
             {
-                var tx = await Api.Tx(transactionHash);
-                Assert.Equal(transactionHash, tx.Hash);
-                var pr = Assert.IsType<PaymentResponse>(tx);
-                Assert.Equal(transaction.Amount, pr.Amount);
-                if (tx.LedgerIndex.HasValue)
-                {
-                    ledger_index = tx.LedgerIndex.Value;
-                }
-            } while (ledger_index == 0);
-
-
-            ulong endingDrops;
-            {
-                var response = await Api.AccountInfo(new AccountInfoRequest()
-                {
-                    Ledger = LedgerSpecification.Current,
-                    Account = accountTwo,
-                });
-                endingDrops = response.AccountData.Balance.Drops;
+                lines.Add(line);
             }
-
-            Assert.Equal(100ul, endingDrops - startingDrops);
+            var trustLine = lines.First();
+            Assert.Equal(accountOne, trustLine.Account);
+            Assert.Equal(new CurrencyCode("GBP"), trustLine.Currency);
+            Assert.Equal(new Currency(100m), trustLine.Balance);
         }
     }
 }

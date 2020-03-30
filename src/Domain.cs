@@ -367,31 +367,29 @@ namespace Ibasa.Ripple
     public struct Amount
     {
         private readonly ulong value;
-        private readonly AccountId account;
+        private readonly AccountId issuer;
+        private readonly CurrencyCode currencyCode;
 
-        public CurrencyCode CurrencyCode { get; }
-        public AccountId? Issuer { get { return CurrencyCode.Equals(CurrencyCode.XRP) ? (AccountId?)null : account; } }
-
-        public ulong? Drops
+        public XrpAmount? XrpAmount
         {
             get
             {
                 if ((value & 0x8000_0000_0000_0000) == 0)
                 {
                     // XRP just return the positive drops
-                    return (value & 0x3FFFFFFFFFFFFFFF);
+                    return new XrpAmount(value & 0x3FFFFFFFFFFFFFFF);
                 }
                 return null;
             }
         }
 
-        public Currency? Value
+        public IssuedAmount? IssuedAmount
         {
             get
             {
                 if ((value & 0x8000_0000_0000_0000) != 0)
                 {
-                    return Currency.FromUInt64Bits(value);
+                    return new IssuedAmount(issuer, currencyCode, Currency.FromUInt64Bits(value));
                 }
                 return null;
             }
@@ -404,8 +402,8 @@ namespace Ibasa.Ripple
                 throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 4,611,686,018,427,387,904");
             }
             this.value = drops | 0x4000_0000_0000_0000;
-            this.CurrencyCode = CurrencyCode.XRP;
-            this.account = new AccountId();
+            this.currencyCode = CurrencyCode.XRP;
+            this.issuer = new AccountId();
         }
 
         internal Amount(JsonElement element)
@@ -414,20 +412,22 @@ namespace Ibasa.Ripple
             {
                 // Just plain xrp
                 this.value = UInt64.Parse(element.GetString()) | 0x4000_0000_0000_0000;
-                this.CurrencyCode = CurrencyCode.XRP;
-                this.account = new AccountId();
+                this.currencyCode = CurrencyCode.XRP;
+                this.issuer = new AccountId();
             }
             else
             {
-                throw new NotImplementedException();
+                this.value = Currency.ToUInt64Bits(Currency.Parse(element.GetProperty("value").GetString()));
+                this.currencyCode = new CurrencyCode(element.GetProperty("currency").GetString());
+                this.issuer = new AccountId(element.GetProperty("issuer").GetString());
             }
         }
 
         public Amount(AccountId issuer, CurrencyCode currencyCode, Currency value)
         {
             this.value = Currency.ToUInt64Bits(value);
-            this.CurrencyCode = currencyCode;
-            this.account = issuer;
+            this.currencyCode = currencyCode;
+            this.issuer = issuer;
         }
     }
 
@@ -458,6 +458,27 @@ namespace Ibasa.Ripple
         }
     }
 
+    /// <summary>
+    /// An "Amount" that must be an issued currency.
+    /// </summary>
+    public struct IssuedAmount
+    {
+        public readonly Currency Value;
+        public readonly AccountId Issuer;
+        public readonly CurrencyCode CurrencyCode;
+
+        public IssuedAmount(AccountId issuer, CurrencyCode currencyCode, Currency value)
+        {
+            this.Issuer = issuer;
+            this.CurrencyCode = currencyCode;
+            this.Value = value;
+        }
+
+        public static implicit operator Amount(IssuedAmount value)
+        {
+            return new Amount(value.Issuer, value.CurrencyCode, value.Value);
+        }
+    }
 
     public sealed class AccountRoot
     {
@@ -1174,7 +1195,7 @@ namespace Ibasa.Ripple
         /// Representation of the numeric balance currently held against this line.
         /// A positive balance means that the perspective account holds value; a negative balance means that the perspective account owes value.
         /// </summary>
-        public string Balance { get; private set; }
+        public Currency Balance { get; private set; }
 
         /// <summary>
         /// A Currency Code identifying what currency this trust line can hold.
@@ -1194,7 +1215,7 @@ namespace Ibasa.Ripple
         internal TrustLine(JsonElement json)
         {
             Account = new AccountId(json.GetProperty("account").GetString());
-            Balance = json.GetProperty("balance").GetString();
+            Balance = Ripple.Currency.Parse(json.GetProperty("balance").GetString());
             Currency = new CurrencyCode(json.GetProperty("currency").GetString());
         }
     }
@@ -1414,17 +1435,21 @@ namespace Ibasa.Ripple
         public void WriteAmount(uint fieldCode, Amount value)
         {
             WriteFieldId(6, fieldCode);
-            if (value.Drops.HasValue)
+            var xrp = value.XrpAmount;
+            var issued = value.IssuedAmount;
+            if (xrp.HasValue)
             {
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops.Value | 0x4000000000000000);
+                var amount = xrp.Value;
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), amount.Drops | 0x4000000000000000);
                 bufferWriter.Advance(8);
             }
             else
             {
+                var amount = issued.Value;
                 var span = bufferWriter.GetSpan(48);
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), Currency.ToUInt64Bits(value.Value.Value));
-                value.CurrencyCode.CopyTo(span.Slice(8));
-                value.Issuer.Value.CopyTo(span.Slice(28));
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), Currency.ToUInt64Bits(amount.Value));
+                amount.CurrencyCode.CopyTo(span.Slice(8));
+                amount.Issuer.CopyTo(span.Slice(28));
                 bufferWriter.Advance(48);
             }
         }
@@ -1635,6 +1660,72 @@ namespace Ibasa.Ripple
         }
     }
 
+    public sealed class TrustSet : Transaction
+    {
+        /// <summary>
+        /// Object defining the trust line to create or modify, in the format of a Currency Amount.
+        /// </summary>
+        public IssuedAmount LimitAmount { get; set; }
+
+        /// <summary>
+        /// (Optional) Value incoming balances on this trust line at the ratio of this number per 1,000,000,000 units.
+        /// A value of 0 is shorthand for treating balances at face value.
+        /// </summary>
+        public UInt32? QualityIn { get; set; }
+
+        /// <summary>
+        ///  (Optional) Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units.
+        ///  A value of 0 is shorthand for treating balances at face value.
+        /// </summary>
+        public UInt32? QualityOut { get; set; }
+
+        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        {
+            var publicKey = keyPair.GetCanonicalPublicKey();
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            var writer = new StWriter(buffer);
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
+            buffer.Advance(4);
+
+            writer.WriteUInt16(2, 20);
+            writer.WriteUInt32(4, Sequence);
+            if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
+            if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
+            writer.WriteAmount(3, LimitAmount);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
+            // Need signature here
+            writer.WriteAccount(1, Account);
+
+            // Calculate signature and build again
+            var signature = keyPair.Sign(buffer.WrittenSpan);
+            buffer.Clear();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
+            buffer.Advance(4);
+
+            writer.WriteUInt16(2, 20);
+            writer.WriteUInt32(4, Sequence);
+            if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
+            if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
+            writer.WriteAmount(3, LimitAmount);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
+            writer.WriteVl(4, signature);
+            writer.WriteAccount(1, Account);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan.Slice(0, 32));
+            }
+
+            return buffer.WrittenMemory.Slice(4).ToArray();
+        }
+    }
+
     public abstract class TransactionResponse
     {
         /// <summary>
@@ -1675,6 +1766,10 @@ namespace Ibasa.Ripple
             {
                 return new PaymentResponse(json);
             }
+            else if (transactionType == "TrustSet")
+            {
+                return new TrustSetResponse(json);
+            }
 
             throw new NotImplementedException();
         }
@@ -1697,6 +1792,7 @@ namespace Ibasa.Ripple
             }
         }
     }
+
     public sealed class PaymentResponse : TransactionResponse
     {
         public Amount Amount{ get; private set; }
@@ -1711,6 +1807,14 @@ namespace Ibasa.Ripple
             }
         }
     }
+    public sealed class TrustSetResponse : TransactionResponse
+    {
+        internal TrustSetResponse(JsonElement json) : base(json)
+        {
+            // TODO 
+        }
+    }
+
 
     public sealed class TransactionEntryRequest
     {

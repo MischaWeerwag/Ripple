@@ -3,8 +3,9 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Description>Ibasa.Ripple is a library for interacting with the Ripple network and data.</Description>
     <PackageId>Ibasa.Ripple</PackageId>
-    <Version>0.0.5</Version>
+    <Version>0.0.6</Version>
     <Authors>Ibasa</Authors>
     <Company>Ibasa</Company>
     <RepositoryUrl>https://github.com/Ibasa/Ripple</RepositoryUrl>
@@ -14,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Portable.BouncyCastle" Version="1.8.6" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.6.7" />
     <PackageReference Include="System.Text.Json" Version="4.7.1" />
   </ItemGroup>
 

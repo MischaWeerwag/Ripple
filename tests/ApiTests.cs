@@ -68,7 +68,11 @@ namespace Ibasa.Ripple.Tests
         {
             while (true)
             {
-                var transactionResponse = await Api.Tx(transaction);
+                var request = new TxRequest()
+                {
+                    Transaction = transaction
+                };
+                var transactionResponse = await Api.Tx(request);
                 Assert.Equal(transaction, transactionResponse.Hash);
                 if (transactionResponse.LedgerIndex.HasValue)
                 {

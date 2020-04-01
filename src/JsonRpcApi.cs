@@ -308,7 +308,7 @@ namespace Ibasa.Ripple
             return new SubmitResponse(response);
         }
 
-        public override async Task<TransactionResponse> Tx(Hash256 transaction, CancellationToken cancellationToken = default)
+        public override async Task<TransactionResponse> Tx(TxRequest request, CancellationToken cancellationToken = default)
         {
             jsonBuffer.Clear();
             var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
@@ -319,7 +319,9 @@ namespace Ibasa.Ripple
                 writer.WritePropertyName("params");
                 writer.WriteStartArray();
                 writer.WriteStartObject();
-                writer.WriteString("transaction", transaction.ToString());
+                writer.WriteString("transaction", request.Transaction.ToString());
+                if (request.MinLedger.HasValue) { writer.WriteNumber("min_ledger", request.MinLedger.Value); }
+                if (request.MaxLedger.HasValue) { writer.WriteNumber("max_ledger", request.MaxLedger.Value); }
                 writer.WriteEndObject();
                 writer.WriteEndArray();
                 writer.WriteEndObject();

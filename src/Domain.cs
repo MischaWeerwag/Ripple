@@ -1867,6 +1867,25 @@ namespace Ibasa.Ripple
         }
     }
 
+    public sealed class TxRequest
+    {
+        /// <summary>
+        /// The 256-bit hash of the transaction, as hex.
+        /// </summary>
+        public Hash256 Transaction { get; set; }
+
+        /// <summary>
+        /// (Optional) Use this with max_ledger to specify a range of up to 1000 ledger indexes, starting with this ledger (inclusive). 
+        /// If the server cannot find the transaction, it confirms whether it was able to search all the ledgers in this range.
+        /// </summary>
+        public uint? MinLedger { get; set; }
+
+        /// <summary>
+        /// (Optional) Use this with min_ledger to specify a range of up to 1000 ledger indexes, ending with this ledger (inclusive). 
+        /// If the server cannot find the transaction, it confirms whether it was able to search all the ledgers in the requested range.
+        /// </summary>
+        public uint? MaxLedger { get; set; }
+    }
 
     public sealed class TransactionEntryRequest
     {

@@ -114,7 +114,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The tx method retrieves information on a single transaction.
         /// </summary>
-        public abstract Task<TransactionResponse> Tx(Hash256 transaction, CancellationToken cancellationToken = default);
+        public abstract Task<TransactionResponse> Tx(TxRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// The transaction_entry method retrieves information on a single transaction from a specific ledger version. 

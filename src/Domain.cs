@@ -1319,6 +1319,58 @@ namespace Ibasa.Ripple
         /// </summary>
         public JsonElement TxJson { get; private set; }
 
+        /// <summary>
+        /// The value true indicates that the transaction was applied, queued, broadcast, or kept for later. 
+        /// The value false indicates that none of those happened, so the transaction cannot possibly succeed as long as you do not submit it again and have not already submitted it another time.
+        /// </summary>
+        public bool Accepted { get; private set; }
+
+        /// <summary>
+        /// The next Sequence Number available for the sending account after all pending and queued transactions.
+        /// </summary>
+        public uint AccountSequenceAvailable { get; private set; }
+
+        /// <summary>
+        /// The next Sequence Number for the sending account after all transactions that have been provisionally applied, but not transactions in the queue.
+        /// </summary>
+        public uint AccountSequenceNext { get; private set; }
+
+        /// <summary>
+        /// The value true indicates that this transaction was applied to the open ledger.
+        /// In this case, the transaction is likely, but not guaranteed, to be validated in the next ledger version.
+        /// </summary>
+        public bool Applied { get; private set; }
+
+        /// <summary>
+        /// The value true indicates this transaction was broadcast to peer servers in the peer - to - peer XRP Ledger network. 
+        /// (Note: if the server has no peers, such as in stand - alone mode, the server uses the value true for cases where it would have broadcast the transaction.) 
+        /// The value false indicates the transaction was not broadcast to any other servers.
+        /// </summary>
+        public bool Broadcast { get; private set; }
+
+        /// <summary>
+        /// The value true indicates that the transaction was kept to be retried later.
+        /// </summary>
+        public bool Kept { get; private set; }
+
+        /// <summary>
+        /// The value true indicates the transaction was put in the Transaction Queue, which means it is likely to be included in a future ledger version.
+        /// </summary>
+        public bool Queued { get; private set; }
+
+        /// <summary>
+        /// The current open ledger cost before processing this transaction.
+        /// Transactions with a lower cost are likely to be queued.
+        /// </summary>
+        public ulong OpenLedgerCost { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the newest validated ledger at the time of submission.
+        /// This provides a lower bound on the ledger versions that the transaction can appear in as a result of this request. 
+        /// (The transaction could only have been validated in this ledger version or earlier if it had already been submitted before.)
+        /// </summary>
+        public uint ValidatedLedgerIndex { get; private set; }
+
         internal SubmitResponse(JsonElement json)
         {
             EngineResult = (EngineResult)json.GetProperty("engine_result_code").GetInt32();
@@ -1330,6 +1382,15 @@ namespace Ibasa.Ripple
             EngineResultMessage = json.GetProperty("engine_result_message").GetString();
             TxBlob = json.GetProperty("tx_blob").GetBytesFromBase16();
             TxJson = json.GetProperty("tx_json").Clone();
+            Accepted = json.GetProperty("accepted").GetBoolean();
+            AccountSequenceAvailable = json.GetProperty("account_sequence_available").GetUInt32();
+            AccountSequenceNext = json.GetProperty("account_sequence_next").GetUInt32();
+            Applied = json.GetProperty("applied").GetBoolean();
+            Broadcast = json.GetProperty("broadcast").GetBoolean();
+            Kept = json.GetProperty("kept").GetBoolean();
+            Queued = json.GetProperty("queued").GetBoolean();
+            OpenLedgerCost = ulong.Parse(json.GetProperty("open_ledger_cost").GetString());
+            ValidatedLedgerIndex = json.GetProperty("validated_ledger_index").GetUInt32();
         }
     }
 

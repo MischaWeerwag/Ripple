@@ -125,7 +125,7 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Fact]
-        public async Task TestAccount()
+        public async Task TestAccountInfo()
         {
             var account = Setup.TestAccountOne.Address;
 

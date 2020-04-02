@@ -397,9 +397,9 @@ namespace Ibasa.Ripple
 
         public Amount(ulong drops)
         {
-            if ((drops & 0xC000_0000_0000_0000) != 0)
+            if (drops > 100000000000000000)
             {
-                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 4,611,686,018,427,387,904");
+                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than or equal to 100,000,000,000,000,000");
             }
             this.value = drops | 0x4000_0000_0000_0000;
             this.currencyCode = CurrencyCode.XRP;
@@ -440,9 +440,9 @@ namespace Ibasa.Ripple
 
         public XrpAmount(ulong drops)
         {
-            if ((drops & 0xC000_0000_0000_0000) != 0)
+            if (drops > 100000000000000000)
             {
-                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than 4,611,686,018,427,387,904");
+                throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than or equal to 100,000,000,000,000,000");
             }
             Drops = drops;
         }

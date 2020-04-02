@@ -11,11 +11,11 @@ namespace Ibasa.Ripple.Tests
     {
         static readonly HttpClient HttpClient = new HttpClient();
 
-        public readonly string Address;
-        public readonly string Secret;
+        public readonly AccountId Address;
+        public readonly Seed Secret;
         public readonly ulong Amount;
 
-        private TestAccount(string address, string secret, ulong amount)
+        private TestAccount(AccountId address, Seed secret, ulong amount)
         {
             Address = address;
             Secret = secret;
@@ -28,8 +28,8 @@ namespace Ibasa.Ripple.Tests
             var json = response.Content.ReadAsStringAsync().Result;
             var document = System.Text.Json.JsonDocument.Parse(json);
             return new TestAccount(
-                document.RootElement.GetProperty("account").GetProperty("address").GetString(),
-                document.RootElement.GetProperty("account").GetProperty("secret").GetString(),
+                new AccountId(document.RootElement.GetProperty("account").GetProperty("address").GetString()),
+                new Seed(document.RootElement.GetProperty("account").GetProperty("secret").GetString()),
                 document.RootElement.GetProperty("balance").GetUInt64() * 1000000UL);
         }
     }
@@ -127,7 +127,7 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccount()
         {
-            var account = new AccountId(Setup.TestAccountOne.Address);
+            var account = Setup.TestAccountOne.Address;
 
             var request = new AccountInfoRequest()
             {
@@ -141,7 +141,7 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccountCurrencies()
         {
-            var account = new AccountId(Setup.TestAccountOne.Address);
+            var account = Setup.TestAccountOne.Address;
             var request = new AccountCurrenciesRequest()
             {
                 Ledger = LedgerSpecification.Current,
@@ -173,7 +173,7 @@ namespace Ibasa.Ripple.Tests
             // TODO: This isn't a very interesting test. We should get Submit TrustSet working and then use this to see the result.
 
             var request = new AccountLinesRequest();
-            request.Account = new AccountId(Setup.TestAccountOne.Address);
+            request.Account = Setup.TestAccountOne.Address;
             var response = await Api.AccountLines(request);
 
             Assert.Equal(request.Account, response.Account);
@@ -208,8 +208,8 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestAccountSet()
         {
-            var account = new AccountId(Setup.TestAccountOne.Address);
-            var secret = new Seed(Setup.TestAccountOne.Secret);
+            var account = Setup.TestAccountOne.Address;
+            var secret = Setup.TestAccountOne.Secret;
             var feeResponse = await Api.Fee();
 
             var transaction = new AccountSet();
@@ -239,9 +239,9 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestXrpPayment()
         {
-            var accountOne = new AccountId(Setup.TestAccountOne.Address);
-            var accountTwo = new AccountId(Setup.TestAccountTwo.Address);
-            var secret = new Seed(Setup.TestAccountOne.Secret);
+            var accountOne = Setup.TestAccountOne.Address;
+            var accountTwo = Setup.TestAccountTwo.Address;
+            var secret = Setup.TestAccountOne.Secret;
 
             ulong startingDrops;
             {
@@ -287,10 +287,10 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestGbpPayment()
         {
-            var accountOne = new AccountId(Setup.TestAccountOne.Address);
-            var accountTwo = new AccountId(Setup.TestAccountTwo.Address);
-            var secretOne = new Seed(Setup.TestAccountOne.Secret);
-            var secretTwo = new Seed(Setup.TestAccountTwo.Secret);
+            var accountOne = Setup.TestAccountOne.Address;
+            var accountTwo = Setup.TestAccountTwo.Address;
+            var secretOne = Setup.TestAccountOne.Secret;
+            var secretTwo = Setup.TestAccountTwo.Secret;
             var feeResponse = await Api.Fee();
 
             // Set up a trust line

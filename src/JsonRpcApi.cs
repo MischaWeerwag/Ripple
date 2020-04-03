@@ -182,7 +182,29 @@ namespace Ibasa.Ripple
 
         public override async Task<LedgerResponse> Ledger(LedgerRequest request, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "ledger");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteBoolean("full", request.Full);
+                writer.WriteBoolean("accounts", request.Accounts);
+                writer.WriteBoolean("transactions", request.Transactions);
+                writer.WriteBoolean("expand", request.Expand);
+                writer.WriteBoolean("owner_funds", request.OwnerFunds);
+                writer.WriteBoolean("queue", request.Queue);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new LedgerResponse(response);
         }
 
         public override async Task<LedgerClosedResponse> LedgerClosed(CancellationToken cancellationToken = default)

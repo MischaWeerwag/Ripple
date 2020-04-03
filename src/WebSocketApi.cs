@@ -174,6 +174,7 @@ namespace Ibasa.Ripple
                 writer.WriteBoolean("expand", request.Expand);
                 writer.WriteBoolean("owner_funds", request.OwnerFunds);
                 writer.WriteBoolean("queue", request.Queue);
+                writer.WriteBoolean("binary", true);
                 writer.WriteEndObject();
             }
 

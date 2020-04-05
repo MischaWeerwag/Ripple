@@ -157,6 +157,21 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Fact]
+        public async Task TestLedger_Transactions()
+        {
+            var request = new LedgerRequest();
+            request.Ledger = LedgerSpecification.Validated;
+            request.Transactions = true;
+            var response = await Api.Ledger(request);
+
+            Assert.NotNull(response.Transactions);
+            foreach(var tx in response.Transactions)
+            {
+                Assert.NotEqual(default, tx);
+            }
+        }
+
+        [Fact]
         public async Task TestAccountInfo()
         {
             var account = Setup.TestAccountOne.Address;

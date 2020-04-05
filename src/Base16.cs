@@ -190,34 +190,17 @@ namespace Ibasa.Ripple
             throw new NotImplementedException();
         }
 
-        //
-        // Summary:
-        //     Returns the maximum length (in bytes) of the result if you were to decode base-64
-        //     encoded text within a byte span of size length.
-        //
-        // Parameters:
-        //   length:
-        //
-        // Exceptions:
-        //   T:System.ArgumentOutOfRangeException:
-        //     length is less than 0.
+        /// <summary>
+        /// Returns the maximum length (in bytes) of the result if you were to decode base-16 encoded text within a byte span of size length.
+        /// </summary>
         public static int GetMaxDecodedFromUtf8Length(int length)
         {
             return (length + 1) / 2;
         }
 
-        //
-        // Summary:
-        //     Returns the maximum length (in bytes) of the result if you were to encode binary
-        //     data within a byte span of size length.
-        //
-        // Parameters:
-        //   length:
-        //
-        // Exceptions:
-        //   T:System.ArgumentOutOfRangeException:
-        //     length is less than 0 or larger than 1610612733 (since encode inflates the data
-        //     by 4/3).
+        /// <summary>
+        /// Returns the maximum length (in bytes) of the result if you were to encode binary data within a byte span of size length.
+        /// </summary>
         public static int GetMaxEncodedToUtf8Length(int length)
         {
             return length * 2;

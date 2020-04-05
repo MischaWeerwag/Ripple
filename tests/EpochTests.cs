@@ -59,13 +59,13 @@ namespace Ibasa.Ripple.Tests
             exc = Assert.Throws<ArgumentOutOfRangeException>(() => Epoch.FromDateTime(dateTime));
             Assert.Equal("dateTime", exc.ParamName);
             Assert.Equal(dateTime, exc.ActualValue);
-            Assert.Equal("dateTime is before the ripple epoch of 2000-01-01 (Parameter 'dateTime')\r\nActual value was 30/12/1999 00:00:00.", exc.Message);
-
+            Assert.Equal($"dateTime is before the ripple epoch of 2000-01-01 (Parameter 'dateTime'){Environment.NewLine}Actual value was 30/12/1999 00:00:00.", exc.Message);
+            
             var dateTimeOffset = new DateTimeOffset(1999, 12, 30, 0, 0, 0, TimeSpan.Zero);
             exc = Assert.Throws<ArgumentOutOfRangeException>(() => Epoch.FromDateTimeOffset(dateTimeOffset));
             Assert.Equal("dateTimeOffset", exc.ParamName);
             Assert.Equal(dateTimeOffset, exc.ActualValue);
-            Assert.Equal("dateTimeOffset is before the ripple epoch of 2000-01-01 (Parameter 'dateTimeOffset')\r\nActual value was 30/12/1999 00:00:00 +00:00.", exc.Message);
+            Assert.Equal($"dateTimeOffset is before the ripple epoch of 2000-01-01 (Parameter 'dateTimeOffset'){Environment.NewLine}Actual value was 30/12/1999 00:00:00 +00:00.", exc.Message);
         }
     }
 }

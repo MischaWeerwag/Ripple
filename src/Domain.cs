@@ -631,7 +631,12 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Unique identifying hash of the entire ledger.
         /// </summary>
-        public Hash256 LedgerHash { get; private set; }
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The Ledger Index of this ledger.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
 
         /// <summary>
         /// The complete header data of this ledger.
@@ -650,12 +655,23 @@ namespace Ibasa.Ripple
 
         internal LedgerResponse(JsonElement json)
         {
-            LedgerHash = new Hash256(json.GetProperty("ledger_hash").GetString());
-            Validated = json.GetProperty("validated").GetBoolean();
+            if(json.TryGetProperty("ledger_hash", out var ledger_hash))
+            {
+                LedgerHash = new Hash256(ledger_hash.GetString());
+            }
             var ledger = json.GetProperty("ledger");
             Closed = ledger.GetProperty("closed").GetBoolean();
-            var ledger_data = ledger.GetProperty("ledger_data").GetBytesFromBase16();
-            Ledger = new LedgerHeader(ledger_data);
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            if(json.TryGetProperty("ledger_index", out var ledger_index))
+            {
+                LedgerIndex = ledger_index.GetUInt32();
+                Ledger = new LedgerHeader(ledger.GetProperty("ledger_data").GetBytesFromBase16());
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_current_index").GetUInt32();
+            }
 
             // TODO Transactions, Accounts etc
         }

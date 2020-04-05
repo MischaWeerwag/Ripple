@@ -192,6 +192,7 @@ namespace Ibasa.Ripple
                 writer.WriteStartArray();
                 writer.WriteStartObject();
                 LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteBoolean("binary", true);
                 writer.WriteBoolean("full", request.Full);
                 writer.WriteBoolean("accounts", request.Accounts);
                 writer.WriteBoolean("transactions", request.Transactions);

@@ -167,6 +167,7 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "ledger");
+                writer.WriteBoolean("binary", true);
                 LedgerSpecification.Write(writer, request.Ledger);
                 writer.WriteBoolean("full", request.Full);
                 writer.WriteBoolean("accounts", request.Accounts);
@@ -174,7 +175,6 @@ namespace Ibasa.Ripple
                 writer.WriteBoolean("expand", request.Expand);
                 writer.WriteBoolean("owner_funds", request.OwnerFunds);
                 writer.WriteBoolean("queue", request.Queue);
-                writer.WriteBoolean("binary", true);
                 writer.WriteEndObject();
             }
 

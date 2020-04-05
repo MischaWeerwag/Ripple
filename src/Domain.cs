@@ -634,14 +634,30 @@ namespace Ibasa.Ripple
         public Hash256 LedgerHash { get; private set; }
 
         /// <summary>
-        /// The Ledger Index of this ledger.
+        /// The complete header data of this ledger.
         /// </summary>
-        public uint LedgerIndex { get; private set; }
+        public LedgerHeader Ledger { get; private set; }
+
+        /// <summary>
+        /// Whether or not this ledger has been closed.
+        /// </summary>
+        public bool Closed { get; private set; }
+
+        /// <summary>
+        /// True if this data is from a validated ledger version.
+        /// </summary>
+        public bool Validated { get; private set; }
 
         internal LedgerResponse(JsonElement json)
         {
             LedgerHash = new Hash256(json.GetProperty("ledger_hash").GetString());
-            LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            Validated = json.GetProperty("validated").GetBoolean();
+            var ledger = json.GetProperty("ledger");
+            Closed = ledger.GetProperty("closed").GetBoolean();
+            var ledger_data = ledger.GetProperty("ledger_data").GetBytesFromBase16();
+            Ledger = new LedgerHeader(ledger_data);
+
+            // TODO Transactions, Accounts etc
         }
     }
 

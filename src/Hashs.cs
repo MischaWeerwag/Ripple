@@ -59,7 +59,7 @@ namespace Ibasa.Ripple
             d = long.Parse(hex.Substring(48, 16), System.Globalization.NumberStyles.HexNumber);
         }
 
-        public Hash256(Span<byte> bytes)
+        public Hash256(ReadOnlySpan<byte> bytes)
         {
             a = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(0, 8));
             b = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(8, 8));

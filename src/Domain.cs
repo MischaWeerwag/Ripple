@@ -127,9 +127,9 @@ namespace Ibasa.Ripple
             return Base58Check.ConvertTo(content);
         }
 
-        public void Ed25519KeyPair(out byte[] publicKey, out byte[] privateKey)
+        public Ed25519KeyPair Ed25519KeyPair()
         {
-            privateKey = new byte[32];
+            var privateKey = new byte[32];
             var span = UnsafeAsSpan(ref this);
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
@@ -138,11 +138,7 @@ namespace Ibasa.Ripple
                 destination.Slice(0, 32).CopyTo(privateKey);
             }
 
-            var priv = new Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters(privateKey, 0);
-            var pub = priv.GeneratePublicKey();
-            publicKey = new byte[33];
-            publicKey[0] = 0xed;
-            pub.Encode(publicKey, 1);
+            return new Ed25519KeyPair(privateKey);
         }
 
         public void Secp256k1KeyPair(out Secp256k1KeyPair rootKeyPair, out Secp256k1KeyPair keyPair)
@@ -2058,6 +2054,64 @@ namespace Ibasa.Ripple
         public abstract byte[] Sign(KeyPair keyPair, out Hash256 hash);
     }
 
+    /// <summary>
+    /// A SetRegularKey transaction assigns, changes, or removes the regular key pair associated with an account.
+    /// 
+    /// You can protect your account by assigning a regular key pair to it and using it instead of the master key pair to sign transactions whenever possible.
+    /// If your regular key pair is compromised, but your master key pair is not, you can use a SetRegularKey transaction to regain control of your account.
+    /// </summary>
+    public sealed class SetRegularKey : Transaction
+    {
+        /// <summary>
+        /// A base-58-encoded Address that indicates the regular key pair to be assigned to the account.
+        /// If omitted, removes any existing regular key pair from the account.
+        /// Must not match the master key pair for the address.
+        /// </summary>
+        public AccountId? RegularKey { get; set; }
+
+        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        {
+            var publicKey = keyPair.GetCanonicalPublicKey();
+            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
+            var writer = new StWriter(buffer);
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
+            buffer.Advance(4);
+
+            writer.WriteUInt16(2, 5);
+            writer.WriteUInt32(4, Sequence);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
+            // Need signature here
+            writer.WriteAccount(1, Account);
+            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
+
+            // Calculate signature and build again
+            var signature = keyPair.Sign(buffer.WrittenSpan);
+            buffer.Clear();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
+            buffer.Advance(4);
+
+            writer.WriteUInt16(2, 5);
+            writer.WriteUInt32(4, Sequence);
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, publicKey);
+            writer.WriteVl(4, signature);
+            writer.WriteAccount(1, Account);
+            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan.Slice(0, 32));
+            }
+
+            return buffer.WrittenMemory.Slice(4).ToArray();
+        }
+    }
+
     public sealed class AccountSet : Transaction
     {
         /// <summary>
@@ -2086,7 +2140,7 @@ namespace Ibasa.Ripple
             writer.WriteAmount(8, Fee);
             writer.WriteVl(3, publicKey);
             // Need signature here
-            writer.WriteVl(7, Domain);
+            if (Domain != null) { writer.WriteVl(7, Domain); }
             writer.WriteAccount(1, Account);
 
             // Calculate signature and build again
@@ -2101,7 +2155,7 @@ namespace Ibasa.Ripple
             writer.WriteAmount(8, Fee);
             writer.WriteVl(3, publicKey);
             writer.WriteVl(4, signature);
-            writer.WriteVl(7, Domain);
+            if (Domain != null) { writer.WriteVl(7, Domain); }
             writer.WriteAccount(1, Account);
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
@@ -2315,6 +2369,10 @@ namespace Ibasa.Ripple
             {
                 return new TrustSetResponse(json);
             }
+            else if (transactionType == "SetRegularKey")
+            {
+                return new SetRegularKeyResponse(json);
+            }
 
             throw new NotImplementedException();
         }
@@ -2334,6 +2392,21 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("Domain", out element))
             {
                 Domain = element.GetBytesFromBase16();
+            }
+        }
+    }
+
+    public sealed class SetRegularKeyResponse : TransactionResponse
+    {
+        public AccountId? RegularKey { get; private set; }
+
+        internal SetRegularKeyResponse(JsonElement json) : base(json)
+        {
+            JsonElement element;
+
+            if (json.TryGetProperty("RegularKey", out element))
+            {
+                RegularKey = new AccountId(element.GetString());
             }
         }
     }

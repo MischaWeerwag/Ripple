@@ -74,7 +74,7 @@ namespace Ibasa.Ripple.Tests
                 };
                 var transactionResponse = await Api.Tx(request);
                 Assert.Equal(transaction, transactionResponse.Hash);
-                if (transactionResponse.LedgerIndex.HasValue)
+                if (transactionResponse.Validated) 
                 {
                     return transactionResponse;
                 }
@@ -281,6 +281,55 @@ namespace Ibasa.Ripple.Tests
             var infoResponse = await Api.AccountInfo(infoRequest);
             Assert.Equal(account, infoResponse.AccountData.Account);
             Assert.Equal(transaction.Domain, infoResponse.AccountData.Domain);
+        }
+
+        [Fact]
+        public async Task TestSetRegularKey()
+        {
+            var account = Setup.TestAccountOne.Address;
+            var secret = Setup.TestAccountOne.Secret;
+            var feeResponse = await Api.Fee();
+
+            var seed = new Seed("ssKXuaAGcAXaKBf7d532v8KeypdoS");
+            var keypair = seed.Ed25519KeyPair();
+
+            var transaction = new SetRegularKey();
+            transaction.Account = account;
+            transaction.Sequence = await GetAccountSequnce(account);
+            transaction.Fee = feeResponse.Drops.MedianFee;
+            transaction.RegularKey = AccountId.FromPublicKey(keypair.GetCanonicalPublicKey());
+
+            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
+
+            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
+
+            var transactionResponse = await WaitForTransaction(transactionHash);
+            var srkr = Assert.IsType<SetRegularKeyResponse>(transactionResponse);
+            Assert.Equal(transaction.RegularKey, srkr.RegularKey);
+
+            // Check we can do a noop AccountSet
+            var accountSetTransaction = new AccountSet();
+            accountSetTransaction.Account = account;
+            accountSetTransaction.Sequence = transaction.Sequence + 1;
+            accountSetTransaction.Fee = feeResponse.Drops.MedianFee;
+
+            // Submit with our ed25519 keypair
+            var submitRequest = new SubmitRequest();
+            submitRequest.TxBlob = accountSetTransaction.Sign(keypair, out transactionHash);
+            submitResponse = await Api.Submit(submitRequest);
+
+            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
+
+            var accountSetTransactionResponse = await WaitForTransaction(transactionHash);
+            var acr = Assert.IsType<AccountSetResponse>(accountSetTransactionResponse);
+
+            var infoRequest = new AccountInfoRequest()
+            {
+                Ledger = new LedgerSpecification(transactionResponse.LedgerIndex.Value),
+                Account = account,
+            };
+            var infoResponse = await Api.AccountInfo(infoRequest);
+            Assert.Equal(account, infoResponse.AccountData.Account);
         }
 
         [Fact]

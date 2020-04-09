@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.6.7" />
+    <PackageReference Include="Ripple.Chaos.NaCl" Version="0.1.0" />
     <PackageReference Include="System.Text.Json" Version="4.7.1" />
   </ItemGroup>
 

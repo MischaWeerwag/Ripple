@@ -3,7 +3,7 @@
 namespace Ibasa.Ripple
 {
     /// <summary>
-    /// Represents a 64-bit decimal floating-point number with 15 units of precision.
+    /// Represents a 64-bit decimal floating-point number with 16 units of precision.
     /// </summary>
     public struct Currency : IEquatable<Currency>
     {
@@ -315,7 +315,7 @@ namespace Ibasa.Ripple
 
         public static ulong ToUInt64Bits(Currency value)
         {
-            // We don't store the 'not xrp' bit on the struct so that 'new CurrencyValue()' is a valid object (0).
+            // We don't store the 'not xrp' bit on the struct so that 'new Currency()' is a valid object (0).
             return value.bits | 0x8000_0000_0000_0000;
         }
 

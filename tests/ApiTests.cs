@@ -271,6 +271,9 @@ namespace Ibasa.Ripple.Tests
 
             var transactionResponse = await WaitForTransaction(transactionHash);
             var acr = Assert.IsType<AccountSet>(transactionResponse.Transaction);
+            Assert.Equal(transaction.Account, acr.Account);
+            Assert.Equal(transaction.Sequence, acr.Sequence);
+            Assert.Equal(transaction.Fee, acr.Fee);
             Assert.Equal(transaction.Domain, acr.Domain);
 
             var infoRequest = new AccountInfoRequest()

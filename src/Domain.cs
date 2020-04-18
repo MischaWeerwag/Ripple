@@ -2070,7 +2070,11 @@ namespace Ibasa.Ripple
 
         internal Transaction(JsonElement json)
         {
-
+            Account = new AccountId(json.GetProperty("Account").GetString());
+            Fee = new XrpAmount(ulong.Parse(json.GetProperty("Fee").GetString()));
+            Sequence = json.GetProperty("Sequence").GetUInt32();
+            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
+            TxnSignature = json.GetProperty("TxnSignature").GetBytesFromBase16();
         }
 
         public ReadOnlyMemory<byte> Serialize(bool forSigning)

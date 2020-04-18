@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -1507,7 +1508,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed class StWriter
+    public struct StWriter
     {
         readonly System.Buffers.IBufferWriter<byte> bufferWriter;
 
@@ -2041,6 +2042,18 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint Sequence { get; set; }
 
+        /// <summary>
+        /// (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.
+        /// If an empty string, indicates a multi-signature is present in the Signers field instead.
+        /// </summary>
+        public byte[] SigningPubKey { get; set; }
+
+        /// <summary>
+        /// (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
+        /// </summary>
+        public byte[] TxnSignature { get; set; }
+
+
         //TransactionType String UInt16  (Required) The type of transaction.Valid types include: Payment, OfferCreate, OfferCancel, TrustSet, AccountSet, SetRegularKey, SignerListSet, EscrowCreate, EscrowFinish, EscrowCancel, PaymentChannelCreate, PaymentChannelFund, PaymentChannelClaim, and DepositPreauth.
         //AccountTxnID String Hash256 (Optional) Hash value identifying another transaction.If provided, this transaction is only valid if the sending account's previously-sent transaction matches the provided hash.
         //Flags Unsigned Integer UInt32  (Optional) Set of bit-flags for this transaction.
@@ -2048,8 +2061,7 @@ namespace Ibasa.Ripple
         //Memos Array of Objects    Array   (Optional) Additional arbitrary information used to identify this transaction.
         //Signers Array   Array   (Optional) Array of objects that represent a multi-signature which authorizes this transaction.
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
-        //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
-        //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
+
 
         public Transaction()
         {
@@ -2061,8 +2073,42 @@ namespace Ibasa.Ripple
 
         }
 
+        public ReadOnlyMemory<byte> Serialize(bool forSigning)
+        {
+            var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+            Serialize(bufferWriter, forSigning);
+            return bufferWriter.WrittenMemory;
+        }
 
-        public abstract byte[] Sign(KeyPair keyPair, out Hash256 hash);
+        public abstract void Serialize(System.Buffers.IBufferWriter<byte> bufferWriter, bool forSigning);
+
+        public byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        {         
+            this.SigningPubKey = keyPair.GetCanonicalPublicKey();
+            var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), 0x53545800u);
+            bufferWriter.Advance(4);
+            this.Serialize(bufferWriter, true);
+
+            // Calculate signature and serialize again
+            this.TxnSignature = keyPair.Sign(bufferWriter.WrittenSpan);
+            bufferWriter.Clear();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), 0x54584E00u);
+            bufferWriter.Advance(4);
+
+            this.Serialize(bufferWriter, false);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(bufferWriter.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan.Slice(0, 32));
+            }
+
+            return bufferWriter.WrittenMemory.Slice(4).ToArray();
+        }
 
         internal static Transaction ReadJson(JsonElement json)
         {
@@ -2117,46 +2163,19 @@ namespace Ibasa.Ripple
             }
         }
 
-        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
-            var publicKey = keyPair.GetCanonicalPublicKey();
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-            var writer = new StWriter(buffer);
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
-            buffer.Advance(4);
-
+            var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 5);
             writer.WriteUInt32(4, Sequence);
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            // Need signature here
-            writer.WriteAccount(1, Account);
-            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
-
-            // Calculate signature and build again
-            var signature = keyPair.Sign(buffer.WrittenSpan);
-            buffer.Clear();
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
-            buffer.Advance(4);
-
-            writer.WriteUInt16(2, 5);
-            writer.WriteUInt32(4, Sequence);
-            writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            writer.WriteVl(4, signature);
-            writer.WriteAccount(1, Account);
-            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
-
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            writer.WriteVl(3, this.SigningPubKey);
+            if (!forSigning)
             {
-                Span<byte> hashSpan = stackalloc byte[64];
-                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                hash = new Hash256(hashSpan.Slice(0, 32));
+                writer.WriteVl(4, this.TxnSignature);
             }
-
-            return buffer.WrittenMemory.Slice(4).ToArray();
+            writer.WriteAccount(1, Account);
+            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
         }
     }
 
@@ -2189,46 +2208,19 @@ namespace Ibasa.Ripple
             }
         }
 
-        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
-            var publicKey = keyPair.GetCanonicalPublicKey();
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-            var writer = new StWriter(buffer);
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
-            buffer.Advance(4);
-
+            var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 3);
             writer.WriteUInt32(4, Sequence);
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            // Need signature here
-            if (Domain != null) { writer.WriteVl(7, Domain); }
-            writer.WriteAccount(1, Account);
-
-            // Calculate signature and build again
-            var signature = keyPair.Sign(buffer.WrittenSpan);
-            buffer.Clear();
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
-            buffer.Advance(4);
-
-            writer.WriteUInt16(2, 3);
-            writer.WriteUInt32(4, Sequence);
-            writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            writer.WriteVl(4, signature);
-            if (Domain != null) { writer.WriteVl(7, Domain); }
-            writer.WriteAccount(1, Account);
-
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            writer.WriteVl(3, this.SigningPubKey);
+            if (!forSigning)
             {
-                Span<byte> hashSpan = stackalloc byte[64];
-                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                hash = new Hash256(hashSpan.Slice(0, 32));
+                writer.WriteVl(4, this.TxnSignature);
             }
-
-            return buffer.WrittenMemory.Slice(4).ToArray();
+            if (Domain != null) { writer.WriteVl(7, Domain); }
+            writer.WriteAccount(1, Account);
         }
     }
 
@@ -2282,15 +2274,9 @@ namespace Ibasa.Ripple
             }
         }
 
-        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
-            var publicKey = keyPair.GetCanonicalPublicKey();
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-            var writer = new StWriter(buffer);
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
-            buffer.Advance(4);
-
+            var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 0);
             writer.WriteUInt32(4, Sequence);
             if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
@@ -2299,40 +2285,13 @@ namespace Ibasa.Ripple
             writer.WriteAmount(8, Fee);
             if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
             if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
-            writer.WriteVl(3, publicKey);
-            // Need signature here
-            writer.WriteAccount(1, Account);
-            writer.WriteAccount(3, Destination);
-
-            // Calculate signature and build again
-            var signature = keyPair.Sign(buffer.WrittenSpan);
-            buffer.Clear();
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
-            buffer.Advance(4);
-
-
-            writer.WriteUInt16(2, 0);
-            writer.WriteUInt32(4, Sequence);
-            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
-            if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
-            writer.WriteAmount(1, Amount);
-            writer.WriteAmount(8, Fee);
-            if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
-            if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
-            writer.WriteVl(3, publicKey);
-            writer.WriteVl(4, signature);
-            writer.WriteAccount(1, Account);
-            writer.WriteAccount(3, Destination);
-
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            writer.WriteVl(3, this.SigningPubKey);
+            if (!forSigning)
             {
-                Span<byte> hashSpan = stackalloc byte[64];
-                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                hash = new Hash256(hashSpan.Slice(0, 32));
+                writer.WriteVl(4, this.TxnSignature);
             }
-
-            return buffer.WrittenMemory.Slice(4).ToArray();
+            writer.WriteAccount(1, Account);
+            writer.WriteAccount(3, Destination);
         }
     }
 
@@ -2363,50 +2322,21 @@ namespace Ibasa.Ripple
         {
         }
 
-        public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
-            var publicKey = keyPair.GetCanonicalPublicKey();
-            var buffer = new System.Buffers.ArrayBufferWriter<byte>();
-            var writer = new StWriter(buffer);
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x53545800u);
-            buffer.Advance(4);
-
+            var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 20);
             writer.WriteUInt32(4, Sequence);
             if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
             if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
             writer.WriteAmount(3, LimitAmount);
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            // Need signature here
-            writer.WriteAccount(1, Account);
-
-            // Calculate signature and build again
-            var signature = keyPair.Sign(buffer.WrittenSpan);
-            buffer.Clear();
-
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.GetSpan(4), 0x54584E00u);
-            buffer.Advance(4);
-
-            writer.WriteUInt16(2, 20);
-            writer.WriteUInt32(4, Sequence);
-            if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
-            if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
-            writer.WriteAmount(3, LimitAmount);
-            writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, publicKey);
-            writer.WriteVl(4, signature);
-            writer.WriteAccount(1, Account);
-
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            writer.WriteVl(3, this.SigningPubKey);
+            if (!forSigning)
             {
-                Span<byte> hashSpan = stackalloc byte[64];
-                sha512.TryComputeHash(buffer.WrittenSpan, hashSpan, out var bytesWritten);
-                hash = new Hash256(hashSpan.Slice(0, 32));
+                writer.WriteVl(4, this.TxnSignature);
             }
-
-            return buffer.WrittenMemory.Slice(4).ToArray();
+            writer.WriteAccount(1, Account);
         }
     }
 

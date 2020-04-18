@@ -2051,7 +2051,41 @@ namespace Ibasa.Ripple
         //SigningPubKey String  Blob    (Automatically added when signing) Hex representation of the public key that corresponds to the private key used to sign this transaction.If an empty string, indicates a multi-signature is present in the Signers field instead.
         //TxnSignature    String Blob    (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
 
+        public Transaction()
+        {
+
+        }
+
+        internal Transaction(JsonElement json)
+        {
+
+        }
+
+
         public abstract byte[] Sign(KeyPair keyPair, out Hash256 hash);
+
+        internal static Transaction ReadJson(JsonElement json)
+        {
+            var transactionType = json.GetProperty("TransactionType").GetString();
+            if (transactionType == "AccountSet")
+            {
+                return new AccountSet(json);
+            }
+            else if (transactionType == "Payment")
+            {
+                return new Payment(json);
+            }
+            else if (transactionType == "TrustSet")
+            {
+                return new TrustSet(json);
+            }
+            else if (transactionType == "SetRegularKey")
+            {
+                return new SetRegularKey(json);
+            }
+
+            throw new NotImplementedException();
+        }
     }
 
     /// <summary>
@@ -2068,6 +2102,20 @@ namespace Ibasa.Ripple
         /// Must not match the master key pair for the address.
         /// </summary>
         public AccountId? RegularKey { get; set; }
+
+        public SetRegularKey()
+        {
+        }
+
+        internal SetRegularKey(JsonElement json) : base(json)
+        {
+            JsonElement element;
+            
+            if (json.TryGetProperty("RegularKey", out element))
+            {
+                RegularKey = new AccountId(element.GetString());
+            }
+        }
 
         public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
         {
@@ -2125,6 +2173,21 @@ namespace Ibasa.Ripple
         //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
         //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
         //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
+        
+        public AccountSet()
+        {
+
+        }
+
+        internal AccountSet(JsonElement json) : base(json)
+        {
+            JsonElement element;
+
+            if (json.TryGetProperty("Domain", out element))
+            {
+                Domain = element.GetBytesFromBase16();
+            }
+        }
 
         public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
         {
@@ -2205,6 +2268,20 @@ namespace Ibasa.Ripple
         /// </summary>
         public Amount? DeliverMin { get; set; }
 
+        public Payment()
+        {
+        }
+
+        internal Payment(JsonElement json) : base(json)
+        {
+            JsonElement element;
+
+            if (json.TryGetProperty("Amount", out element))
+            {
+                Amount = new Amount(element);
+            }
+        }
+
         public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
         {
             var publicKey = keyPair.GetCanonicalPublicKey();
@@ -2278,6 +2355,14 @@ namespace Ibasa.Ripple
         /// </summary>
         public UInt32? QualityOut { get; set; }
 
+        public TrustSet()
+        {
+        }
+
+        internal TrustSet(JsonElement json) : base(json)
+        {
+        }
+
         public override byte[] Sign(KeyPair keyPair, out Hash256 hash)
         {
             var publicKey = keyPair.GetCanonicalPublicKey();
@@ -2325,7 +2410,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public abstract class TransactionResponse
+    public sealed class TransactionResponse
     {
         /// <summary>
         /// The SHA-512 hash of the transaction
@@ -2344,7 +2429,9 @@ namespace Ibasa.Ripple
         /// </summary>
         public bool Validated { get; private set; }
 
-        protected TransactionResponse(JsonElement json)
+        public Transaction Transaction { get; private set; }
+
+        internal TransactionResponse(JsonElement json)
         {
             Hash = new Hash256(json.GetProperty("hash").GetString());
             Validated = json.GetProperty("validated").GetBoolean();
@@ -2352,84 +2439,7 @@ namespace Ibasa.Ripple
             {
                 LedgerIndex = element.GetUInt32();
             }
-        }
-
-        internal static TransactionResponse ReadJson(JsonElement json)
-        {
-            var transactionType = json.GetProperty("TransactionType").GetString();
-            if (transactionType == "AccountSet")
-            {
-                return new AccountSetResponse(json);
-            }
-            else if (transactionType == "Payment")
-            {
-                return new PaymentResponse(json);
-            }
-            else if (transactionType == "TrustSet")
-            {
-                return new TrustSetResponse(json);
-            }
-            else if (transactionType == "SetRegularKey")
-            {
-                return new SetRegularKeyResponse(json);
-            }
-
-            throw new NotImplementedException();
-        }
-    }
-
-    public sealed class AccountSetResponse : TransactionResponse
-    {
-        /// <summary>
-        /// (Optional) The domain that owns this account, the ASCII for the domain in lowercase.
-        /// </summary>
-        public byte[] Domain { get; private set; }
-
-        internal AccountSetResponse(JsonElement json) : base(json)
-        {
-            JsonElement element;
-
-            if (json.TryGetProperty("Domain", out element))
-            {
-                Domain = element.GetBytesFromBase16();
-            }
-        }
-    }
-
-    public sealed class SetRegularKeyResponse : TransactionResponse
-    {
-        public AccountId? RegularKey { get; private set; }
-
-        internal SetRegularKeyResponse(JsonElement json) : base(json)
-        {
-            JsonElement element;
-
-            if (json.TryGetProperty("RegularKey", out element))
-            {
-                RegularKey = new AccountId(element.GetString());
-            }
-        }
-    }
-
-    public sealed class PaymentResponse : TransactionResponse
-    {
-        public Amount Amount { get; private set; }
-
-        internal PaymentResponse(JsonElement json) : base(json)
-        {
-            JsonElement element;
-
-            if (json.TryGetProperty("Amount", out element))
-            {
-                Amount = new Amount(element);
-            }
-        }
-    }
-    public sealed class TrustSetResponse : TransactionResponse
-    {
-        internal TrustSetResponse(JsonElement json) : base(json)
-        {
-            // TODO 
+            Transaction = Transaction.ReadJson(json);
         }
     }
 

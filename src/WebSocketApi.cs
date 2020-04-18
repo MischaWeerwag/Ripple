@@ -384,7 +384,7 @@ namespace Ibasa.Ripple
 
             await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
-            return TransactionResponse.ReadJson(response);
+            return new TransactionResponse(response);
         }
 
         public override async Task<TransactionResponse> TransactionEntry(TransactionEntryRequest request, CancellationToken cancellationToken = default)
@@ -404,7 +404,7 @@ namespace Ibasa.Ripple
 
             await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
             var response = await ReceiveAsync(thisId, cancellationToken);
-            return TransactionResponse.ReadJson(response);
+            return new TransactionResponse(response);
         }
     }
 }

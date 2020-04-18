@@ -270,7 +270,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
-            var acr = Assert.IsType<AccountSetResponse>(transactionResponse);
+            var acr = Assert.IsType<AccountSet>(transactionResponse.Transaction);
             Assert.Equal(transaction.Domain, acr.Domain);
 
             var infoRequest = new AccountInfoRequest()
@@ -304,7 +304,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
-            var srkr = Assert.IsType<SetRegularKeyResponse>(transactionResponse);
+            var srkr = Assert.IsType<SetRegularKey>(transactionResponse.Transaction);
             Assert.Equal(transaction.RegularKey, srkr.RegularKey);
 
             // Check we can do a noop AccountSet
@@ -321,7 +321,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var accountSetTransactionResponse = await WaitForTransaction(transactionHash);
-            var acr = Assert.IsType<AccountSetResponse>(accountSetTransactionResponse);
+            var acr = Assert.IsType<AccountSet>(accountSetTransactionResponse.Transaction);
 
             var infoRequest = new AccountInfoRequest()
             {
@@ -364,7 +364,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
-            var pr = Assert.IsType<PaymentResponse>(transactionResponse);
+            var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
             Assert.Equal(transaction.Amount, pr.Amount);
 
             ulong endingDrops;
@@ -414,7 +414,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
-            var pr = Assert.IsType<PaymentResponse>(transactionResponse);
+            var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
             Assert.Equal(transaction.Amount, pr.Amount);
             
             // Check we have +100 GBP on our trust line

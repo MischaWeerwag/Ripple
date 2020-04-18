@@ -351,7 +351,7 @@ namespace Ibasa.Ripple
             }
             var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
-            return TransactionResponse.ReadJson(response);
+            return new TransactionResponse(response);
         }
 
         public override async Task<TransactionResponse> TransactionEntry(TransactionEntryRequest request, CancellationToken cancellationToken = default)
@@ -373,7 +373,7 @@ namespace Ibasa.Ripple
             }
             var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
-            return TransactionResponse.ReadJson(response);
+            return new TransactionResponse(response);
         }
     }
 }

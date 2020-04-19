@@ -19,7 +19,7 @@ using(var webSocketApi = new WebSocketApi(clientWebSocket))
 }
 ```
 
-Send 100 ripple on the main net using the json RPC api:
+Send 100 drops on the main net using the json RPC api:
 ```csharp
 using Ibasa.Ripple
 

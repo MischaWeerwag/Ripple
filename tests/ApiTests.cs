@@ -53,15 +53,18 @@ namespace Ibasa.Ripple.Tests
         protected readonly ApiTestsSetup Setup;
         protected Api Api { get { return Setup.Api; } }
 
-        private async Task<uint> GetAccountSequnce(AccountId account)
+        private async Task AutofillTransaction(Transaction transaction)
         {
             var request = new AccountInfoRequest()
             {
                 Ledger = LedgerSpecification.Current,
-                Account = account,
+                Account = transaction.Account,
             };
-            var response = await Api.AccountInfo(request);
-            return response.AccountData.Sequence;
+            var infoResponse = await Api.AccountInfo(request);
+            var feeResponse = await Api.Fee();
+
+            transaction.Sequence = infoResponse.AccountData.Sequence;
+            transaction.Fee = feeResponse.Drops.MedianFee;
         }
 
         private async Task<TransactionResponse> WaitForTransaction(Hash256 transaction)
@@ -257,13 +260,11 @@ namespace Ibasa.Ripple.Tests
         {
             var account = Setup.TestAccountOne.Address;
             var secret = Setup.TestAccountOne.Secret;
-            var feeResponse = await Api.Fee();
 
             var transaction = new AccountSet();
             transaction.Account = account;
-            transaction.Sequence = await GetAccountSequnce(account);
-            transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
+            await AutofillTransaction(transaction);
 
             var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
 
@@ -291,16 +292,14 @@ namespace Ibasa.Ripple.Tests
         {
             var account = Setup.TestAccountOne.Address;
             var secret = Setup.TestAccountOne.Secret;
-            var feeResponse = await Api.Fee();
 
             var seed = new Seed("ssKXuaAGcAXaKBf7d532v8KeypdoS");
             var keypair = seed.Ed25519KeyPair();
 
             var transaction = new SetRegularKey();
             transaction.Account = account;
-            transaction.Sequence = await GetAccountSequnce(account);
-            transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.RegularKey = AccountId.FromPublicKey(keypair.GetCanonicalPublicKey());
+            await AutofillTransaction(transaction);
 
             var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
 
@@ -314,7 +313,7 @@ namespace Ibasa.Ripple.Tests
             var accountSetTransaction = new AccountSet();
             accountSetTransaction.Account = account;
             accountSetTransaction.Sequence = transaction.Sequence + 1;
-            accountSetTransaction.Fee = feeResponse.Drops.MedianFee;
+            accountSetTransaction.Fee = transaction.Fee;
 
             // Submit with our ed25519 keypair
             var submitRequest = new SubmitRequest();
@@ -352,15 +351,12 @@ namespace Ibasa.Ripple.Tests
                 startingDrops = response.AccountData.Balance.Drops;
             }
 
-            var feeResponse = await Api.Fee();
-
             var transaction = new Payment();
             transaction.Account = accountOne;
-            transaction.Sequence = await GetAccountSequnce(accountOne);
-            transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(100);
+            await AutofillTransaction(transaction);
 
             var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
 
@@ -390,14 +386,12 @@ namespace Ibasa.Ripple.Tests
             var accountTwo = Setup.TestAccountTwo.Address;
             var secretOne = Setup.TestAccountOne.Secret;
             var secretTwo = Setup.TestAccountTwo.Secret;
-            var feeResponse = await Api.Fee();
 
             // Set up a trust line
             var trustSet = new TrustSet();
             trustSet.Account = accountTwo;
-            trustSet.Sequence = await GetAccountSequnce(accountTwo);
-            trustSet.Fee = feeResponse.Drops.MedianFee;
             trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("GBP"), new Currency(1000m));
+            await AutofillTransaction(trustSet);
 
             // Submit and wait for the trust line
             var submitResponse = await SubmitTransaction(secretTwo, trustSet, out var transactionHash);
@@ -407,11 +401,10 @@ namespace Ibasa.Ripple.Tests
             // Send 100GBP
             var transaction = new Payment();
             transaction.Account = accountOne;
-            transaction.Sequence = await GetAccountSequnce(accountOne);
-            transaction.Fee = feeResponse.Drops.MedianFee;
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
+            await AutofillTransaction(transaction);
 
             submitResponse = await SubmitTransaction(secretOne, transaction, out transactionHash);
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);

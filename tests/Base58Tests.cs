@@ -9,6 +9,12 @@ namespace Ibasa.Ripple.Tests
         [InlineData("")]
         [InlineData("bpHzbE")]
         [InlineData("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz")]
+        [InlineData("sn259rEFXrQrWyx3Q7XneWcwV6dfL")]
+        [InlineData("sEdTM1uX8pu2do5XvTnutH6HsouMaM2")]
+        [InlineData("rJrRMgiRgrU6hDF4pgu5DXQdWyPbY35ErN")]
+        [InlineData("rnaC7gW34M77Kneb78s")]
+        [InlineData("sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE")]
+        [InlineData("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD")]
         public void TestRoundTrip(string data)
         {
             var bytes = System.Text.Encoding.UTF8.GetBytes(data);
@@ -29,6 +35,28 @@ namespace Ibasa.Ripple.Tests
         public void TestAccount(string base58)
         {
             var bytes = new byte[21];
+            Base58Check.ConvertFrom(base58, bytes);
+            Assert.Equal(base58, Base58Check.ConvertTo(bytes));
+        }
+
+        [Theory]
+        [InlineData("sn259rEFXrQrWyx3Q7XneWcwV6dfL")]
+        [InlineData("sp6JS7f14BuwFY8Mw6bTtLKWauoUs")]
+        [InlineData("saGwBRReqUNKuWNLpUAq8i8NkXEPN")]
+        public void TestSecp256k1Seed(string base58)
+        {
+            var bytes = new byte[17];
+            Base58Check.ConvertFrom(base58, bytes);
+            Assert.Equal(base58, Base58Check.ConvertTo(bytes));
+        }
+
+        [Theory]
+        [InlineData("sEdTM1uX8pu2do5XvTnutH6HsouMaM2")]
+        [InlineData("sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE")]
+        [InlineData("sEdV19BLfeQeKdEXyYA4NhjPJe6XBfG")]
+        public void TestEd25519Seed(string base58)
+        {
+            var bytes = new byte[19];
             Base58Check.ConvertFrom(base58, bytes);
             Assert.Equal(base58, Base58Check.ConvertTo(bytes));
         }

@@ -97,38 +97,76 @@ namespace Ibasa.Ripple
         }
     }
 
+    public enum SeedType {
+        Ed25519,
+        Secp256k1
+    }
+
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 16)]
     public struct Seed
     {
         private uint _data0, _data1, _data2, _data3;
+        private SeedType _type;
 
         private static Span<byte> UnsafeAsSpan(ref Seed seed)
         {
             return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref seed._data0, 4));
         }
 
+        public SeedType Type { get { return _type;  } }
+
         public Seed(string base58) : this()
         {
             Span<byte> content = stackalloc byte[17];
             Base58Check.ConvertFrom(base58, content);
-            if (content[0] != 0x21)
+            if (content[0] == 0x21)
             {
-                throw new Exception("Expected 0x21 prefix byte");
+                _type = SeedType.Secp256k1;
+                content.Slice(1).CopyTo(UnsafeAsSpan(ref this));
+            }
+            else if (content[0] == 0x01 && content[1] == 0xE1 && content[2] == 0x4B)
+            {
+                _type = SeedType.Ed25519;
+                content.Slice(3).CopyTo(UnsafeAsSpan(ref this));
+            }
+            else
+            { 
+                throw new Exception("Expected prefix of either 0x21 or 0x01, 0xE1, 0x4B");
+            }
+        }
+
+        public Seed(ReadOnlySpan<byte> entropy, SeedType type) : this()
+        {
+            if (entropy.Length != 16)
+            {
+                throw new ArgumentException("entropy must have length of 16", "entropy");
             }
 
-            content.Slice(1).CopyTo(UnsafeAsSpan(ref this));
+            _type = type;
+            entropy.CopyTo(UnsafeAsSpan(ref this));
         }
 
         public override string ToString()
         {
-            Span<byte> content = stackalloc byte[17];
-            content[0] = 0x21;
-            UnsafeAsSpan(ref this).CopyTo(content.Slice(1));
-
-            return Base58Check.ConvertTo(content);
+            if (_type == SeedType.Secp256k1)
+            {
+                Span<byte> content = stackalloc byte[17];
+                content[0] = 0x21;
+                UnsafeAsSpan(ref this).CopyTo(content.Slice(1));
+                return Base58Check.ConvertTo(content);
+            }
+            else
+            {
+                Span<byte> content = stackalloc byte[19];
+                content[0] = 0x01;
+                content[1] = 0xE1;
+                content[2] = 0x4B;
+                UnsafeAsSpan(ref this).CopyTo(content.Slice(3));
+                return Base58Check.ConvertTo(content);
+            }
         }
 
-        public Ed25519KeyPair Ed25519KeyPair()
+        private Ed25519KeyPair Ed25519KeyPair()
         {
             var privateKey = new byte[32];
             var span = UnsafeAsSpan(ref this);
@@ -142,7 +180,7 @@ namespace Ibasa.Ripple
             return new Ed25519KeyPair(privateKey);
         }
 
-        public void Secp256k1KeyPair(out Secp256k1KeyPair rootKeyPair, out Secp256k1KeyPair keyPair)
+        private void Secp256k1KeyPair(out Secp256k1KeyPair rootKeyPair, out Secp256k1KeyPair keyPair)
         {
             Span<byte> rootSource = stackalloc byte[20];
             UnsafeAsSpan(ref this).CopyTo(rootSource);
@@ -198,6 +236,21 @@ namespace Ibasa.Ripple
             }
         }
 
+        public void KeyPair(out KeyPair rootKeyPair, out KeyPair keyPair)
+        {
+            if(_type == SeedType.Secp256k1)
+            {
+                Secp256k1KeyPair(out var secpRootKeyPair, out var secpKeyPair);
+                rootKeyPair = secpRootKeyPair;
+                keyPair = secpKeyPair;
+            }
+            else
+            {
+                rootKeyPair = null;
+                keyPair = Ed25519KeyPair();
+            }
+        }
+
         public bool Equals(Seed other)
         {
             var a = UnsafeAsSpan(ref this);
@@ -209,12 +262,13 @@ namespace Ibasa.Ripple
                     return false;
                 }
             }
-            return true;
+            return this._type == other._type;
         }
 
         public override int GetHashCode()
         {
             var hash = new System.HashCode();
+            hash.Add(_type);
             foreach (var b in UnsafeAsSpan(ref this))
             {
                 hash.Add(b);

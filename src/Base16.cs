@@ -205,5 +205,17 @@ namespace Ibasa.Ripple
         {
             return length * 2;
         }
+
+        public static byte[] Decode(string base16)
+        {
+            var utf8 = System.Text.Encoding.UTF8.GetBytes(base16);
+            var buffer = new byte[GetMaxDecodedFromUtf8Length(utf8.Length)];
+            var status = DecodeFromUtf8(utf8, buffer, out var bytesConsumed, out var bytesWritten);
+            if (status != OperationStatus.Done || bytesWritten != buffer.Length || bytesConsumed != utf8.Length)
+            {
+                throw new Exception("Unreachable");
+            }
+            return buffer;
+        }
     }
 }

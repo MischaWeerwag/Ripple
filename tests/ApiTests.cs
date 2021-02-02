@@ -87,7 +87,7 @@ namespace Ibasa.Ripple.Tests
         private Task<SubmitResponse> SubmitTransaction(Seed secret, Transaction transaction, out Hash256 transactionHash)
         {
             var request = new SubmitRequest();
-            secret.Secp256k1KeyPair(out var _, out var keyPair);
+            secret.KeyPair(out var _, out var keyPair);
             request.TxBlob = transaction.Sign(keyPair, out transactionHash);
             return Api.Submit(request);
         }
@@ -294,11 +294,11 @@ namespace Ibasa.Ripple.Tests
             var secret = Setup.TestAccountOne.Secret;
 
             var seed = new Seed("ssKXuaAGcAXaKBf7d532v8KeypdoS");
-            var keypair = seed.Ed25519KeyPair();
+            seed.KeyPair(out var _, out var keyPair);
 
             var transaction = new SetRegularKey();
             transaction.Account = account;
-            transaction.RegularKey = AccountId.FromPublicKey(keypair.GetCanonicalPublicKey());
+            transaction.RegularKey = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
             await AutofillTransaction(transaction);
 
             var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
@@ -317,7 +317,7 @@ namespace Ibasa.Ripple.Tests
 
             // Submit with our ed25519 keypair
             var submitRequest = new SubmitRequest();
-            submitRequest.TxBlob = accountSetTransaction.Sign(keypair, out transactionHash);
+            submitRequest.TxBlob = accountSetTransaction.Sign(keyPair, out transactionHash);
             submitResponse = await Api.Submit(submitRequest);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);

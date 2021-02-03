@@ -133,8 +133,8 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestLedgerCurrentAndClosed()
         {
-            var current = await Api.LedgerCurrent();
             var closed = await Api.LedgerClosed();
+            var current = await Api.LedgerCurrent();
 
             Assert.True(current > closed.LedgerIndex, "current > closed");
             Assert.NotEqual(default, closed.LedgerHash);
@@ -198,25 +198,8 @@ namespace Ibasa.Ripple.Tests
                 Account = account,
             };
             var response = await Api.AccountInfo(request);
-            Assert.Equal(account, response.AccountData.Account);
-        }
-
-        [Fact]
-        public async Task TestAccountCurrencies()
-        {
-            var account = Setup.TestAccountOne.Address;
-            var request = new AccountCurrenciesRequest()
-            {
-                Ledger = LedgerSpecification.Current,
-                Account = account,
-            };
-            var response = await Api.AccountCurrencies(request);
             Assert.False(response.Validated);
-            // Not empty, we might of done the GBP test first
-            // Assert.Empty(response.SendCurrencies);
-            // Assert.Empty(response.ReceiveCurrencies);
-            Assert.Null(response.LedgerHash);
-            Assert.NotEqual(default, response.LedgerIndex);
+            Assert.Equal(account, response.AccountData.Account);
         }
 
         [Fact]
@@ -228,26 +211,6 @@ namespace Ibasa.Ripple.Tests
             Assert.Null(response.PubkeyValidator);
             Assert.NotEqual(TimeSpan.Zero, response.ServerStateDuration);
             Assert.NotEqual(TimeSpan.Zero, response.Uptime);
-        }
-
-        [Fact]
-        public async Task TestAccountLines()
-        {
-            // TODO: This isn't a very interesting test. We should get Submit TrustSet working and then use this to see the result.
-
-            var request = new AccountLinesRequest();
-            request.Account = Setup.TestAccountOne.Address;
-            var response = await Api.AccountLines(request);
-
-            Assert.Equal(request.Account, response.Account);
-            var lines = new List<TrustLine>();
-            await foreach(var line in response)
-            {
-                lines.Add(line);
-            }
-
-            // Not empty, we might of done the GBP test first
-            // Assert.Empty(lines);
         }
 
         [Fact]
@@ -439,6 +402,16 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(accountOne, trustLine.Account);
             Assert.Equal(new CurrencyCode("GBP"), trustLine.Currency);
             Assert.Equal(new Currency(100m), trustLine.Balance);
+
+            var request = new AccountCurrenciesRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = accountOne,
+            };
+            var currencies = await Api.AccountCurrencies(request);
+            Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.SendCurrencies));
+            Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.ReceiveCurrencies));
+
         }
     }
 }

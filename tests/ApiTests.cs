@@ -84,12 +84,25 @@ namespace Ibasa.Ripple.Tests
             }
         }
 
-        private Task<SubmitResponse> SubmitTransaction(Seed secret, Transaction transaction, out Hash256 transactionHash)
+        private async Task<Tuple<SubmitResponse, Hash256>> SubmitTransaction(Seed secret, Transaction transaction)
         {
-            var request = new SubmitRequest();
             secret.KeyPair(out var _, out var keyPair);
-            request.TxBlob = transaction.Sign(keyPair, out transactionHash);
-            return Api.Submit(request);
+            Hash256 transactionHash;
+            var request = new SubmitRequest();
+            while (true)
+            {
+                request.TxBlob = transaction.Sign(keyPair, out transactionHash);
+                var response = await Api.Submit(request);
+                if (response.EngineResult == EngineResult.tefPAST_SEQ)
+                {
+                    // Increment the sequence number and try again
+                    transaction.Sequence += 1;
+                }
+                else
+                {
+                    return Tuple.Create(response, transactionHash);
+                }
+            }
         }
 
         public ApiTests(ApiTestsSetup setup)
@@ -266,7 +279,7 @@ namespace Ibasa.Ripple.Tests
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
             await AutofillTransaction(transaction);
 
-            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
+            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
@@ -301,7 +314,7 @@ namespace Ibasa.Ripple.Tests
             transaction.RegularKey = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
             await AutofillTransaction(transaction);
 
-            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
+            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
@@ -358,7 +371,7 @@ namespace Ibasa.Ripple.Tests
             transaction.Amount = new Amount(100);
             await AutofillTransaction(transaction);
 
-            var submitResponse = await SubmitTransaction(secret, transaction, out var transactionHash);
+            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
 
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
@@ -394,24 +407,24 @@ namespace Ibasa.Ripple.Tests
             await AutofillTransaction(trustSet);
 
             // Submit and wait for the trust line
-            var submitResponse = await SubmitTransaction(secretTwo, trustSet, out var transactionHash);
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
-            var _ = await WaitForTransaction(transactionHash);
+            var (trustSubmitResponse, trustTransactionHash) = await SubmitTransaction(secretTwo, trustSet);
+            Assert.Equal(EngineResult.tesSUCCESS, trustSubmitResponse.EngineResult);
+            var _ = await WaitForTransaction(trustTransactionHash);
 
             // Send 100GBP
-            var transaction = new Payment();
-            transaction.Account = accountOne;
-            transaction.Destination = accountTwo;
-            transaction.DestinationTag = 1;
-            transaction.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
-            await AutofillTransaction(transaction);
+            var payment = new Payment();
+            payment.Account = accountOne;
+            payment.Destination = accountTwo;
+            payment.DestinationTag = 1;
+            payment.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
+            await AutofillTransaction(payment);
 
-            submitResponse = await SubmitTransaction(secretOne, transaction, out transactionHash);
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
+            var (paySubmitResponse, payTransactionHash) = await SubmitTransaction(secretOne, payment);
+            Assert.Equal(EngineResult.tesSUCCESS, paySubmitResponse.EngineResult);
 
-            var transactionResponse = await WaitForTransaction(transactionHash);
+            var transactionResponse = await WaitForTransaction(payTransactionHash);
             var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
-            Assert.Equal(transaction.Amount, pr.Amount);
+            Assert.Equal(payment.Amount, pr.Amount);
             
             // Check we have +100 GBP on our trust line
             var linesRequest = new AccountLinesRequest();

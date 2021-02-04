@@ -406,5 +406,28 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new TransactionResponse(response);
         }
+
+        public override async Task<NoRippleCheckResponse> NoRippleCheck(NoRippleCheckRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "noripple_check");
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                writer.WriteString("role", request.Role);
+                writer.WriteBoolean("transactions", request.Transactions);
+                if (request.Limit.HasValue) { writer.WriteNumber("limit", request.Limit.Value); }
+                writer.WriteEndObject();
+            }
+
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new NoRippleCheckResponse(response);
+        }
     }
 }

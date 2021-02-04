@@ -77,7 +77,7 @@ namespace Ibasa.Ripple.Tests
                 };
                 var transactionResponse = await Api.Tx(request);
                 Assert.Equal(transaction, transactionResponse.Hash);
-                if (transactionResponse.Validated) 
+                if (transactionResponse.Validated)
                 {
                     return transactionResponse;
                 }
@@ -181,7 +181,7 @@ namespace Ibasa.Ripple.Tests
             var response = await Api.Ledger(request);
 
             Assert.NotNull(response.Transactions);
-            foreach(var tx in response.Transactions)
+            foreach (var tx in response.Transactions)
             {
                 Assert.NotEqual(default, tx);
             }
@@ -388,7 +388,7 @@ namespace Ibasa.Ripple.Tests
             var transactionResponse = await WaitForTransaction(payTransactionHash);
             var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
             Assert.Equal(payment.Amount, pr.Amount);
-            
+
             // Check we have +100 GBP on our trust line
             var linesRequest = new AccountLinesRequest();
             linesRequest.Account = accountTwo;
@@ -411,7 +411,99 @@ namespace Ibasa.Ripple.Tests
             var currencies = await Api.AccountCurrencies(request);
             Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.SendCurrencies));
             Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.ReceiveCurrencies));
+        }
 
+        [Fact]
+        public async Task TestNoRipple()
+        {
+            // We need a fresh account setup for this test
+            var testAccount = TestAccount.Create();
+
+            // All tests will be against this new account,
+            // also all but the last will have Transactions set true.
+            var request = new NoRippleCheckRequest();
+            request.Account = testAccount.Address;
+            request.Transactions = true;
+
+            // No trust lines yet, check that the user has no problems
+            {
+                request.Role = "user";
+                var response = await Api.NoRippleCheck(request);
+                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.Empty(response.Problems);
+                Assert.Empty(response.Transactions);
+            }
+
+            // No trust lines yet, check that the gateway has one problem to set the default ripple flag
+            {
+                request.Role = "gateway";
+                var response = await Api.NoRippleCheck(request);
+                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.Equal("You should immediately set your default ripple flag", Assert.Single(response.Problems));
+                var transaction = Assert.Single(response.Transactions);
+                transaction.Account = testAccount.Address;
+                var accountSet = Assert.IsType<AccountSet>(transaction);
+                Assert.Equal(AccountSetFlags.DefaultRipple, accountSet.SetFlag);
+            }
+
+            // Make a GBP trust line to account 1
+            {
+                var trustSet = new TrustSet();
+                trustSet.Account = testAccount.Address;
+                trustSet.LimitAmount = new IssuedAmount(Setup.TestAccountOne.Address, new CurrencyCode("GBP"), new Currency(1000m));
+                await AutofillTransaction(trustSet);
+
+                // Submit and wait for the trust line
+                var (trustSubmitResponse, trustTransactionHash) = await SubmitTransaction(testAccount.Secret, trustSet);
+                Assert.Equal(EngineResult.tesSUCCESS, trustSubmitResponse.EngineResult);
+                var _ = await WaitForTransaction(trustTransactionHash);
+            }
+
+            // Trust lines setup, check that the user has one problem
+            {
+                request.Role = "user";
+                var response = await Api.NoRippleCheck(request);
+                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                var expected = "You should probably set the no ripple flag on your GBP line to " + Setup.TestAccountOne.Address.ToString();
+                Assert.Equal(expected, Assert.Single(response.Problems));
+                var transaction = Assert.Single(response.Transactions);
+                transaction.Account = testAccount.Address;
+                var trustSet = Assert.IsType<TrustSet>(transaction);
+                Assert.Equal(Setup.TestAccountOne.Address, trustSet.LimitAmount.Issuer);
+                Assert.Equal(new CurrencyCode("GBP"), trustSet.LimitAmount.CurrencyCode);
+                Assert.Equal(new Currency(1000m), trustSet.LimitAmount.Value);
+                Assert.Equal(TrustFlags.SetNoRipple, trustSet.Flags);
+            }
+
+            // Trust lines setup, check that the gateway has one problem to set the default ripple flag
+            {
+                // This is the last request we make that COULD return transactions so check that if this is set false we don't see any
+                request.Transactions = false;
+                request.Role = "gateway";
+                var response = await Api.NoRippleCheck(request);
+                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.Equal("You should immediately set your default ripple flag", Assert.Single(response.Problems));
+                // Empty because request.Transactions = false
+                Assert.Empty(response.Transactions);
+            }
+
+            // Set the no ripple flag and make sure gateway now returns no issues
+            {
+                var accountSet = new AccountSet();
+                accountSet.Account = testAccount.Address;
+                accountSet.SetFlag = AccountSetFlags.DefaultRipple;
+                await AutofillTransaction(accountSet);
+
+                // Submit and wait for the trust line
+                var (accountSubmitResponse, accountTransactionHash) = await SubmitTransaction(testAccount.Secret, accountSet);
+                Assert.Equal(EngineResult.tesSUCCESS, accountSubmitResponse.EngineResult);
+                var _ = await WaitForTransaction(accountTransactionHash);
+
+                var response = await Api.NoRippleCheck(request);
+                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.Empty(response.Problems);
+                Assert.Empty(response.Transactions);
+            }
         }
     }
 }

@@ -534,6 +534,14 @@ namespace Ibasa.Ripple
         {
             return new Amount(value.Issuer, value.CurrencyCode, value.Value);
         }
+
+        internal static IssuedAmount ReadJson(JsonElement json)
+        {
+            return new IssuedAmount(
+                new AccountId(json.GetProperty("issuer").GetString()),
+                new CurrencyCode(json.GetProperty("currency").GetString()),
+                Currency.Parse(json.GetProperty("value").GetString()));
+        }
     }
 
     public sealed class AccountRoot
@@ -1562,520 +1570,6 @@ namespace Ibasa.Ripple
         }
     }
 
-    public struct StWriter
-    {
-        readonly System.Buffers.IBufferWriter<byte> bufferWriter;
-
-        public StWriter(System.Buffers.IBufferWriter<byte> bufferWriter)
-        {
-            this.bufferWriter = bufferWriter;
-        }
-
-        void WriteFieldId(StTypeCode typeCode, uint fieldCode)
-        {
-            var iTypeCode = (uint)typeCode;
-            if (iTypeCode < 16 && fieldCode < 16)
-            {
-                var span = bufferWriter.GetSpan(1);
-                span[0] = (byte)(iTypeCode << 4 | fieldCode);
-                bufferWriter.Advance(1);
-            }
-            else if (iTypeCode < 16 && fieldCode >= 16)
-            {
-                var span = bufferWriter.GetSpan(2);
-                span[0] = (byte)(iTypeCode << 4);
-                span[1] = (byte)fieldCode;
-                bufferWriter.Advance(2);
-            }
-            else if (iTypeCode >= 16 && fieldCode < 16)
-            {
-                var span = bufferWriter.GetSpan(2);
-                span[0] = (byte)fieldCode;
-                span[1] = (byte)typeCode;
-                bufferWriter.Advance(2);
-            }
-            else // typeCode >= 16 && fieldCode >= 16
-            {
-                var span = bufferWriter.GetSpan(3);
-                span[0] = 0;
-                span[1] = (byte)typeCode;
-                span[2] = (byte)fieldCode;
-                bufferWriter.Advance(3);
-            }
-        }
-
-        void WriteLengthPrefix(int length)
-        {
-            if (length <= 192)
-            {
-                var span = bufferWriter.GetSpan(1);
-                span[0] = (byte)(length);
-                bufferWriter.Advance(1);
-            }
-            else if (length <= 12480)
-            {
-                var target = length - 193;
-                var byte1 = target / 256;
-                var byte2 = target - (byte1 * 256);
-
-                // 193 + ((byte1 - 193) * 256) + byte2
-                var span = bufferWriter.GetSpan(2);
-                span[0] = (byte)(byte1 - 193);
-                span[1] = (byte)byte2;
-                bufferWriter.Advance(2);
-            }
-            else
-            {
-                var target = length - 12481;
-                var byte1 = target / 65536;
-                var byte2 = (target - (byte1 * 65536)) / 256;
-                var byte3 = target - (byte1 * 65536) - (byte2 * 256);
-
-                //12481 + ((byte1 - 241) * 65536) + (byte2 * 256) + byte3
-                var span = bufferWriter.GetSpan(3);
-                span[0] = (byte)(byte1 - 241);
-                span[1] = (byte)byte2;
-                span[3] = (byte)byte3;
-                bufferWriter.Advance(3);
-            }
-        }
-
-        public void WriteUInt16(uint fieldCode, ushort value)
-        {
-            WriteFieldId(StTypeCode.UInt16, fieldCode);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), value);
-            bufferWriter.Advance(2);
-        }
-
-        public void WriteUInt32(uint fieldCode, uint value)
-        {
-            WriteFieldId(StTypeCode.UInt32, fieldCode);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), value);
-            bufferWriter.Advance(4);
-        }
-
-        public void WriteAmount(uint fieldCode, XrpAmount value)
-        {
-            WriteFieldId(StTypeCode.Amount, fieldCode);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
-            bufferWriter.Advance(8);
-        }
-
-        public void WriteAmount(uint fieldCode, Amount value)
-        {
-            WriteFieldId(StTypeCode.Amount, fieldCode);
-            var xrp = value.XrpAmount;
-            var issued = value.IssuedAmount;
-            if (xrp.HasValue)
-            {
-                var amount = xrp.Value;
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), amount.Drops | 0x4000000000000000);
-                bufferWriter.Advance(8);
-            }
-            else
-            {
-                var amount = issued.Value;
-                var span = bufferWriter.GetSpan(48);
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), Currency.ToUInt64Bits(amount.Value));
-                amount.CurrencyCode.CopyTo(span.Slice(8));
-                amount.Issuer.CopyTo(span.Slice(28));
-                bufferWriter.Advance(48);
-            }
-        }
-
-        public void WriteVl(uint fieldCode, byte[] value)
-        {
-            WriteFieldId(StTypeCode.Vl, fieldCode);
-            WriteLengthPrefix(value.Length);
-            value.CopyTo(bufferWriter.GetSpan(value.Length));
-            bufferWriter.Advance(value.Length);
-        }
-
-        public void WriteAccount(uint fieldCode, AccountId value)
-        {
-            WriteFieldId(StTypeCode.Account, fieldCode);
-            WriteLengthPrefix(20);
-            value.CopyTo(bufferWriter.GetSpan(20));
-            bufferWriter.Advance(20);
-        }
-
-        public void WriteHash256(uint fieldCode, Hash256 value)
-        {
-            WriteFieldId(StTypeCode.Hash256, fieldCode);
-            value.CopyTo(bufferWriter.GetSpan(32));
-            bufferWriter.Advance(32);
-        }
-    }
-
-    public enum StTypeCode
-    {
-        // special types
-        Unknown = -2,
-        Done = -1,
-        NotPresent = 0,
-
-        // // types (common)
-        UInt16 = 1,
-        UInt32 = 2,
-        UInt64 = 3,
-        Hash128 = 4,
-        Hash256 = 5,
-        Amount = 6,
-        Vl = 7,
-        Account = 8,
-        // 9-13 are reserved
-        Object = 14,
-        Array = 15,
-
-        // types (uncommon)
-        UInt8 = 16,
-        Hash160 = 17,
-        Pathset = 18,
-        Vector256 = 19,
-
-        // high level types
-        // cannot be serialized inside other types
-        Transaction = 10001,
-        Ledgerentry = 10002,
-        Validation = 10003,
-        Metadata = 10004,
-    }
-
-
-    public ref struct StReader
-    {
-        readonly ReadOnlySpan<byte> data;
-        public int ConsumedBytes { get; private set; }
-
-        public StReader(ReadOnlySpan<byte> stData)
-        {
-            this.data = stData;
-            this.ConsumedBytes = 0;
-        }
-
-        public bool TryReadFieldId(out StTypeCode typeCode, out uint fieldCode)
-        {
-            if (data.Length <= ConsumedBytes)
-            {
-                typeCode = StTypeCode.NotPresent;
-                fieldCode = 0;
-                return false;
-            }
-
-            var byte1 = data[ConsumedBytes];
-            if(byte1 == 0)
-            {
-                if(data.Length <= ConsumedBytes + 2)
-                {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
-                    return false;
-                }
-
-                typeCode = (StTypeCode)data[ConsumedBytes + 1];
-                fieldCode = data[ConsumedBytes + 2];
-                ConsumedBytes += 3;
-                return true;
-            }
-            else if (byte1 < 16)
-            {
-                if (data.Length <= ConsumedBytes + 1)
-                {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
-                    return false;
-                }
-
-                fieldCode = byte1;
-                typeCode = (StTypeCode)data[ConsumedBytes + 1];
-                ConsumedBytes += 2;
-                return true;
-            }
-            else if (byte1 < 241)
-            {
-                if (data.Length <= ConsumedBytes + 1)
-                {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
-                    return false;
-                }
-
-                typeCode = (StTypeCode)byte1;
-                fieldCode = data[ConsumedBytes + 1];
-                ConsumedBytes += 2;
-                return true;
-            }
-            else
-            {
-                typeCode = (StTypeCode)(byte1 >> 4);
-                fieldCode = (uint)byte1 & 0xFF;
-                ConsumedBytes += 1;
-                return true;
-            }
-        }
-
-        bool TryReadLengthPrefix(out int length)
-        {
-            if (data.Length <= ConsumedBytes)
-            {
-                length = 0;
-                return false;
-            }
-
-            var byte1 = data[ConsumedBytes];
-            if(byte1 <= 192)
-            {
-                ConsumedBytes += 1;
-                length = byte1;
-                return true;
-            } 
-            else if(byte1 <= 241)
-            {
-                if (data.Length <= ConsumedBytes + 1)
-                {
-                    length = 0;
-                    return false;
-                }
-
-                var byte2 = data[ConsumedBytes + 1];
-                ConsumedBytes += 2;
-                length = 192 + ((byte1 - 193) * 256) + byte2;
-                return true;
-            }
-            else
-            {
-                if (data.Length <= ConsumedBytes + 2)
-                {
-                    length = 0;
-                    return false;
-                }
-
-                var byte2 = data[ConsumedBytes + 1];
-                var byte3 = data[ConsumedBytes + 3];
-                ConsumedBytes += 3;
-                length = 12481 + ((byte1 - 241) * 65536) + (byte2 * 256) + byte3;
-                return true;
-            }
-        }
-
-        public bool TryReadUInt8(out byte value)
-        {
-            if (data.Length < ConsumedBytes + 1)
-            {
-                value = 0;
-                return false;
-            }
-
-            value = data[ConsumedBytes];
-            ConsumedBytes += 1;
-            return true;
-        }
-
-        public byte ReadUInt8()
-        {
-            if (!TryReadUInt8(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadUInt16(out ushort value)
-        {
-            if (data.Length < ConsumedBytes + 2)
-            {
-                value = 0;
-                return false;
-            }
-
-            value = System.Buffers.Binary.BinaryPrimitives.ReadUInt16BigEndian(data.Slice(ConsumedBytes, 2));
-            ConsumedBytes += 2;
-            return true;
-        }
-
-        public ushort ReadUInt16()
-        {
-            if(!TryReadUInt16(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadUInt32(out uint value)
-        {
-            if (data.Length < ConsumedBytes + 4)
-            {
-                value = 0;
-                return false;
-            }
-
-            value = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(data.Slice(ConsumedBytes, 4));
-            ConsumedBytes += 4;
-            return true;
-        }
-
-        public uint ReadUInt32()
-        {
-            if (!TryReadUInt32(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadUInt64(out ulong value)
-        {
-            if (data.Length < ConsumedBytes + 8)
-            {
-                value = 0;
-                return false;
-            }
-
-            value = System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(data.Slice(ConsumedBytes, 8));
-            ConsumedBytes += 8;
-            return true;
-        }
-
-        public ulong ReadUInt64()
-        {
-            if (!TryReadUInt64(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadAmount(out Amount value)
-        {
-            if (data.Length < ConsumedBytes + 8)
-            {
-                value = default;
-                return false;
-            }
-
-            var amount = System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(data.Slice(ConsumedBytes, 8));
-            if ((amount & 0x8000000000000000) == 0)
-            {
-                // XRP
-                value = new Amount(amount & ~0x4000000000000000u);
-                ConsumedBytes += 8;
-                return true;
-            }
-            else
-            {
-                if (data.Length < ConsumedBytes + 48)
-                {
-                    value = default;
-                    return false;
-                }
-
-                var currency = Currency.FromUInt64Bits(amount);
-                var code = new CurrencyCode(data.Slice(ConsumedBytes + 8, 20));
-                var issuer = new AccountId(data.Slice(ConsumedBytes + 28, 20));
-                value = new Amount(issuer, code, currency);
-                ConsumedBytes += 48;
-                return true;
-            }
-        }
-
-        public Amount ReadAmount()
-        {
-            if (!TryReadAmount(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadVl(out byte[] value)
-        {
-            if(!TryReadLengthPrefix(out var length))
-            {
-                value = default;
-                return false;
-            }
-
-            if (data.Length < ConsumedBytes + length)
-            {
-                value = default;
-                return false;
-            }
-
-            value = data.Slice(ConsumedBytes, length).ToArray();
-            ConsumedBytes += length;
-            return true;
-        }
-
-        public byte[] ReadVl()
-        {
-            if (!TryReadVl(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadAccount(out AccountId value)
-        {
-            var currentOffset = ConsumedBytes;
-            if(!TryReadLengthPrefix(out var length))
-            {
-                value = default;
-                return false;
-            }
-
-            if(length != 20)
-            {
-                ConsumedBytes = currentOffset;
-                value = default;
-                return false;
-            }
-
-            if (data.Length < ConsumedBytes + 20)
-            {
-                value = default;
-                return false;
-            }
-
-
-            value = new AccountId(data.Slice(ConsumedBytes, 20));
-            ConsumedBytes += 20;
-            return true;
-        }
-
-        public AccountId ReadAccount()
-        {
-            if (!TryReadAccount(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-
-        public bool TryReadHash256(out Hash256 value)
-        {
-            if (data.Length < ConsumedBytes + 32)
-            {
-                value = default;
-                return false;
-            }
-
-            value = new Hash256(data.Slice(ConsumedBytes, 32));
-            ConsumedBytes += 32;
-            return true;
-        }
-
-        public Hash256 ReadHash256()
-        {
-            if (!TryReadHash256(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
-        }
-    }
-
     public abstract class Transaction
     {
         /// <summary>
@@ -2122,13 +1616,29 @@ namespace Ibasa.Ripple
 
         }
 
-        internal Transaction(JsonElement json)
+        public virtual void ReadJson(JsonElement json)
         {
             Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = new XrpAmount(ulong.Parse(json.GetProperty("Fee").GetString()));
+
+            var fee = json.GetProperty("Fee");
+            if (fee.ValueKind == JsonValueKind.Number)
+            {
+                Fee = new XrpAmount(fee.GetUInt64());
+            } 
+            else 
+            {
+                Fee = new XrpAmount(ulong.Parse(fee.GetString()));
+            }
+            JsonElement element;
             Sequence = json.GetProperty("Sequence").GetUInt32();
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            TxnSignature = json.GetProperty("TxnSignature").GetBytesFromBase16();
+            if (json.TryGetProperty("SigningPubKey", out element))
+            {
+                SigningPubKey = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("TxnSignature", out element))
+            {
+                TxnSignature = element.GetBytesFromBase16();
+            }
         }
 
         public ReadOnlyMemory<byte> Serialize(bool forSigning)
@@ -2168,27 +1678,33 @@ namespace Ibasa.Ripple
             return bufferWriter.WrittenMemory.Slice(4).ToArray();
         }
 
-        internal static Transaction ReadJson(JsonElement json)
+        internal static Transaction FromJson(JsonElement json)
         {
             var transactionType = json.GetProperty("TransactionType").GetString();
+            Transaction transaction;
             if (transactionType == "AccountSet")
             {
-                return new AccountSet(json);
+                transaction = new AccountSet();
             }
             else if (transactionType == "Payment")
             {
-                return new Payment(json);
+                transaction = new Payment();
             }
             else if (transactionType == "TrustSet")
             {
-                return new TrustSet(json);
+                transaction = new TrustSet();
             }
             else if (transactionType == "SetRegularKey")
             {
-                return new SetRegularKey(json);
+                transaction = new SetRegularKey();
+            }
+            else
+            {
+                throw new NotImplementedException();
             }
 
-            throw new NotImplementedException();
+            transaction.ReadJson(json);
+            return transaction;
         }
     }
 
@@ -2211,11 +1727,10 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal SetRegularKey(JsonElement json) : base(json)
+        public override void ReadJson(JsonElement json) 
         {
-            JsonElement element;
-            
-            if (json.TryGetProperty("RegularKey", out element))
+            base.ReadJson(json);
+            if (json.TryGetProperty("RegularKey", out var element))
             {
                 RegularKey = new AccountId(element.GetString());
             }
@@ -2237,6 +1752,55 @@ namespace Ibasa.Ripple
         }
     }
 
+    [Flags]
+    public enum AccountSetFlags : uint
+    {
+        /// <summary>
+        /// Require a destination tag to send transactions to this account.
+        /// </summary>
+        RequireDest = 1,
+
+        /// <summary>
+        /// Require authorization for users to hold balances issued by this address. Can only be enabled if the address has no trust lines connected to it.
+        /// </summary>
+        RequireAuth = 2,
+
+        /// <summary>
+        /// XRP should not be sent to this account. (Enforced by client applications, not by rippled)
+        /// </summary>
+        DisallowXRP = 3,
+
+        /// <summary>
+        /// Disallow use of the master key pair. Can only be enabled if the account has configured another way to sign transactions, such as a Regular Key or a Signer List.
+        /// </summary>
+        DisableMaster = 4,
+
+        /// <summary>
+        /// Track the ID of this account's most recent transaction. Required for AccountTxnID
+        /// </summary>
+        AccountTxnID = 5,
+
+        /// <summary>
+        /// Permanently give up the ability to freeze individual trust lines or disable Global Freeze. This flag can never be disabled after being enabled.
+        /// </summary>
+        NoFreeze = 6,
+
+        /// <summary>
+        /// Freeze all assets issued by this account.
+        /// </summary>
+        GlobalFreeze = 7,
+
+        /// <summary>
+        /// Enable rippling on this account's trust lines by default. New in: rippled 0.27.3
+        /// </summary>
+        DefaultRipple = 8,
+
+        /// <summary>
+        /// Enable Deposit Authorization on this account. (Added by the DepositAuth amendment.)
+        /// </summary>
+        DepositAuth = 9,
+    }
+
     public sealed class AccountSet : Transaction
     {
         /// <summary>
@@ -2244,10 +1808,18 @@ namespace Ibasa.Ripple
         /// </summary>
         public byte[] Domain { get; set; }
 
-        //ClearFlag Number  UInt32(Optional) Unique identifier of a flag to disable for this account.
+        /// <summary>
+        /// (Optional) Unique identifier of a flag to disable for this account.
+        /// </summary>
+        public AccountSetFlags? ClearFlag { get; set; }
+
+        /// <summary>
+        /// (Optional) Integer flag to enable for this account.
+        /// </summary>
+        public AccountSetFlags? SetFlag { get; set; }
+
         //EmailHash String  Hash128(Optional) Hash of an email address to be used for generating an avatar image.Conventionally, clients use Gravatar to display this image.
         //MessageKey String  Blob    (Optional) Public key for sending encrypted messages to this account.
-        //SetFlag Number  UInt32  (Optional) Integer flag to enable for this account.
         //TransferRate Unsigned Integer UInt32  (Optional) The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee.
         //TickSize Unsigned Integer UInt8   (Optional) Tick size to use for offers involving a currency issued by this address.The exchange rates of those offers is rounded to this many significant digits.Valid values are 3 to 15 inclusive, or 0 to disable. (Requires the TickSize amendment.)
         
@@ -2256,13 +1828,24 @@ namespace Ibasa.Ripple
 
         }
 
-        internal AccountSet(JsonElement json) : base(json)
+        public override void ReadJson(JsonElement json)
         {
-            JsonElement element;
+            base.ReadJson(json);
 
+            JsonElement element;
             if (json.TryGetProperty("Domain", out element))
             {
                 Domain = element.GetBytesFromBase16();
+            }
+
+            if (json.TryGetProperty("ClearFlag", out element))
+            {
+                ClearFlag = (AccountSetFlags)element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("SetFlag", out element))
+            {
+                SetFlag = (AccountSetFlags)element.GetUInt32();
             }
         }
 
@@ -2271,6 +1854,14 @@ namespace Ibasa.Ripple
             var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 3);
             writer.WriteUInt32(4, Sequence);
+            if (SetFlag.HasValue)
+            {
+                writer.WriteUInt32(33, (uint)SetFlag.Value);
+            }
+            if (ClearFlag.HasValue)
+            {
+                writer.WriteUInt32(34, (uint)ClearFlag.Value);
+            }
             writer.WriteAmount(8, Fee);
             writer.WriteVl(3, this.SigningPubKey);
             if (!forSigning)
@@ -2322,11 +1913,11 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal Payment(JsonElement json) : base(json)
+        public override void ReadJson(JsonElement json)
         {
-            JsonElement element;
+            base.ReadJson(json);
 
-            if (json.TryGetProperty("Amount", out element))
+            if (json.TryGetProperty("Amount", out var element))
             {
                 Amount = new Amount(element);
             }
@@ -2353,6 +1944,36 @@ namespace Ibasa.Ripple
         }
     }
 
+    /// <summary>
+    /// Transactions of the TrustSet type support additional values in the Flags field, as follows:
+    /// </summary>
+    [Flags]
+    public enum TrustFlags : uint
+    {
+        /// <summary>
+        /// Authorize the other party to hold currency issued by this account.
+        /// (No effect unless using the asfRequireAuth AccountSet flag.)
+        /// Cannot be unset.
+        /// </summary>
+        SetfAuth = 0x00010000,
+        /// <summary>
+        /// Enable the No Ripple flag, which blocks rippling between two trust lines of the same currency if this flag is enabled on both.
+        /// </summary>
+        SetNoRipple = 0x00020000,
+        /// <summary>
+        /// Disable the No Ripple flag, allowing rippling on this trust line.)
+        /// </summary>
+        ClearNoRipple = 0x00040000,
+        /// <summary>
+        /// Freeze the trust line.
+        /// </summary>
+        SetFreeze = 0x00100000,
+        /// <summary>
+        /// Unfreeze the trust line.
+        /// </summary>
+        ClearFreeze = 0x00200000,
+    }
+
     public sealed class TrustSet : Transaction
     {
         /// <summary>
@@ -2372,18 +1993,46 @@ namespace Ibasa.Ripple
         /// </summary>
         public UInt32? QualityOut { get; set; }
 
+        /// <summary>
+        /// (Optional) Set of bit-flags for this transaction.
+        /// </summary>
+        public TrustFlags Flags { get; set; }
+
         public TrustSet()
         {
         }
 
-        internal TrustSet(JsonElement json) : base(json)
+        public override void ReadJson(JsonElement json)
         {
+            base.ReadJson(json);
+            JsonElement element;
+
+            if (json.TryGetProperty("Flags", out element))
+            {
+                Flags = (TrustFlags)element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("QualityIn", out element))
+            {
+                QualityIn = element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("QualityOut", out element))
+            {
+                QualityOut = element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("LimitAmount", out element))
+            {
+                LimitAmount = IssuedAmount.ReadJson(element);
+            }
         }
 
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 20);
+            writer.WriteUInt32(2, (uint)Flags);
             writer.WriteUInt32(4, Sequence);
             if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
             if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
@@ -2427,7 +2076,7 @@ namespace Ibasa.Ripple
             {
                 LedgerIndex = element.GetUInt32();
             }
-            Transaction = Transaction.ReadJson(json);
+            Transaction = Transaction.FromJson(json);
         }
     }
 
@@ -2462,5 +2111,82 @@ namespace Ibasa.Ripple
         /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
         /// </summary>
         public LedgerSpecification Ledger { get; set; }
+    }
+
+
+    public sealed class NoRippleCheckRequest
+    {
+        /// <summary>
+        /// A unique identifier for the account, most commonly the account's address.
+        /// </summary>
+        public AccountId Account { get; set; }
+
+        /// <summary>
+        /// Whether the address refers to a gateway or user.
+        /// Recommendations depend on the role of the account. Issuers must have Default Ripple enabled and must disable No Ripple on all trust lines. Users should have Default Ripple disabled, and should enable No Ripple on all trust lines.
+        /// </summary>
+        public string Role { get; set; }
+
+        /// <summary>
+        /// If true, include an array of suggested transactions, as JSON objects, that you can sign and submit to fix the problems. Defaults to false.
+        /// </summary>
+        public bool Transactions { get; set; }
+
+        /// <summary>
+        /// (Optional) The maximum number of trust line problems to include in the results. Defaults to 300.
+        /// </summary>
+        public uint? Limit { get; set; }
+
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+    }
+
+    public sealed class NoRippleCheckResponse
+    {
+        /// <summary>
+        /// The ledger index of the ledger used to calculate these results.
+        /// </summary>
+        public uint LedgerCurrentIndex { get; private set; }
+
+        /// <summary>
+        /// Array of strings with human-readable descriptions of the problems. This includes up to one entry if the account's Default Ripple setting is not as recommended, plus up to limit entries for trust lines whose No Ripple setting is not as recommended.
+        /// </summary>
+        public ReadOnlyCollection<string> Problems { get; set; }
+
+        /// <summary>
+        /// (May be omitted) If the request specified transactions as true, this is an array of JSON objects, each of which is the JSON form of a transaction that should fix one of the described problems.The length of this array is the same as the problems array, and each entry is intended to fix the problem described at the same index into that array.
+        /// </summary>
+        public ReadOnlyCollection<Transaction> Transactions { get; set; }
+
+        internal NoRippleCheckResponse(JsonElement json)
+        {
+            LedgerCurrentIndex = json.GetProperty("ledger_current_index").GetUInt32();
+
+            var json_array = json.GetProperty("problems");
+            var index = 0;
+            var problems = new string[json_array.GetArrayLength()];
+            foreach (var problem in json_array.EnumerateArray())
+            {
+                problems[index++] = problem.GetString();
+            }
+            Problems = Array.AsReadOnly(problems);
+
+            if (json.TryGetProperty("transactions", out json_array))
+            {
+                index = 0;
+                var transactions = new Transaction[json_array.GetArrayLength()];
+                foreach (var transaction in json_array.EnumerateArray())
+                {
+                    transactions[index++] = Transaction.FromJson(transaction);
+                }
+                Transactions = Array.AsReadOnly(transactions);
+            }
+            else
+            {
+                Transactions = Array.AsReadOnly(Array.Empty<Transaction>());
+            }
+        }
     }
 }

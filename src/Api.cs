@@ -121,5 +121,10 @@ namespace Ibasa.Ripple
         /// (The tx method, by contrast, searches all ledgers for the specified transaction. We recommend using that method instead.)
         /// </summary>
         public abstract Task<TransactionResponse> TransactionEntry(TransactionEntryRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// The noripple_check command provides a quick way to check the status of the Default Ripple field for an account and the No Ripple flag of its trust lines, compared with the recommended settings.
+        /// </summary>
+        public abstract Task<NoRippleCheckResponse> NoRippleCheck(NoRippleCheckRequest request, CancellationToken cancellationToken = default);
     }
 }

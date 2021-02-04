@@ -343,7 +343,7 @@ namespace Ibasa.Ripple
         /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
         public static bool operator !=(Currency c1, Currency c2)
         {
-            return c1.Equals(c2);
+            return !c1.Equals(c2);
         }
     }
 }

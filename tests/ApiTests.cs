@@ -243,7 +243,6 @@ namespace Ibasa.Ripple.Tests
             await AutofillTransaction(transaction);
 
             var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
@@ -278,7 +277,6 @@ namespace Ibasa.Ripple.Tests
             await AutofillTransaction(transaction);
 
             var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);
@@ -335,7 +333,6 @@ namespace Ibasa.Ripple.Tests
             await AutofillTransaction(transaction);
 
             var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-
             Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
 
             var transactionResponse = await WaitForTransaction(transactionHash);

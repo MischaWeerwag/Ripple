@@ -42,6 +42,28 @@ namespace Ibasa.Ripple
         {
             return a == other.a && b == other.b;
         }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Hash128 values are equal.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are equal; otherwise, false.</returns>
+        public static bool operator ==(Hash128 c1, Hash128 c2)
+        {
+            return c1.Equals(c2);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Hash128 objects have different values.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
+        public static bool operator !=(Hash128 c1, Hash128 c2)
+        {
+            return !c1.Equals(c2);
+        }
     }
 
     public struct Hash256 : IEquatable<Hash256>
@@ -97,6 +119,28 @@ namespace Ibasa.Ripple
         public bool Equals(Hash256 other)
         {
             return a == other.a && b == other.b && c == other.c && d == other.d;
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Hash256 values are equal.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are equal; otherwise, false.</returns>
+        public static bool operator ==(Hash256 c1, Hash256 c2)
+        {
+            return c1.Equals(c2);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two Hash256 objects have different values.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
+        public static bool operator !=(Hash256 c1, Hash256 c2)
+        {
+            return !c1.Equals(c2);
         }
     }
 }

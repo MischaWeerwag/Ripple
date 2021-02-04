@@ -41,11 +41,19 @@ namespace Ibasa.Ripple
             using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
                 var done = sha256.TryComputeHash(publicKey, shaHash, out var bytesWritten);
+                if(!done)
+                {
+                    throw new Exception("Unexpected failure of SHA256");
+                }
             }
             var ripe = new Org.BouncyCastle.Crypto.Digests.RipeMD160Digest();
             ripe.BlockUpdate(shaHash, 0, 32);
             var ripeHash = new byte[20];
-            var ok = ripe.DoFinal(ripeHash, 0);
+            var count = ripe.DoFinal(ripeHash, 0);
+            if (count != 20)
+            {
+                throw new Exception("Unexpected failure of RipeMD160");
+            }
             return new AccountId(ripeHash);
         }
 
@@ -54,7 +62,6 @@ namespace Ibasa.Ripple
             Span<byte> content = stackalloc byte[21];
             content[0] = 0x0;
             UnsafeAsSpan(ref this).CopyTo(content.Slice(1));
-
             return Base58Check.ConvertTo(content);
         }
 
@@ -94,6 +101,28 @@ namespace Ibasa.Ripple
                 return Equals((AccountId)other);
             }
             return false;
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two AccountId values are equal.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are equal; otherwise, false.</returns>
+        public static bool operator ==(AccountId c1, AccountId c2)
+        {
+            return c1.Equals(c2);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two AccountId objects have different values.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
+        public static bool operator !=(AccountId c1, AccountId c2)
+        {
+            return !c1.Equals(c2);
         }
     }
 
@@ -415,6 +444,28 @@ namespace Ibasa.Ripple
             }
             return false;
         }
+
+        /// <summary>
+        /// Returns a value that indicates whether two CurrencyCode values are equal.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are equal; otherwise, false.</returns>
+        public static bool operator ==(CurrencyCode c1, CurrencyCode c2)
+        {
+            return c1.Equals(c2);
+        }
+
+        /// <summary>
+        /// Returns a value that indicates whether two CuCurrencyCoderrency objects have different values.
+        /// </summary>
+        /// <param name="c1">The first value to compare.</param>
+        /// <param name="c2">The second value to compare.</param>
+        /// <returns>true if c1 and c2 are not equal; otherwise, false.</returns>
+        public static bool operator !=(CurrencyCode c1, CurrencyCode c2)
+        {
+            return !c1.Equals(c2);
+        }
     }
 
     /// <summary>
@@ -458,8 +509,9 @@ namespace Ibasa.Ripple
                 throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than or equal to 100,000,000,000,000,000");
             }
             this.value = drops | 0x4000_0000_0000_0000;
-            this.currencyCode = CurrencyCode.XRP;
-            this.issuer = new AccountId();
+            // These fields are only used for IssuedAmount but struct constructor has to set all fields.
+            this.currencyCode = default;
+            this.issuer = default;
         }
 
         internal Amount(JsonElement element)
@@ -468,8 +520,9 @@ namespace Ibasa.Ripple
             {
                 // Just plain xrp
                 this.value = UInt64.Parse(element.GetString()) | 0x4000_0000_0000_0000;
-                this.currencyCode = CurrencyCode.XRP;
-                this.issuer = new AccountId();
+                // These fields are only used for IssuedAmount but struct constructor has to set all fields.
+                this.currencyCode = default;
+                this.issuer = default;
             }
             else
             {
@@ -481,9 +534,34 @@ namespace Ibasa.Ripple
 
         public Amount(AccountId issuer, CurrencyCode currencyCode, Currency value)
         {
+            if (currencyCode == CurrencyCode.XRP)
+            {
+                throw new ArgumentOutOfRangeException("currencyCode", currencyCode, "currencyCode can not be XRP");
+            }
             this.value = Currency.ToUInt64Bits(value);
             this.currencyCode = currencyCode;
             this.issuer = issuer;
+        }
+
+        public override string ToString()
+        {
+            var xrp = XrpAmount;
+            if (xrp.HasValue)
+            {
+                return xrp.Value.ToString();
+            }
+            else
+            {
+                var issued = IssuedAmount;
+                if (issued.HasValue)
+                {
+                    return issued.Value.ToString();
+                }
+                else
+                {
+                    throw new Exception("Unreachable");
+                }
+            }
         }
     }
 
@@ -511,6 +589,11 @@ namespace Ibasa.Ripple
         public static XrpAmount Parse(string s)
         {
             return new XrpAmount(ulong.Parse(s));
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0} XRP", (decimal)Drops / 1000000);
         }
     }
 
@@ -541,6 +624,11 @@ namespace Ibasa.Ripple
                 new AccountId(json.GetProperty("issuer").GetString()),
                 new CurrencyCode(json.GetProperty("currency").GetString()),
                 Currency.Parse(json.GetProperty("value").GetString()));
+        }
+
+        public override string ToString()
+        {
+            return string.Format("{0} {1}({2})", Value, CurrencyCode, Issuer);
         }
     }
 

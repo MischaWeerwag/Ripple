@@ -400,5 +400,33 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
             return new NoRippleCheckResponse(response);
         }
+
+        public override async Task<WalletProposeResponse> WalletPropose(WalletProposeRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "wallet_propose");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                if (request.KeyType.HasValue)
+                {
+                    var type = request.KeyType.Value == SeedType.Secp256k1 ? "secp256k1" : "ed25519";
+                    writer.WriteString("key_type", type);
+                }
+                if (request.Passphrase != null) { writer.WriteString("passphrase", request.Passphrase); }
+                if (request.Seed != null) { writer.WriteString("seed", request.Seed); }
+                if (request.SeedHex != null) { writer.WriteString("seed_hex", request.SeedHex); }
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new WalletProposeResponse(response);
+        }
     }
 }

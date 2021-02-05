@@ -2247,7 +2247,6 @@ namespace Ibasa.Ripple
         public LedgerSpecification Ledger { get; set; }
     }
 
-
     public sealed class NoRippleCheckRequest
     {
         /// <summary>
@@ -2287,12 +2286,12 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Array of strings with human-readable descriptions of the problems. This includes up to one entry if the account's Default Ripple setting is not as recommended, plus up to limit entries for trust lines whose No Ripple setting is not as recommended.
         /// </summary>
-        public ReadOnlyCollection<string> Problems { get; set; }
+        public ReadOnlyCollection<string> Problems { get; private set; }
 
         /// <summary>
         /// (May be omitted) If the request specified transactions as true, this is an array of JSON objects, each of which is the JSON form of a transaction that should fix one of the described problems.The length of this array is the same as the problems array, and each entry is intended to fix the problem described at the same index into that array.
         /// </summary>
-        public ReadOnlyCollection<Transaction> Transactions { get; set; }
+        public ReadOnlyCollection<Transaction> Transactions { get; private set; }
 
         internal NoRippleCheckResponse(JsonElement json)
         {
@@ -2320,6 +2319,57 @@ namespace Ibasa.Ripple
             else
             {
                 Transactions = Array.AsReadOnly(Array.Empty<Transaction>());
+            }
+        }
+    }
+
+    public sealed class WalletProposeRequest
+    {
+        /// <summary>
+        /// Which signing algorithm to use to derive this key pair. 
+        /// Valid values are ed25519 and secp256k1 (all lower case). 
+        /// The default is secp256k1.
+        /// </summary>
+        public SeedType? KeyType { get; set; }
+
+        /// <summary>
+        /// (Optional) Generate a key pair and address from this seed value. 
+        /// This value can be formatted in hexadecimal, the XRP Ledger's base58 format, RFC-1751, or as an arbitrary string. 
+        /// Cannot be used with seed or seed_hex.
+        /// </summary>
+        public string Passphrase { get; set; }
+
+        /// <summary>
+        /// (Optional) Generate the key pair and address from this seed value in the XRP Ledger's base58-encoded format. 
+        /// Cannot be used with passphrase or seed_hex.
+        /// </summary>
+        public string Seed { get; set; }
+
+        /// <summary>
+        /// (Optional) Generate the key pair and address from this seed value in hexadecimal format. 
+        /// Cannot be used with passphrase or seed.
+        /// </summary>
+        public string SeedHex { get; set; }
+    }
+
+    public sealed class WalletProposeResponse
+    {
+        public string KeyType { get; private set; }
+        public string MasterSeed{ get; private set; }
+        public string AccountId { get; private set; }
+        public string PublicKey { get; private set; }
+        public string Warning { get; private set; }
+
+        internal WalletProposeResponse(JsonElement json)
+        {
+            KeyType = json.GetProperty("key_type").GetString();
+            MasterSeed = json.GetProperty("master_seed_hex").GetString();
+            AccountId = json.GetProperty("account_id").GetString();
+            PublicKey = json.GetProperty("public_key_hex").GetString();
+
+            if (json.TryGetProperty("warning", out var element))
+            {
+                Warning = element.GetString();
             }
         }
     }

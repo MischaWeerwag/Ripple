@@ -289,5 +289,30 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             // Bit of a sanity check that all the docker setup is ok
             await Api.Ping();
         }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData(SeedType.Secp256k1)]
+        [InlineData(SeedType.Ed25519)]
+        public async void TestWalletPropose_NoEntropy(SeedType? seedType)
+        {
+            var request = new WalletProposeRequest
+            {
+                KeyType = seedType,
+            };
+            var response = await Api.WalletPropose(request);
+            var keyType = seedType == SeedType.Ed25519 ? "ed25519" : "secp256k1";
+            Assert.Equal(keyType, response.KeyType);
+            Assert.NotNull(response.AccountId);
+            Assert.NotNull(response.PublicKey);
+            Assert.NotNull(response.MasterSeed);
+
+            var seed = new Seed(Base16.Decode(response.MasterSeed), seedType ?? SeedType.Secp256k1);
+            seed.KeyPair(out _, out var keyPair);
+            var publicKey = keyPair.GetCanonicalPublicKey();
+            Assert.Equal(response.PublicKey, Base16.Encode(publicKey));
+            var accountId = AccountId.FromPublicKey(publicKey);
+            Assert.Equal(response.AccountId, accountId.ToString());
+        }
     }
 }

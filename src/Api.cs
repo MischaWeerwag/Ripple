@@ -126,5 +126,12 @@ namespace Ibasa.Ripple
         /// The noripple_check command provides a quick way to check the status of the Default Ripple field for an account and the No Ripple flag of its trust lines, compared with the recommended settings.
         /// </summary>
         public abstract Task<NoRippleCheckResponse> NoRippleCheck(NoRippleCheckRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Use the wallet_propose method to generate a key pair and XRP Ledger address. 
+        /// This command only generates key and address values, and does not affect the XRP Ledger itself in any way. 
+        /// To become a funded address stored in the ledger, the address must receive a Payment transaction that provides enough XRP to meet the reserve requirement.
+        /// </summary>
+        public abstract Task<WalletProposeResponse> WalletPropose(WalletProposeRequest request, CancellationToken cancellationToken = default);
     }
 }

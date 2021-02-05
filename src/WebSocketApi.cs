@@ -429,5 +429,31 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(thisId, cancellationToken);
             return new NoRippleCheckResponse(response);
         }
+
+        public override async Task<WalletProposeResponse> WalletPropose(WalletProposeRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            var thisId = ++currentId;
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteNumber("id", thisId);
+                writer.WriteString("command", "wallet_propose");
+                if (request.KeyType.HasValue)
+                {
+                    var type = request.KeyType.Value == SeedType.Secp256k1 ? "secp256k1" : "ed25519";
+                    writer.WriteString("key_type", type);
+                }
+                if (request.Passphrase != null) { writer.WriteString("passphrase", request.Passphrase); }
+                if (request.Seed != null) { writer.WriteString("seed", request.Seed); }
+                if (request.SeedHex != null) { writer.WriteString("seed_hex", request.SeedHex); }
+                writer.WriteEndObject();
+            }
+
+            await socket.SendAsync(jsonBuffer.WrittenMemory, WebSocketMessageType.Text, endOfMessage: true, cancellationToken);
+            var response = await ReceiveAsync(thisId, cancellationToken);
+            return new WalletProposeResponse(response);
+        }
     }
 }

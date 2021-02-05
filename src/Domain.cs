@@ -2,6 +2,7 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,16 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct AccountId : IEquatable<AccountId>
     {
-        private uint _data0, _data1, _data2, _data3, _data4;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data0;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data1;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data2;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data3;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data4;
 
         private static Span<byte> UnsafeAsSpan(ref AccountId account)
         {
@@ -134,7 +144,15 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 16)]
     public struct Seed
     {
-        private uint _data0, _data1, _data2, _data3;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data0;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data1;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data2;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data3;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private SeedType _type;
 
         private static Span<byte> UnsafeAsSpan(ref Seed seed)
@@ -319,7 +337,16 @@ namespace Ibasa.Ripple
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct CurrencyCode : IEquatable<CurrencyCode>
     {
-        private uint _data0, _data1, _data2, _data3, _data4;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data0;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data1;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data2;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data3;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+        private uint _data4;
 
         private static Span<byte> UnsafeAsSpan(ref CurrencyCode currencyCode)
         {

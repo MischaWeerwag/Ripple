@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace Ibasa.Ripple
 {
     public struct Hash128 : IEquatable<Hash128>
     {
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long a;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long b;
 
         public Hash128(string hex)
@@ -68,9 +71,13 @@ namespace Ibasa.Ripple
 
     public struct Hash256 : IEquatable<Hash256>
     {
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long a;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long b;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long c;
+        [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long d;
 
         public Hash256(string hex)

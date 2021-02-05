@@ -86,8 +86,7 @@ namespace Ibasa.Ripple.Tests
                 }
             }
 
-            throw new Exception(
-                string.Format("Never got transaction {0} validated", transaction));
+            throw new Exception(string.Format("Never got transaction {0} validated", transaction));
         }
 
         private async Task<Tuple<SubmitResponse, Hash256>> SubmitTransaction(Seed secret, Transaction transaction)
@@ -95,6 +94,7 @@ namespace Ibasa.Ripple.Tests
             secret.KeyPair(out var _, out var keyPair);
             Hash256 transactionHash;
             var request = new SubmitRequest();
+            request.FailHard = true;
             while (true)
             {
                 request.TxBlob = transaction.Sign(keyPair, out transactionHash);

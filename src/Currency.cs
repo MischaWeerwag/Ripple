@@ -8,23 +8,33 @@ namespace Ibasa.Ripple
     public struct Currency : IEquatable<Currency>
     {
         /// <summary>
-        /// Represents the largest possible value of Currency. This field is constant and read-only.
+        /// Represents the smallest positive System.Single value that is greater than zero.
+        /// This field is constant and read-only.
+        /// </summary>
+        public static readonly Currency Epsilon = new Currency(true, minExponent, minMantissa);
+        /// <summary>
+        /// Represents the largest possible value of Currency.
+        /// This field is constant and read-only.
         /// </summary>
         public static readonly Currency MaxValue = new Currency(true, maxExponent, maxMantissa);
         /// <summary>
         /// Represents the number negative one (-1).
+        /// This field is constant and read-only.
         /// </summary>
         public static readonly Currency MinusOne = new Currency(false, -15, minMantissa);
         /// <summary>
-        /// Represents the smallest possible value of Currency. This field is constant and read-only.
+        /// Represents the smallest possible value of Currency.
+        /// This field is constant and read-only.
         /// </summary>
         public static readonly Currency MinValue = new Currency(false, maxExponent, maxMantissa);
         /// <summary>
         /// Represents the number one (1).
+        /// This field is constant and read-only.
         /// </summary>
         public static readonly Currency One = new Currency(true, -15, minMantissa);
         /// <summary>
         /// Represents the number zero (0).
+        /// This field is constant and read-only.
         /// </summary>
         public static readonly Currency Zero = new Currency(true, 0, 0);
 
@@ -182,6 +192,11 @@ namespace Ibasa.Ripple
             this.bits = Pack(isPositive, exponent, mantissa);
         }
 
+        public static explicit operator Currency(decimal value)
+        {
+            return new Currency(value);
+        }
+
         public static explicit operator decimal(Currency value)
         {
             var isNegative = (value.bits & 0x4000_0000_0000_0000) == 0;
@@ -243,14 +258,76 @@ namespace Ibasa.Ripple
             {
                 return "0";
             }
+            var negativeStr = isNegative ? "-" : "";
             var mantissa = bits & 0x3FFFFFFFFFFFFF;
+
+            // exponent is between -96 and 80 (inclusive)
+            // mantissa is between (inclusive)
+            // 1000_0000_0000_0000
+            // 9999_9999_9999_9999
+
             while (mantissa % 10 == 0)
             {
                 mantissa /= 10;
                 exponent += 1;
             }
 
-            return (isNegative ? "-" : "") + mantissa.ToString() + (exponent == 0 ? "" : "E" + exponent.ToString());
+            var mantissaStr = mantissa.ToString();
+
+            // exponent is between -96 and 95 (inclusive)
+            // mantissa is between (inclusive)
+            // 0000_0000_0000_0001
+            // 9999_9999_9999_9999
+
+            // We've got 16 digits of precision so print that in
+            // full decimal. Outside this range use E notation.
+            var decimalPlaces =
+                mantissaStr.Length +
+                (exponent > 0 ? exponent : -(mantissaStr.Length + exponent));
+            if (-15 <= decimalPlaces && decimalPlaces <= 16)
+            {
+                if (exponent == 0)
+                {
+                    // Everything before the decimal point, just print it
+                    return string.Concat(negativeStr, mantissaStr);
+                }
+                else if (exponent > 0)
+                {
+                    // Positive exponent, just need some trailing zeros
+                    // before the decimal place
+                    return string.Concat(
+                        negativeStr,
+                        mantissaStr,
+                        new string('0', exponent));
+                }
+
+                // Negative exponent
+
+                var prefixZeros = -(mantissaStr.Length + exponent);
+                if(prefixZeros == 0)
+                {
+                    // Everything after the decimal point, just print it
+                    return string.Concat(negativeStr, "0.", mantissaStr);
+                }
+                else if (prefixZeros > 0)
+                {
+                    // Positive exponent, just need some trailing zeros
+                    // before the decimal place
+                    return string.Concat(
+                        negativeStr,
+                        "0.",
+                        new string('0', prefixZeros),
+                        mantissaStr);
+                }
+
+                // -prefixZeros == digits before decimal point
+                var high = mantissaStr[..-prefixZeros];
+                var low = mantissaStr[-prefixZeros..];
+
+                return string.Concat(negativeStr, high, ".", low);
+            }
+
+            return string.Concat(negativeStr, mantissaStr, "E", exponent.ToString());
         }
 
         public static Currency Parse(string s)

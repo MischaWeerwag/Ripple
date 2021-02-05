@@ -65,12 +65,29 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Theory]
-        [InlineData(-1, "-1")]
-        [InlineData(0, "0")]
-        [InlineData(1, "1")]
-        public void TestToString(decimal value, string expected)
+        [InlineData("-1", "-1")]
+        [InlineData("0.09999999999999999", "9999999999999999E-17")]
+        [InlineData("0.00000000000000001", "1E-17")]
+        [InlineData("0.9999999999999999", "0.9999999999999999")]
+        [InlineData("0.0000000000000001", "0.0000000000000001")]
+        [InlineData("9.99", "9.99")]
+        [InlineData("0.99", "0.99")]
+        [InlineData("0.01", "0.01")]
+        [InlineData("0.1", "0.1")]
+        [InlineData("0", "0")]
+        [InlineData("1", "1")]
+        [InlineData("10", "10")]
+        [InlineData("99", "99")]
+        [InlineData("9.9", "9.9")]
+        [InlineData("99.9", "99.9")]
+        [InlineData("1000000000000000", "1000000000000000")]
+        [InlineData("9999999999999999", "9999999999999999")]
+        [InlineData("10000000000000000", "1E16")]
+        [InlineData("99999999999999990", "9999999999999999E1")]
+        public void TestToString(string value, string expected)
         {
-            Assert.Equal(expected, new Currency(value).ToString());
+            var decimalValue = decimal.Parse(value);
+            Assert.Equal(expected, new Currency(decimalValue).ToString());
         }
 
         [Theory]
@@ -86,7 +103,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(false, 0, 9999_9999_9999_9999)]
         [InlineData(false, 80, 1000_0000_0000_0000)]
         [InlineData(false, 80, 9999_9999_9999_9999)]
-        public void TestIssuedRoundTrip(bool isPositive, int exponent, ulong mantissa)
+        public void TestExplicitRoundTrip(bool isPositive, int exponent, ulong mantissa)
         {
             var currency = new Currency(isPositive, exponent, mantissa);
             var str = currency.ToString();

@@ -1721,11 +1721,17 @@ namespace Ibasa.Ripple
         /// </summary>
         public byte[] TxnSignature { get; set; }
 
+        /// <summary>
+        /// (Optional; strongly recommended) Highest ledger index this transaction can appear in.
+        /// Specifying this field places a strict upper limit on how long the transaction can wait to be validated or rejected.
+        /// See Reliable Transaction Submission for more details.
+        /// </summary>
+        public UInt32? LastLedgerSequence { get; set; }
 
         //TransactionType String UInt16  (Required) The type of transaction.Valid types include: Payment, OfferCreate, OfferCancel, TrustSet, AccountSet, SetRegularKey, SignerListSet, EscrowCreate, EscrowFinish, EscrowCancel, PaymentChannelCreate, PaymentChannelFund, PaymentChannelClaim, and DepositPreauth.
         //AccountTxnID String Hash256 (Optional) Hash value identifying another transaction.If provided, this transaction is only valid if the sending account's previously-sent transaction matches the provided hash.
         //Flags Unsigned Integer UInt32  (Optional) Set of bit-flags for this transaction.
-        //LastLedgerSequence Number  UInt32  (Optional; strongly recommended) Highest ledger index this transaction can appear in. Specifying this field places a strict upper limit on how long the transaction can wait to be validated or rejected. See Reliable Transaction Submission for more details.
+
         //Memos Array of Objects    Array   (Optional) Additional arbitrary information used to identify this transaction.
         //Signers Array   Array   (Optional) Array of objects that represent a multi-signature which authorizes this transaction.
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
@@ -1758,6 +1764,10 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("TxnSignature", out element))
             {
                 TxnSignature = element.GetBytesFromBase16();
+            }
+            if(json.TryGetProperty("LastLedgerSequence", out element))
+            {
+                LastLedgerSequence = element.GetUInt32();
             }
         }
 
@@ -1861,6 +1871,7 @@ namespace Ibasa.Ripple
             var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 5);
             writer.WriteUInt32(4, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
             writer.WriteVl(3, this.SigningPubKey);
             if (!forSigning)
@@ -1974,6 +1985,7 @@ namespace Ibasa.Ripple
             var writer = new StWriter(bufferWriter);
             writer.WriteUInt16(2, 3);
             writer.WriteUInt32(4, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             if (SetFlag.HasValue)
             {
                 writer.WriteUInt32(33, (uint)SetFlag.Value);
@@ -2049,6 +2061,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt16(2, 0);
             writer.WriteUInt32(4, Sequence);
             if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
             writer.WriteAmount(1, Amount);
             writer.WriteAmount(8, Fee);
@@ -2156,6 +2169,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(4, Sequence);
             if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
             if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(3, LimitAmount);
             writer.WriteAmount(8, Fee);
             writer.WriteVl(3, this.SigningPubKey);

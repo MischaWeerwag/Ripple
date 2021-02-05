@@ -63,14 +63,17 @@ namespace Ibasa.Ripple.Tests
             var infoResponse = await Api.AccountInfo(request);
             var feeResponse = await Api.Fee();
 
+            transaction.LastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
             transaction.Sequence = infoResponse.AccountData.Sequence;
             transaction.Fee = feeResponse.Drops.MedianFee;
         }
 
         private async Task<TransactionResponse> WaitForTransaction(Hash256 transaction)
         {
-            while (true)
+            for(int i = 0; i < 10; ++i)
             {
+                System.Threading.Thread.Sleep(2000);
+
                 var request = new TxRequest()
                 {
                     Transaction = transaction
@@ -82,6 +85,9 @@ namespace Ibasa.Ripple.Tests
                     return transactionResponse;
                 }
             }
+
+            throw new Exception(
+                string.Format("Never got transaction {0} validated", transaction));
         }
 
         private async Task<Tuple<SubmitResponse, Hash256>> SubmitTransaction(Seed secret, Transaction transaction)
@@ -95,8 +101,9 @@ namespace Ibasa.Ripple.Tests
                 var response = await Api.Submit(request);
                 if (response.EngineResult == EngineResult.tefPAST_SEQ)
                 {
-                    // Increment the sequence number and try again
-                    transaction.Sequence += 1;
+                    // Reset the sequence and ledger numbers and try again
+                    transaction.Sequence = response.AccountSequenceAvailable;
+                    transaction.LastLedgerSequence = response.ValidatedLedgerIndex + 8;
                 }
                 else
                 {

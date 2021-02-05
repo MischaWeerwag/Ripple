@@ -536,7 +536,7 @@ namespace Ibasa.Ripple
         {
             if (currencyCode == CurrencyCode.XRP)
             {
-                throw new ArgumentOutOfRangeException("currencyCode", currencyCode, "currencyCode can not be XRP");
+                throw new ArgumentException("Can not be XRP", "currencyCode");
             }
             this.value = Currency.ToUInt64Bits(value);
             this.currencyCode = currencyCode;
@@ -608,6 +608,11 @@ namespace Ibasa.Ripple
 
         public IssuedAmount(AccountId issuer, CurrencyCode currencyCode, Currency value)
         {
+            if (currencyCode == CurrencyCode.XRP)
+            {
+                throw new ArgumentException("Can not be XRP", "currencyCode");
+            }
+
             this.Issuer = issuer;
             this.CurrencyCode = currencyCode;
             this.Value = value;

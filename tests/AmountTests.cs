@@ -13,7 +13,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(1_000_000ul, "1 XRP")]
         [InlineData(1_000_000_000ul, "1000 XRP")]
         [InlineData(1_000_000_000_000ul, "1000000 XRP")]
-        [InlineData(100_000_000_000_000_000ul, "1000000000 XRP")]
+        [InlineData(100_000_000_000_000_000ul, "100000000000 XRP")]
         public void TestToString(ulong drops, string expected)
         {
             var amount = new XrpAmount(drops);
@@ -30,6 +30,13 @@ namespace Ibasa.Ripple.Tests
             var amount = new IssuedAmount(new AccountId(issuer), new CurrencyCode(currencyCode), Currency.Parse(value));
             Assert.Equal(expected, amount.ToString());
         }
+
+        [Fact]
+        public void TestXRP()
+        {
+            var exc = Assert.Throws<ArgumentException>("currencyCode", () => new IssuedAmount(default, CurrencyCode.XRP, default));
+            Assert.Equal("Can not be XRP (Parameter 'currencyCode')", exc.Message);
+        }
     }
 
     public class AmountTests
@@ -40,6 +47,13 @@ namespace Ibasa.Ripple.Tests
         {
             var amount = new Amount(new AccountId(issuer), new CurrencyCode(currencyCode), Currency.Parse(value));
             Assert.Equal(expected, amount.ToString());
+        }
+
+        [Fact]
+        public void TestXRP()
+        {
+            var exc = Assert.Throws<ArgumentException>("currencyCode", () => new Amount(default, CurrencyCode.XRP, default));
+            Assert.Equal("Can not be XRP (Parameter 'currencyCode')", exc.Message);
         }
     }
 }

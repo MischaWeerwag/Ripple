@@ -53,62 +53,69 @@ namespace Ibasa.Ripple.Tests
         protected readonly ApiTestsSetup Setup;
         protected Api Api { get { return Setup.Api; } }
 
-        private async Task AutofillTransaction(Transaction transaction)
+        /// <summary>
+        /// We always submit a single transaction and then wait for it to be validated before continuing with the tests.
+        /// This is a little slow (ledgers only validate every 4s or so), but it keeps test logic simple.
+        /// </summary>
+        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
         {
-            var request = new AccountInfoRequest()
+            AccountInfoResponse infoResponse = null;
+            while (infoResponse == null)
             {
-                Ledger = LedgerSpecification.Current,
-                Account = transaction.Account,
-            };
-            var infoResponse = await Api.AccountInfo(request);
+                try
+                {
+                    var infoRequest = new AccountInfoRequest()
+                    {
+                        Ledger = LedgerSpecification.Validated,
+                        Account = transaction.Account,
+                    };
+                    infoResponse = await Api.AccountInfo(infoRequest);
+                }
+                catch(RippleRequestException exc)
+                {
+                    if(exc.Error != "actNotFound") { throw; }
+                }
+            }
+
             var feeResponse = await Api.Fee();
 
             transaction.LastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
             transaction.Sequence = infoResponse.AccountData.Sequence;
             transaction.Fee = feeResponse.Drops.MedianFee;
-        }
 
-        private async Task<TransactionResponse> WaitForTransaction(Hash256 transaction)
-        {
-            for(int i = 0; i < 10; ++i)
-            {
-                System.Threading.Thread.Sleep(2000);
-
-                var request = new TxRequest()
-                {
-                    Transaction = transaction
-                };
-                var transactionResponse = await Api.Tx(request);
-                Assert.Equal(transaction, transactionResponse.Hash);
-                if (transactionResponse.Validated)
-                {
-                    return transactionResponse;
-                }
-            }
-
-            throw new Exception(string.Format("Never got transaction {0} validated", transaction));
-        }
-
-        private async Task<Tuple<SubmitResponse, Hash256>> SubmitTransaction(Seed secret, Transaction transaction)
-        {
             secret.KeyPair(out var _, out var keyPair);
-            Hash256 transactionHash;
+
             var request = new SubmitRequest();
             request.FailHard = true;
+            request.TxBlob = transaction.Sign(keyPair, out var transactionHash);
+            var submitResponse = await Api.Submit(request);
+            if (!submitResponse.Accepted)
+            {
+                throw new Exception(string.Format("Transaction {0} was not accepted", transactionHash));
+            }
+
+            var txRequest = new TxRequest()
+            {
+                Transaction = transactionHash,
+                MinLedger = feeResponse.LedgerCurrentIndex,
+                MaxLedger = transaction.LastLedgerSequence,
+            };
             while (true)
             {
-                request.TxBlob = transaction.Sign(keyPair, out transactionHash);
-                var response = await Api.Submit(request);
-                if (response.EngineResult == EngineResult.tefPAST_SEQ)
+                var ledgerCurrent = await Api.LedgerCurrent();
+                var transactionResponse = await Api.Tx(txRequest);
+                Assert.Equal(transactionHash, transactionResponse.Hash);
+                if (transactionResponse.Validated)
                 {
-                    // Reset the sequence and ledger numbers and try again
-                    transaction.Sequence = response.AccountSequenceAvailable;
-                    transaction.LastLedgerSequence = response.ValidatedLedgerIndex + 8;
+                    return Tuple.Create(submitResponse, transactionResponse);
                 }
-                else
+
+                if (ledgerCurrent > txRequest.MaxLedger)
                 {
-                    return Tuple.Create(response, transactionHash);
+                    throw new Exception(string.Format("Never got transaction {0} validated", transactionHash));
                 }
+
+                System.Threading.Thread.Sleep(2000);
             }
         }
 
@@ -247,12 +254,8 @@ namespace Ibasa.Ripple.Tests
             var transaction = new AccountSet();
             transaction.Account = account;
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
-            await AutofillTransaction(transaction);
 
-            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
-
-            var transactionResponse = await WaitForTransaction(transactionHash);
+            var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
             var acr = Assert.IsType<AccountSet>(transactionResponse.Transaction);
             Assert.Equal(transaction.Account, acr.Account);
             Assert.Equal(transaction.Sequence, acr.Sequence);
@@ -281,12 +284,8 @@ namespace Ibasa.Ripple.Tests
             var transaction = new SetRegularKey();
             transaction.Account = account;
             transaction.RegularKey = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
-            await AutofillTransaction(transaction);
 
-            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
-
-            var transactionResponse = await WaitForTransaction(transactionHash);
+            var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
             var srkr = Assert.IsType<SetRegularKey>(transactionResponse.Transaction);
             Assert.Equal(transaction.RegularKey, srkr.RegularKey);
 
@@ -297,13 +296,7 @@ namespace Ibasa.Ripple.Tests
             accountSetTransaction.Fee = transaction.Fee;
 
             // Submit with our ed25519 keypair
-            var submitRequest = new SubmitRequest();
-            submitRequest.TxBlob = accountSetTransaction.Sign(keyPair, out transactionHash);
-            submitResponse = await Api.Submit(submitRequest);
-
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
-
-            var accountSetTransactionResponse = await WaitForTransaction(transactionHash);
+            var (_, accountSetTransactionResponse) = await SubmitTransaction(seed, accountSetTransaction);
             var acr = Assert.IsType<AccountSet>(accountSetTransactionResponse.Transaction);
 
             var infoRequest = new AccountInfoRequest()
@@ -337,12 +330,8 @@ namespace Ibasa.Ripple.Tests
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(100);
-            await AutofillTransaction(transaction);
 
-            var (submitResponse, transactionHash) = await SubmitTransaction(secret, transaction);
-            Assert.Equal(EngineResult.tesSUCCESS, submitResponse.EngineResult);
-
-            var transactionResponse = await WaitForTransaction(transactionHash);
+            var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
             var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
             Assert.Equal(transaction.Amount, pr.Amount);
 
@@ -371,12 +360,9 @@ namespace Ibasa.Ripple.Tests
             var trustSet = new TrustSet();
             trustSet.Account = accountTwo;
             trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("GBP"), new Currency(1000m));
-            await AutofillTransaction(trustSet);
 
             // Submit and wait for the trust line
-            var (trustSubmitResponse, trustTransactionHash) = await SubmitTransaction(secretTwo, trustSet);
-            Assert.Equal(EngineResult.tesSUCCESS, trustSubmitResponse.EngineResult);
-            var _ = await WaitForTransaction(trustTransactionHash);
+            var (_, _) = await SubmitTransaction(secretTwo, trustSet);
 
             // Send 100GBP
             var payment = new Payment();
@@ -384,12 +370,8 @@ namespace Ibasa.Ripple.Tests
             payment.Destination = accountTwo;
             payment.DestinationTag = 1;
             payment.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
-            await AutofillTransaction(payment);
 
-            var (paySubmitResponse, payTransactionHash) = await SubmitTransaction(secretOne, payment);
-            Assert.Equal(EngineResult.tesSUCCESS, paySubmitResponse.EngineResult);
-
-            var transactionResponse = await WaitForTransaction(payTransactionHash);
+            var (_, transactionResponse) = await SubmitTransaction(secretOne, payment);
             var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
             Assert.Equal(payment.Amount, pr.Amount);
 
@@ -455,12 +437,9 @@ namespace Ibasa.Ripple.Tests
                 var trustSet = new TrustSet();
                 trustSet.Account = testAccount.Address;
                 trustSet.LimitAmount = new IssuedAmount(Setup.TestAccountOne.Address, new CurrencyCode("GBP"), new Currency(1000m));
-                await AutofillTransaction(trustSet);
 
                 // Submit and wait for the trust line
-                var (trustSubmitResponse, trustTransactionHash) = await SubmitTransaction(testAccount.Secret, trustSet);
-                Assert.Equal(EngineResult.tesSUCCESS, trustSubmitResponse.EngineResult);
-                var _ = await WaitForTransaction(trustTransactionHash);
+                var (_, _) = await SubmitTransaction(testAccount.Secret, trustSet);
             }
 
             // Trust lines setup, check that the user has one problem
@@ -496,12 +475,9 @@ namespace Ibasa.Ripple.Tests
                 var accountSet = new AccountSet();
                 accountSet.Account = testAccount.Address;
                 accountSet.SetFlag = AccountSetFlags.DefaultRipple;
-                await AutofillTransaction(accountSet);
 
-                // Submit and wait for the trust line
-                var (accountSubmitResponse, accountTransactionHash) = await SubmitTransaction(testAccount.Secret, accountSet);
-                Assert.Equal(EngineResult.tesSUCCESS, accountSubmitResponse.EngineResult);
-                var _ = await WaitForTransaction(accountTransactionHash);
+                // Submit and wait for the flag set
+                var (_, _) = await SubmitTransaction(testAccount.Secret, accountSet);
 
                 var response = await Api.NoRippleCheck(request);
                 Assert.NotEqual(default, response.LedgerCurrentIndex);

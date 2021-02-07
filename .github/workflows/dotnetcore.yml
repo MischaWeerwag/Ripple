@@ -20,7 +20,7 @@ jobs:
     - name: Build with dotnet
       run: dotnet build --configuration Release
     - name: Test with dotnet
-      run: dotnet test --blame --blame-hang-timeout 5m
+      run: dotnet test --blame --blame-hang-timeout 1h
     - name: Pack with dotnet
       run: dotnet pack --configuration Release --output output
     - name: Publish NuGet

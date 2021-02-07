@@ -6,7 +6,7 @@ namespace Ibasa.Ripple.Tests
 {
     public class DockerDotNetTests
     {
-        [Fact(Skip = "Causing issues on CI")]
+        [Fact]
         public async Task SanityCheck()
         {
             var client = new DockerClientConfiguration().CreateClient();

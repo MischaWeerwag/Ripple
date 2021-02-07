@@ -20,7 +20,7 @@ jobs:
     - name: Build with dotnet
       run: dotnet build --configuration Release
     - name: Test with dotnet
-      run: dotnet test --blame --blame-hang-timeout 5m --output tests/TestResults
+      run: dotnet test --blame --blame-hang-timeout 5m --results-directory tests/TestResults
     - name: Archive test results
       uses: actions/upload-artifact@v2
       with:

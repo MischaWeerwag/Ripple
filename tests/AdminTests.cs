@@ -108,6 +108,8 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
         public AdminTestsSetup()
         {
+            var logHash = GetHashCode();
+
             var configDirectory =
                 System.IO.Directory.CreateDirectory(
                     System.IO.Path.Combine(
@@ -123,9 +125,10 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 System.IO.Path.Combine(configDirectory.FullName, "validators.txt"),
                 validators);
 
+            Console.WriteLine("{0} Creating docker client...", logHash);
+
             Client = new DockerClientConfiguration().CreateClient();
 
-            var logHash = GetHashCode();
             Console.WriteLine("{0} Downloading xrptipbot/rippled...", logHash);
 
             // Pull the latest image 
@@ -135,8 +138,49 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 Tag = "latest"
             };
             var progress = new Progress<JSONMessage>();
+            progress.ProgressChanged += (obj, jm) =>
+            {
+                if (jm.Error != null)
+                {
+                    Console.WriteLine("{0} {1}", logHash, jm.Error);
+                    return;
+                }
+
+                var message = new System.Text.StringBuilder();
+                message.AppendFormat("{0} ", logHash);
+
+                if (!string.IsNullOrEmpty(jm.ID))
+                {
+                    message.AppendFormat("{0}:", jm.ID);
+                }
+                if (!string.IsNullOrEmpty(jm.From))
+                {
+                    message.AppendFormat("(from {0})", jm.From);
+                }
+
+                if (jm.Progress != null)
+                {
+                    message.Append(jm.Status);
+                    message.AppendFormat(" {0}-{1}-{2}", jm.Progress.Start, jm.Progress.Current, jm.Progress.Total);
+                }
+                else if (!string.IsNullOrEmpty(jm.ProgressMessage))
+                {
+                    message.AppendFormat("{0} {1}", jm.Status, jm.ProgressMessage);
+                } 
+                else if(!string.IsNullOrEmpty(jm.Stream))
+                {
+                    message.AppendFormat("{0}", jm.Stream);
+                }
+                else
+                {
+                    message.AppendFormat("{0}", jm.Status);
+                }
+
+                Console.WriteLine(message.ToString());
+            };
             Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
-            Console.WriteLine("{0} Downloaded docker image", logHash);
+
+            Console.WriteLine("{0} Creating rippled container...", logHash);
 
             var createParameters = new CreateContainerParameters();
             createParameters.Volumes = new Dictionary<string, EmptyStruct>(new [] {
@@ -149,13 +193,10 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             };
             createParameters.Cmd = new[] { "-a", "--start" };
 
-            Console.WriteLine("{0} Creating rippled container...", logHash);
-
             var container = Client.Containers.CreateContainerAsync(createParameters).Result;
             ID = container.ID;
 
-            Console.WriteLine("{0} Container ID = {1}", logHash, ID);
-            Console.WriteLine("{0} Starting rippled container...", logHash);
+            Console.WriteLine("{0} Starting rippled container {1}...", logHash, ID);
 
             var startParameters = new ContainerStartParameters();
             var started = Client.Containers.StartContainerAsync(ID, startParameters).Result;

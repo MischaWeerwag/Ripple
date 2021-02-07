@@ -18,7 +18,7 @@ jobs:
       with:
         dotnet-version: 3.1.102
     - name: Copy mscorlib for debugging
-      run: 
+      run: |
         mkdir -p tests/TestResults/debugging
         cp ~/.dotnet/shared/Microsoft.NETCore.App/3.1.2/mscorlib.dll tests/TestResults/mscorlib.dll
         cp ~/.dotnet/shared/Microsoft.NETCore.App/3.1.2/mscordbi.dll tests/TestResults/mscordbi.dll

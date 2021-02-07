@@ -33,6 +33,6 @@ jobs:
     - name: Pack with dotnet
       run: dotnet pack --configuration Release --output output
     - name: Publish NuGet
-      run: dotnet nuget push -s https://api.nuget.org/v3/index.json -k ${NUGET_API_KEY} --skip-duplicate ./output/*.nupkg
+      run: dotnet nuget push -s https://api.nuget.org/v3/index.json -k ${NUGET_API_KEY} --skip-duplicate ./output/Ibasa.Ripple.*.nupkg
       env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }} 

@@ -7,33 +7,22 @@ using Xunit;
 
 namespace Ibasa.Ripple.Tests
 {
-    public class WebSocketApiTestsSetup : ApiTestsSetup, IDisposable
+    public class WebSocketApiTestsSetup : ApiTestsSetup<WebSocketApi>
     {
-        public readonly WebSocketApi SocketApi;
-        public override Api Api { get { return SocketApi; } }
-
-        public WebSocketApiTestsSetup()
+        protected override WebSocketApi CreateApi()
         {
             var address = new Uri("wss://s.altnet.rippletest.net:51233");
             var clientWebSocket = new ClientWebSocket();
             clientWebSocket.ConnectAsync(address, CancellationToken.None).Wait();
-            SocketApi = new WebSocketApi(clientWebSocket);
-        }
-
-        public void Dispose()
-        {
-            SocketApi.DisposeAsync().AsTask().Wait();
+            return new WebSocketApi(clientWebSocket);
         }
     }
 
     [Collection("WebSocket")]
-    public class WebSocketApiTests : ApiTests, IClassFixture<WebSocketApiTestsSetup>
+    public class WebSocketApiTests : ApiTests<WebSocketApi>, IClassFixture<WebSocketApiTestsSetup>
     {
-        readonly new WebSocketApi Api;
-
         public WebSocketApiTests(WebSocketApiTestsSetup setup) : base(setup)
         {
-            this.Api = setup.SocketApi;
         }
     }
 }

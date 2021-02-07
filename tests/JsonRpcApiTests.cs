@@ -4,34 +4,22 @@ using Xunit;
 
 namespace Ibasa.Ripple.Tests
 {
-    public class JsonRpcApiTestsSetup : ApiTestsSetup, IDisposable
+    public class JsonRpcApiTestsSetup : ApiTestsSetup<JsonRpcApi>
     {
-        public readonly JsonRpcApi RpcApi;
-
-        public override Api Api {  get { return RpcApi; } }
-
-        public JsonRpcApiTestsSetup()
+        protected override JsonRpcApi CreateApi()
         {
             var address = new Uri("https://s.altnet.rippletest.net:51234");
             var httpClient = new HttpClient();
             httpClient.BaseAddress = address;
-            RpcApi = new JsonRpcApi(httpClient);
-        }
-
-        public void Dispose()
-        {
-            RpcApi.DisposeAsync().AsTask().Wait();
+            return new JsonRpcApi(httpClient);
         }
     }
 
     [Collection("JsonRpc")]
-    public class JsonRpcApiTests : ApiTests, IClassFixture<JsonRpcApiTestsSetup>
+    public class JsonRpcApiTests : ApiTests<JsonRpcApi>, IClassFixture<JsonRpcApiTestsSetup>
     {
-        readonly new JsonRpcApi Api;
-
         public JsonRpcApiTests(JsonRpcApiTestsSetup setup) : base(setup)
         {
-            this.Api = setup.RpcApi;
         }
     }
 }

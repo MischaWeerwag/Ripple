@@ -34,24 +34,62 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
-    public abstract class ApiTestsSetup
+    public abstract class ApiTestsSetup<T> : IDisposable where T : Api
     {
         public readonly TestAccount TestAccountOne;
         public readonly TestAccount TestAccountTwo;
 
-        public abstract Api Api { get; }
+        public readonly T Api;
+
+        protected abstract T CreateApi();
 
         public ApiTestsSetup()
         {
             TestAccountOne = TestAccount.Create();
             TestAccountTwo = TestAccount.Create();
+            Api = CreateApi();
+
+            // Wait for the two accounts from setup to exists
+            WaitForAccount(TestAccountOne.Address).Wait();
+            WaitForAccount(TestAccountOne.Address).Wait();
+        }
+
+        /// <summary>
+        /// Wait for the account to exist in a validated ledger.
+        /// </summary>
+        public async Task<AccountInfoResponse> WaitForAccount(AccountId account)
+        {
+            var infoRequest = new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Validated,
+                Account = account,
+            };
+            AccountInfoResponse infoResponse = null;
+            while (infoResponse == null)
+            {
+                try
+                {
+                    infoResponse = await Api.AccountInfo(infoRequest);
+                }
+                catch (RippleRequestException exc)
+                {
+                    if (exc.Error != "actNotFound") { throw; }
+                }
+            }
+            return infoResponse;
+        }
+
+
+        public void Dispose()
+        {
+            Api.DisposeAsync().AsTask().Wait();
         }
     }
 
-    public abstract class ApiTests
+    public abstract class ApiTests<T> where T : Api
     {
-        protected readonly ApiTestsSetup Setup;
-        protected Api Api { get { return Setup.Api; } }
+        protected readonly ApiTestsSetup<T> Setup;
+        protected T Api { get { return Setup.Api; } }
 
         /// <summary>
         /// We always submit a single transaction and then wait for it to be validated before continuing with the tests.
@@ -59,23 +97,7 @@ namespace Ibasa.Ripple.Tests
         /// </summary>
         private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
         {
-            AccountInfoResponse infoResponse = null;
-            while (infoResponse == null)
-            {
-                try
-                {
-                    var infoRequest = new AccountInfoRequest()
-                    {
-                        Ledger = LedgerSpecification.Validated,
-                        Account = transaction.Account,
-                    };
-                    infoResponse = await Api.AccountInfo(infoRequest);
-                }
-                catch(RippleRequestException exc)
-                {
-                    if(exc.Error != "actNotFound") { throw; }
-                }
-            }
+            AccountInfoResponse infoResponse = await Setup.WaitForAccount(transaction.Account);
 
             var feeResponse = await Api.Fee();
 
@@ -119,7 +141,7 @@ namespace Ibasa.Ripple.Tests
             }
         }
 
-        public ApiTests(ApiTestsSetup setup)
+        public ApiTests(ApiTestsSetup<T> setup)
         {
             Setup = setup;
         }
@@ -399,15 +421,17 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.ReceiveCurrencies));
         }
 
-        [Fact(Skip = "Intermittently failing")]
+        [Fact]
         public async Task TestNoRipple()
         {
             // We need a fresh account setup for this test
             var testAccount = TestAccount.Create();
+            await Setup.WaitForAccount(testAccount.Address);
 
             // All tests will be against this new account,
             // also all but the last will have Transactions set true.
             var request = new NoRippleCheckRequest();
+            request.Ledger = LedgerSpecification.Current;
             request.Account = testAccount.Address;
             request.Transactions = true;
 

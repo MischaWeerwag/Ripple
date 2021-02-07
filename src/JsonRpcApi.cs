@@ -414,7 +414,7 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 if (request.KeyType.HasValue)
                 {
-                    var type = request.KeyType.Value == SeedType.Secp256k1 ? "secp256k1" : "ed25519";
+                    var type = request.KeyType.Value == KeyType.Secp256k1 ? "secp256k1" : "ed25519";
                     writer.WriteString("key_type", type);
                 }
                 if (request.Passphrase != null) { writer.WriteString("passphrase", request.Passphrase); }

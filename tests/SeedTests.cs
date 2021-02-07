@@ -62,19 +62,19 @@ namespace Ibasa.Ripple.Tests
         {
             get
             {
-                yield return new object[] { "CF2DE378FBDD7E2EE87D486DFB5A7BFF", SeedType.Secp256k1, "sn259rEFXrQrWyx3Q7XneWcwV6dfL" };
-                yield return new object[] { "00000000000000000000000000000000", SeedType.Secp256k1, "sp6JS7f14BuwFY8Mw6bTtLKWauoUs" };
-                yield return new object[] { "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", SeedType.Secp256k1, "saGwBRReqUNKuWNLpUAq8i8NkXEPN" };
+                yield return new object[] { "CF2DE378FBDD7E2EE87D486DFB5A7BFF", KeyType.Secp256k1, "sn259rEFXrQrWyx3Q7XneWcwV6dfL" };
+                yield return new object[] { "00000000000000000000000000000000", KeyType.Secp256k1, "sp6JS7f14BuwFY8Mw6bTtLKWauoUs" };
+                yield return new object[] { "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", KeyType.Secp256k1, "saGwBRReqUNKuWNLpUAq8i8NkXEPN" };
 
-                yield return new object[] { "4C3A1D213FBDFB14C7C28D609469B341", SeedType.Ed25519, "sEdTM1uX8pu2do5XvTnutH6HsouMaM2" };
-                yield return new object[] { "00000000000000000000000000000000", SeedType.Ed25519, "sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE" };
-                yield return new object[] { "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", SeedType.Ed25519, "sEdV19BLfeQeKdEXyYA4NhjPJe6XBfG" };
+                yield return new object[] { "4C3A1D213FBDFB14C7C28D609469B341", KeyType.Ed25519, "sEdTM1uX8pu2do5XvTnutH6HsouMaM2" };
+                yield return new object[] { "00000000000000000000000000000000", KeyType.Ed25519, "sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE" };
+                yield return new object[] { "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", KeyType.Ed25519, "sEdV19BLfeQeKdEXyYA4NhjPJe6XBfG" };
             }
         }
 
         [Theory]
         [MemberData(nameof(entropies))]
-        public void TestSeedConstructor(string entropy, SeedType type, string expected)
+        public void TestSeedConstructor(string entropy, KeyType type, string expected)
         {
             var bytes = Base16.Decode(entropy);
             var secret = new Seed(bytes, type);

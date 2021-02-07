@@ -355,22 +355,21 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
         [IgnoreOnCTheory]
         [InlineData(null)]
-        [InlineData(SeedType.Secp256k1)]
-        [InlineData(SeedType.Ed25519)]
-        public async void TestWalletPropose_NoEntropy(SeedType? seedType)
+        [InlineData(KeyType.Secp256k1)]
+        [InlineData(KeyType.Ed25519)]
+        public async void TestWalletPropose_NoEntropy(KeyType? keyType)
         {
             var request = new WalletProposeRequest
             {
-                KeyType = seedType,
+                KeyType = keyType,
             };
             var response = await Api.WalletPropose(request);
-            var keyType = seedType == SeedType.Ed25519 ? "ed25519" : "secp256k1";
-            Assert.Equal(keyType, response.KeyType);
+            Assert.Equal(keyType == KeyType.Ed25519 ? "ed25519" : "secp256k1", response.KeyType);
             Assert.NotNull(response.AccountId);
             Assert.NotNull(response.PublicKey);
             Assert.NotNull(response.MasterSeed);
 
-            var seed = new Seed(Base16.Decode(response.MasterSeed), seedType ?? SeedType.Secp256k1);
+            var seed = new Seed(Base16.Decode(response.MasterSeed), keyType ?? KeyType.Secp256k1);
             seed.KeyPair(out _, out var keyPair);
             var publicKey = keyPair.GetCanonicalPublicKey();
             Assert.Equal(response.PublicKey, Base16.Encode(publicKey));

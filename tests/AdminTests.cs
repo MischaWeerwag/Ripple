@@ -292,14 +292,14 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             this.Setup = setup;
         }
 
-        [Fact(Skip = "Not tested on CI")]
+        [Fact]
         public async void TestPing()
         {
             // Bit of a sanity check that all the docker setup is ok
             await Api.Ping();
         }
 
-        [Theory(Skip = "Not tested on CI")]
+        [Theory]
         [InlineData(null)]
         [InlineData(SeedType.Secp256k1)]
         [InlineData(SeedType.Ed25519)]

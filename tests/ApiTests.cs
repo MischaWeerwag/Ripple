@@ -429,7 +429,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(new CurrencyCode("GBP"), Assert.Single(currencies.ReceiveCurrencies));
         }
 
-        [Fact(Skip = "Still causing issues in CI?")]
+        [Fact]
         public async Task TestNoRipple()
         {
             // We need a fresh account setup for this test
@@ -447,7 +447,7 @@ namespace Ibasa.Ripple.Tests
             {
                 request.Role = "user";
                 var response = await Api.NoRippleCheck(request);
-                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.NotEqual(default, response.LedgerIndex);
                 Assert.Empty(response.Problems);
                 Assert.Empty(response.Transactions);
             }
@@ -456,7 +456,9 @@ namespace Ibasa.Ripple.Tests
             {
                 request.Role = "gateway";
                 var response = await Api.NoRippleCheck(request);
-                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.True(response.Validated);
+                Assert.NotEqual(default, response.LedgerHash);
+                Assert.NotEqual(default, response.LedgerIndex);
                 Assert.Equal("You should immediately set your default ripple flag", Assert.Single(response.Problems));
                 var transaction = Assert.Single(response.Transactions);
                 transaction.Account = testAccount.Address;
@@ -478,7 +480,9 @@ namespace Ibasa.Ripple.Tests
             {
                 request.Role = "user";
                 var response = await Api.NoRippleCheck(request);
-                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.True(response.Validated);
+                Assert.NotEqual(default, response.LedgerHash);
+                Assert.NotEqual(default, response.LedgerIndex);
                 var expected = "You should probably set the no ripple flag on your GBP line to " + Setup.TestAccountOne.Address.ToString();
                 Assert.Equal(expected, Assert.Single(response.Problems));
                 var transaction = Assert.Single(response.Transactions);
@@ -496,7 +500,9 @@ namespace Ibasa.Ripple.Tests
                 request.Transactions = false;
                 request.Role = "gateway";
                 var response = await Api.NoRippleCheck(request);
-                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.True(response.Validated);
+                Assert.NotEqual(default, response.LedgerHash);
+                Assert.NotEqual(default, response.LedgerIndex);
                 Assert.Equal("You should immediately set your default ripple flag", Assert.Single(response.Problems));
                 // Empty because request.Transactions = false
                 Assert.Empty(response.Transactions);
@@ -511,8 +517,12 @@ namespace Ibasa.Ripple.Tests
                 // Submit and wait for the flag set
                 var (_, _) = await SubmitTransaction(testAccount.Secret, accountSet);
 
+                // We will have waited for the AccountSet transaction to be validated as part of submit, so we should be able to query the current ledger here
+                request.Ledger = LedgerSpecification.Current;
                 var response = await Api.NoRippleCheck(request);
-                Assert.NotEqual(default, response.LedgerCurrentIndex);
+                Assert.False(response.Validated);
+                Assert.Equal(default, response.LedgerHash);
+                Assert.NotEqual(default, response.LedgerIndex);
                 Assert.Empty(response.Problems);
                 Assert.Empty(response.Transactions);
             }

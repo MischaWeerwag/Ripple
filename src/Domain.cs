@@ -2082,9 +2082,19 @@ namespace Ibasa.Ripple
     public sealed class NoRippleCheckResponse
     {
         /// <summary>
+        /// The identifying hash of the ledger version used to calculate these results, as hex.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
         /// The ledger index of the ledger used to calculate these results.
         /// </summary>
-        public uint LedgerCurrentIndex { get; private set; }
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
 
         /// <summary>
         /// Array of strings with human-readable descriptions of the problems. This includes up to one entry if the account's Default Ripple setting is not as recommended, plus up to limit entries for trust lines whose No Ripple setting is not as recommended.
@@ -2098,7 +2108,20 @@ namespace Ibasa.Ripple
 
         internal NoRippleCheckResponse(JsonElement json)
         {
-            LedgerCurrentIndex = json.GetProperty("ledger_current_index").GetUInt32();
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
 
             var json_array = json.GetProperty("problems");
             var index = 0;

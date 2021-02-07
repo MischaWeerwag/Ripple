@@ -211,33 +211,30 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             }
 
             // Check we can ping the server
-            var address = new Uri("http://localhost:" + this.HttpPort);
-            var httpClient = new HttpClient();
-            httpClient.BaseAddress = address;
-            var api = new JsonRpcApi(httpClient);
-            try
+            for (int i = 0; i < 10; ++i)
             {
-                for (int i = 0; i < 10; ++i)
+                var address = new Uri("http://localhost:" + this.HttpPort);
+                var httpClient = new HttpClient();
+                httpClient.BaseAddress = address;
+                var api = new JsonRpcApi(httpClient);
+                try
                 {
-                    try
-                    {
-                        api.Ping().Wait();
-                        break;
-                    }
-                    catch
-                    {
-                        if (i == 9)
-                        {
-                            Dispose();
-                            throw;
-                        }
-                        System.Threading.Thread.Sleep(500);
-                    }
+                    api.Ping().Wait(TimeSpan.FromSeconds(5.0));
+                    break;
                 }
-            }
-            finally
-            {
-                api.DisposeAsync().AsTask().Wait();
+                catch
+                {
+                    if (i == 9)
+                    {
+                        Dispose();
+                        throw;
+                    }
+                    System.Threading.Thread.Sleep(500);
+                }
+                finally
+                {
+                    api.DisposeAsync().AsTask().Wait();
+                }
             }
         }
 

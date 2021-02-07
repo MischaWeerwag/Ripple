@@ -22,10 +22,10 @@ namespace Ibasa.Ripple.Tests
             Amount = amount;
         }
 
-        public static TestAccount Create()
+        public static async Task<TestAccount> Create()
         {
-            var response = HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null).Result;
-            var json = response.Content.ReadAsStringAsync().Result;
+            var response = await HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null);
+            var json = await response.Content.ReadAsStringAsync();
             var document = System.Text.Json.JsonDocument.Parse(json);
             var account = document.RootElement.GetProperty("account");
             return new TestAccount(
@@ -46,8 +46,8 @@ namespace Ibasa.Ripple.Tests
 
         public ApiTestsSetup()
         {
-            TestAccountOne = TestAccount.Create();
-            TestAccountTwo = TestAccount.Create();
+            TestAccountOne = TestAccount.Create().Result;
+            TestAccountTwo = TestAccount.Create().Result;
             Api = CreateApi();
 
             // Wait for the two accounts from setup to exists
@@ -433,13 +433,13 @@ namespace Ibasa.Ripple.Tests
         public async Task TestNoRipple()
         {
             // We need a fresh account setup for this test
-            var testAccount = TestAccount.Create();
+            var testAccount = await TestAccount.Create();
             await Setup.WaitForAccount(testAccount.Address);
 
             // All tests will be against this new account,
             // also all but the last will have Transactions set true.
             var request = new NoRippleCheckRequest();
-            request.Ledger = LedgerSpecification.Current;
+            request.Ledger = LedgerSpecification.Validated;
             request.Account = testAccount.Address;
             request.Transactions = true;
 

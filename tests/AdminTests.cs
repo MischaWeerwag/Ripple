@@ -262,6 +262,11 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
         public virtual void Dispose()
         {
+            if (CI.IsRunningInCI)
+            {
+                return;
+            }
+
             var removeParameters = new ContainerRemoveParameters();
             removeParameters.Force = true;
             Client.Containers.RemoveContainerAsync(ID, removeParameters).Wait();

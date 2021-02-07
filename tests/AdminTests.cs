@@ -125,6 +125,9 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
             Client = new DockerClientConfiguration().CreateClient();
 
+            var logHash = GetHashCode();
+            Console.WriteLine("{0} Downloading xrptipbot/rippled...", logHash);
+
             // Pull the latest image 
             var imagesCreateParameters = new ImagesCreateParameters
             {
@@ -133,6 +136,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             };
             var progress = new Progress<JSONMessage>();
             Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
+            Console.WriteLine("{0} Downloaded docker image", logHash);
 
             var createParameters = new CreateContainerParameters();
             createParameters.Volumes = new Dictionary<string, EmptyStruct>(new [] {
@@ -145,8 +149,13 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             };
             createParameters.Cmd = new[] { "-a", "--start" };
 
+            Console.WriteLine("{0} Creating rippled container...", logHash);
+
             var container = Client.Containers.CreateContainerAsync(createParameters).Result;
             ID = container.ID;
+
+            Console.WriteLine("{0} Container ID = {1}", logHash, ID);
+            Console.WriteLine("{0} Starting rippled container...", logHash);
 
             var startParameters = new ContainerStartParameters();
             var started = Client.Containers.StartContainerAsync(ID, startParameters).Result;
@@ -155,6 +164,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 Dispose();
                 throw new Exception("Could not start rippled container");
             }
+            Console.WriteLine("{0} Started rippled container", logHash);
 
             var inspect = Client.Containers.InspectContainerAsync(ID).Result;
 
@@ -163,11 +173,13 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 if(port.Key == "5005/tcp")
                 {
                     HttpPort = port.Value[0].HostPort;
+                    Console.WriteLine("{0} HTTP port at {1}", logHash, HttpPort);
                 }
 
                 if (port.Key == "6006/tcp")
                 {
                     WsPort = port.Value[0].HostPort;
+                    Console.WriteLine("{0} WS port at {1}", logHash, WsPort);
                 }
             }
 
@@ -183,12 +195,14 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                     try
                     {
                         api.Ping().Wait();
+                        Console.WriteLine("{0} rippled server replied to ping", logHash);
                         break;
                     }
                     catch
                     {
                         if (i == 9)
                         {
+                            Console.WriteLine("{0} Failed to ping server after 10 tries", logHash);
                             Dispose();
                             throw;
                         }

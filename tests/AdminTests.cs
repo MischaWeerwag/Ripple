@@ -129,6 +129,11 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
             Client = new DockerClientConfiguration().CreateClient();
 
+            Console.WriteLine("{0} Created docker client", logHash);
+
+            var dockerVersion = Client.System.GetVersionAsync().Result;
+            Console.WriteLine("{0} Using docker version {1}", logHash, dockerVersion.Version);
+
             Console.WriteLine("{0} Downloading xrptipbot/rippled...", logHash);
 
             // Pull the latest image 

@@ -18,7 +18,11 @@ jobs:
       with:
         dotnet-version: 3.1.102
     - name: Pull latest xrptipbot/rippled
-      run: docker pull xrptipbot/rippled
+      run: | 
+        env
+        docker version
+        docker system info
+        docker pull xrptipbot/rippled
     - name: Build with dotnet
       run: dotnet build --configuration Release
     - name: Test with dotnet

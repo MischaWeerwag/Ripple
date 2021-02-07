@@ -20,7 +20,12 @@ jobs:
     - name: Build with dotnet
       run: dotnet build --configuration Release
     - name: Test with dotnet
-      run: dotnet test --blame --blame-hang-timeout 1h
+      run: dotnet test --blame --blame-hang-timeout 5m --output tests/TestResults
+    - name: Archive test results
+      uses: actions/upload-artifact@v2
+      with:
+        name: test-results
+        path: tests/TestResults
     - name: Pack with dotnet
       run: dotnet pack --configuration Release --output output
     - name: Publish NuGet

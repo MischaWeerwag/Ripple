@@ -176,20 +176,30 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             var httpClient = new HttpClient();
             httpClient.BaseAddress = address;
             var api = new JsonRpcApi(httpClient);
-            for (int i = 0; i < 10; ++i)
+            try
             {
-                try
+                for (int i = 0; i < 10; ++i)
                 {
-                    api.Ping().Wait();
-                    break;
-                }
-                catch
-                {
-                    if (i == 9) { throw; }
-                    System.Threading.Thread.Sleep(500);
+                    try
+                    {
+                        api.Ping().Wait();
+                        break;
+                    }
+                    catch
+                    {
+                        if (i == 9)
+                        {
+                            Dispose();
+                            throw;
+                        }
+                        System.Threading.Thread.Sleep(500);
+                    }
                 }
             }
-            api.DisposeAsync().AsTask().Wait();
+            finally
+            {
+                api.DisposeAsync().AsTask().Wait();
+            }
         }
 
         public void Accept()

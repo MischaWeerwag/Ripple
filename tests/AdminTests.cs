@@ -132,7 +132,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 Tag = "latest"
             };
             var progress = new Progress<JSONMessage>();
-            Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
+            //Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
 
             var createParameters = new CreateContainerParameters();
             createParameters.Volumes = new Dictionary<string, EmptyStruct>(new [] {

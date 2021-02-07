@@ -20,8 +20,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\dotnetcore.yml = .github\workflows\dotnetcore.yml
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Docker.DotNet", "Docker.DotNet\src\Docker.DotNet\Docker.DotNet.csproj", "{D665E5E4-D8C3-4FD3-8227-88A1DCC6B6AA}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,10 +34,6 @@ Global
 		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{767BC330-8352-4B41-BEAD-66B2C3A77C9E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D665E5E4-D8C3-4FD3-8227-88A1DCC6B6AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D665E5E4-D8C3-4FD3-8227-88A1DCC6B6AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D665E5E4-D8C3-4FD3-8227-88A1DCC6B6AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D665E5E4-D8C3-4FD3-8227-88A1DCC6B6AA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

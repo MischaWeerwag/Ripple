@@ -2,7 +2,6 @@
 using System.Net.Http;
 using System.Net.WebSockets;
 using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 using Docker.DotNet;
 using Docker.DotNet.Models;
@@ -10,6 +9,40 @@ using System.Collections.Generic;
 
 namespace Ibasa.Ripple.Tests
 {
+    public static class CI
+    {
+        public static bool IsRunningInCI
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("CI") == "true";
+            }
+        }
+    }
+
+
+    public class IgnoreOnCIFactAttribute : FactAttribute
+    {
+        public IgnoreOnCIFactAttribute()
+        {
+            if (CI.IsRunningInCI)
+            {
+                Skip = "Ignored on CI";
+            }
+        }
+    }
+
+    public class IgnoreOnCTheoryAttribute : TheoryAttribute
+    {
+        public IgnoreOnCTheoryAttribute()
+        {
+            if (CI.IsRunningInCI)
+            {
+                Skip = "Ignored on CI";
+            }
+        }
+    }
+
     public abstract class AdminTestsSetup : IDisposable
     {
         private static string config = @"
@@ -108,6 +141,12 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
         public AdminTestsSetup()
         {
+            if(CI.IsRunningInCI)
+            {
+                // Docker.DotNet isn't working in CI so skip setup
+                return;
+            }
+
             var configDirectory =
                 System.IO.Directory.CreateDirectory(
                     System.IO.Path.Combine(
@@ -132,7 +171,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
                 Tag = "latest"
             };
             var progress = new Progress<JSONMessage>();
-            //Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
+            Client.Images.CreateImageAsync(imagesCreateParameters, null, progress).Wait();
 
             var createParameters = new CreateContainerParameters();
             createParameters.Volumes = new Dictionary<string, EmptyStruct>(new [] {
@@ -302,14 +341,14 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             this.Setup = setup;
         }
 
-        [Fact(Skip = "Causing issues on CI")]
+        [IgnoreOnCIFact]
         public async void TestPing()
         {
             // Bit of a sanity check that all the docker setup is ok
             await Api.Ping();
         }
 
-        [Theory(Skip = "Causing issues on CI")]
+        [IgnoreOnCTheory]
         [InlineData(null)]
         [InlineData(SeedType.Secp256k1)]
         [InlineData(SeedType.Ed25519)]

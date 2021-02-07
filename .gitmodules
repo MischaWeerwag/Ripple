@@ -1,3 +1,0 @@
-[submodule "Docker.DotNet"]
-	path = Docker.DotNet
-	url = git@github.com:dotnet/Docker.DotNet.git

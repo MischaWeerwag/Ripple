@@ -27,9 +27,10 @@ namespace Ibasa.Ripple.Tests
             var response = HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null).Result;
             var json = response.Content.ReadAsStringAsync().Result;
             var document = System.Text.Json.JsonDocument.Parse(json);
+            var account = document.RootElement.GetProperty("account");
             return new TestAccount(
-                new AccountId(document.RootElement.GetProperty("account").GetProperty("address").GetString()),
-                new Seed(document.RootElement.GetProperty("account").GetProperty("secret").GetString()),
+                new AccountId(account.GetProperty("address").GetString()),
+                new Seed(account.GetProperty("secret").GetString()),
                 document.RootElement.GetProperty("balance").GetUInt64() * 1000000UL);
         }
     }
@@ -59,6 +60,8 @@ namespace Ibasa.Ripple.Tests
         /// </summary>
         public async Task<AccountInfoResponse> WaitForAccount(AccountId account)
         {
+            var terminationTimeout = DateTime.UtcNow + TimeSpan.FromMinutes(5.0);
+
             var infoRequest = new AccountInfoRequest()
             {
                 Ledger = LedgerSpecification.Validated,
@@ -73,6 +76,11 @@ namespace Ibasa.Ripple.Tests
                 }
                 catch (RippleRequestException exc)
                 {
+                    if (DateTime.UtcNow > terminationTimeout)
+                    {
+                        throw new Exception(string.Format("Could not find account {0} within 5 minutes", account));
+                    }
+
                     if (exc.Error != "actNotFound") { throw; }
                 }
             }

@@ -53,5 +53,39 @@ namespace Ibasa.Ripple.Tests
             var account = AccountId.FromPublicKey(bytes);
             Assert.Equal(expected, account.ToString());
         }
+
+        [Theory]
+        [InlineData(19)]
+        [InlineData(21)]
+        public void TestFromInvalidBytes(int length)
+        {
+            var bytes = new byte[length];
+            var exc = Assert.Throws<ArgumentException>(() =>
+            {
+                new AccountId(bytes);
+            });
+            Assert.Equal("Expected exactly 20 bytes (Parameter 'bytes')", exc.Message);
+        }
+
+        [Theory]
+        [InlineData("sQJm86", "Expected exactly 21 bytes")]
+        [InlineData("rW6hb6", "Expected exactly 21 bytes")]
+        [InlineData("QLbzfJH5BT1FS9apRLKV3G8dWEAjwnKaa", "Expected 0x0 prefix byte")]
+        [InlineData("rrrrrrrrrrrrrrrrrrrrfKh8zc", "Expected exactly 21 bytes")]
+        public void TestFromInvalidBase58(string base58, string message)
+        {
+            var exc = Assert.Throws<ArgumentOutOfRangeException>(() =>
+            {
+                new AccountId(base58);
+            });
+            var expected =
+                message +
+                " (Parameter 'base58')" +
+                Environment.NewLine +
+                "Actual value was " +
+                base58 +
+                ".";
+            Assert.Equal(expected, exc.Message);
+        }
     }
 }

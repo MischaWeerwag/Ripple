@@ -25,11 +25,17 @@ namespace Ibasa.Ripple
             }
         }
 
-        public static void ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="base58"></param>
+        /// <param name="buffer"></param>
+        /// <returns>The number of bytes decoded into buffer</returns>
+        public static int ConvertFrom(ReadOnlySpan<char> base58, Span<byte> buffer)
         {
             if (base58.Length == 0)
             {
-                return;
+                return 0;
             }
 
             byte[] input58 = new byte[base58.Length];
@@ -77,7 +83,8 @@ namespace Ibasa.Ripple
                 ++j;
             }
 
-            CopyOfRange(temp, j - zeroCount, temp.Length, bytes);
+            CopyOfRange(temp, j - zeroCount, temp.Length, buffer);
+            return temp.Length - (j - zeroCount);
         }
         private static void CopyOfRange(byte[] source, int from, int to, Span<byte> dest)
         {
@@ -164,33 +171,40 @@ namespace Ibasa.Ripple
 
     public static class Base58Check
     {
-        public static void ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
+        public static int ConvertFrom(ReadOnlySpan<char> base58, Span<byte> bytes)
         {
             Span<byte> buffer = stackalloc byte[bytes.Length + 4];
-            Base58.ConvertFrom(base58, buffer);
+            var count = Base58.ConvertFrom(base58, buffer);
+            if(count < 4)
+            {
+                throw new ArgumentException("Base58 text did not contain enough for a 4 byte hash code", "base58");
+            }
+            // Rest of this function just cares about the non-hash code byte count
+            count -= 4;
 
             Span<byte> firstHash = stackalloc byte[32];
             Span<byte> secondHash = stackalloc byte[32];
 
             using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
+                if (!sha256.TryComputeHash(buffer.Slice(0, count), firstHash, out var written) || written != 32)
                 {
-                    throw new Exception("sha256 error");
+                    throw new Exception("Unexpected failure of SHA256");
                 }
 
                 if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
                 {
-                    throw new Exception("sha256 error");
+                    throw new Exception("Unexpected failure of SHA256");
                 }
             }
 
-            if (!buffer.Slice(bytes.Length, 4).SequenceEqual(secondHash.Slice(0, 4)))
+            if (!buffer.Slice(count, 4).SequenceEqual(secondHash.Slice(0, 4)))
             {
-                throw new Exception("hash code did not match");
+                throw new Exception("Base58 hash code did not match");
             }
 
-            buffer.Slice(0, bytes.Length).CopyTo(bytes);
+            buffer.Slice(0, count).CopyTo(bytes);
+            return count;
         }
 
         public static string ConvertTo(ReadOnlySpan<byte> bytes)
@@ -204,14 +218,14 @@ namespace Ibasa.Ripple
             {
                 if (!sha256.TryComputeHash(buffer.Slice(0, bytes.Length), firstHash, out var written) || written != 32)
                 {
-                    throw new Exception("sha256 error");
+                    throw new Exception("Unexpected failure of SHA256");
                 }
 
                 Span<byte> secondHash = stackalloc byte[32];
 
                 if (!sha256.TryComputeHash(firstHash, secondHash, out written) || written != 32)
                 {
-                    throw new Exception("sha256 error");
+                    throw new Exception("Unexpected failure of SHA256");
                 }
 
                 secondHash.Slice(0, 4).CopyTo(buffer.Slice(bytes.Length, 4));

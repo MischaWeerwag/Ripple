@@ -1,28 +1,28 @@
-using System;
+using FsCheck;
+using FsCheck.Xunit;
 using Xunit;
+using System;
 
 namespace Ibasa.Ripple.Tests
 {
     public class Base58Tests
     {
-        [Theory]
-        [InlineData("")]
-        [InlineData("bpHzbE")]
-        [InlineData("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz")]
-        [InlineData("sn259rEFXrQrWyx3Q7XneWcwV6dfL")]
-        [InlineData("sEdTM1uX8pu2do5XvTnutH6HsouMaM2")]
-        [InlineData("rJrRMgiRgrU6hDF4pgu5DXQdWyPbY35ErN")]
-        [InlineData("rnaC7gW34M77Kneb78s")]
-        [InlineData("sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE")]
-        [InlineData("rLUEXYuLiQptky37CqLcm9USQpPiz5rkpD")]
-        public void TestRoundTrip(string data)
+        [Property]
+        public Property RoundTrip()
         {
-            var bytes = System.Text.Encoding.UTF8.GetBytes(data);
-            var base58 = Base58.ConvertTo(bytes);
-            Array.Clear(bytes, 0, bytes.Length);
-            Base58.ConvertFrom(base58, bytes);
-            var result = System.Text.Encoding.UTF8.GetString(bytes);
-            Assert.Equal(data, result);
+            return Prop.ForAll(
+                Arb.From<byte[]>(),
+                bytes =>
+                {
+                    var base58 = Base58.ConvertTo(bytes);
+                    // Oversize the buffer
+                    var result = new byte[bytes.Length + 8];
+                    var count = Base58.ConvertFrom(base58, result);
+                    // trim to decoded size
+                    result = result.AsSpan().Slice(0, count).ToArray();
+                    Assert.Equal(bytes.Length, count);
+                    Assert.Equal(bytes, result);
+                });
         }
     }
 
@@ -35,7 +35,8 @@ namespace Ibasa.Ripple.Tests
         public void TestAccount(string base58)
         {
             var bytes = new byte[21];
-            Base58Check.ConvertFrom(base58, bytes);
+            var count = Base58Check.ConvertFrom(base58, bytes);
+            Assert.Equal(count, bytes.Length);
             Assert.Equal(base58, Base58Check.ConvertTo(bytes));
         }
 
@@ -46,7 +47,8 @@ namespace Ibasa.Ripple.Tests
         public void TestSecp256k1Seed(string base58)
         {
             var bytes = new byte[17];
-            Base58Check.ConvertFrom(base58, bytes);
+            var count = Base58Check.ConvertFrom(base58, bytes);
+            Assert.Equal(count, bytes.Length);
             Assert.Equal(base58, Base58Check.ConvertTo(bytes));
         }
 
@@ -59,6 +61,24 @@ namespace Ibasa.Ripple.Tests
             var bytes = new byte[19];
             Base58Check.ConvertFrom(base58, bytes);
             Assert.Equal(base58, Base58Check.ConvertTo(bytes));
+        }
+
+        [Property]
+        public Property RoundTrip()
+        {
+            return Prop.ForAll(
+                Arb.From<byte[]>(),
+                bytes =>
+                {
+                    var base58 = Base58Check.ConvertTo(bytes);
+                    // Oversize the buffer
+                    var result = new byte[bytes.Length + 8];
+                    var count = Base58Check.ConvertFrom(base58, result);
+                    // trim to decoded size
+                    result = result.AsSpan().Slice(0, count).ToArray();
+                    Assert.Equal(bytes.Length, count);
+                    Assert.Equal(bytes, result);
+                });
         }
     }
 }

@@ -366,7 +366,8 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             Assert.NotNull(response.PublicKey);
             Assert.NotNull(response.MasterSeed);
 
-            var masterSeed = new Seed(Base16.Decode(response.MasterSeedHex), keyType ?? KeyType.Secp256k1);
+            var masterEntropy = Base16.Decode(response.MasterSeedHex);
+            var masterSeed = new Seed(masterEntropy, keyType ?? KeyType.Secp256k1);
             masterSeed.KeyPair(out _, out var keyPair);
             var publicKey = keyPair.GetCanonicalPublicKey();
             Assert.Equal(response.PublicKeyHex, Base16.Encode(publicKey));
@@ -379,6 +380,9 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             var base58PublicKey = Base58Check.ConvertTo(buffer);
 
             Assert.Equal(base58PublicKey, response.PublicKey);
+
+            var masterKey = Rfc1751.Encode(masterEntropy);
+            Assert.Equal(masterKey, response.MasterKey);
         }
     }
 }

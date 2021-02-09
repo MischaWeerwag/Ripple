@@ -218,7 +218,7 @@ namespace Ibasa.Ripple
             return buffer;
         }
 
-        public static string Encode(byte[] bytes)
+        public static string Encode(ReadOnlySpan<byte> bytes)
         {
             var utf8 = new byte[GetMaxEncodedToUtf8Length(bytes.Length)];
             var status = EncodeToUtf8(bytes, utf8, out var bytesConsumed, out var bytesWritten);

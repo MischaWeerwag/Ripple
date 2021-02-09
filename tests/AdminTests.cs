@@ -381,6 +381,8 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
             Assert.Equal(base58PublicKey, response.PublicKey);
 
+            // The hex is a 256 bit little endian number, so reverse the bits for RFC1751 encoding
+            Array.Reverse(masterEntropy);
             var masterKey = Rfc1751.Encode(masterEntropy);
             Assert.Equal(masterKey, response.MasterKey);
         }

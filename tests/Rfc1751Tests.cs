@@ -11,6 +11,8 @@ namespace Ibasa.Ripple.Tests
         [InlineData(0x53403DE77EF733EBul, "TIDE ITCH SLOW REIN RULE MOT")]
         [InlineData(0x3636363636363636ul, "RAM LOIS GOAD CREW CARE HIT")]
         [InlineData(0x8E18F62AB4EFCD01ul, "AMY DARK TOIL BELL BUST YOU")]
+        [InlineData(0xE7102A373F06A09Bul, "HOYT ABE GRAY CUTS JERK DISC")]
+        [InlineData(0x14DA591A0DE86522ul, "LA OLD ARK POP HYMN CAB")]
         public void TestEncode(ulong bits, string expected)
         {
             var words = Rfc1751.Encode(bits);
@@ -29,6 +31,8 @@ namespace Ibasa.Ripple.Tests
         [InlineData(0x53403DE77EF733EBul, "TIDE ITCH SLOW REIN RULE MOT")]
         [InlineData(0x3636363636363636ul, "RAM LOIS GOAD CREW CARE HIT")]
         [InlineData(0x8E18F62AB4EFCD01ul, "AMY DARK TOIL BELL BUST YOU")]
+        [InlineData(0xE7102A373F06A09Bul, "HOYT ABE GRAY CUTS JERK DISC")]
+        [InlineData(0x14DA591A0DE86522ul, "LA OLD ARK POP HYMN CAB")]
         public void TestDecode(ulong expected, string words)
         {
             var split = words.Split(" ");

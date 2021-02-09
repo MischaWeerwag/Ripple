@@ -1186,17 +1186,23 @@ namespace Ibasa.Ripple
     public sealed class WalletProposeResponse
     {
         public string KeyType { get; private set; }
+        public string MasterKey { get; private set; }
         public string MasterSeed { get; private set; }
+        public string MasterSeedHex { get; private set; }
         public string AccountId { get; private set; }
         public string PublicKey { get; private set; }
+        public string PublicKeyHex { get; private set; }
         public string Warning { get; private set; }
 
         internal WalletProposeResponse(JsonElement json)
         {
             KeyType = json.GetProperty("key_type").GetString();
-            MasterSeed = json.GetProperty("master_seed_hex").GetString();
+            MasterKey = json.GetProperty("master_key").GetString();
+            MasterSeed = json.GetProperty("master_seed").GetString();
+            MasterSeedHex = json.GetProperty("master_seed_hex").GetString();
             AccountId = json.GetProperty("account_id").GetString();
-            PublicKey = json.GetProperty("public_key_hex").GetString();
+            PublicKey = json.GetProperty("public_key").GetString();
+            PublicKeyHex = json.GetProperty("public_key_hex").GetString();
 
             if (json.TryGetProperty("warning", out var element))
             {

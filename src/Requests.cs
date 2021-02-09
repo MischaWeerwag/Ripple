@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -152,14 +153,19 @@ namespace Ibasa.Ripple
     public sealed class LedgerResponse
     {
         /// <summary>
-        /// Unique identifying hash of the entire ledger.
+        /// The identifying hash of the ledger version used to retrieve this data.
         /// </summary>
         public Hash256? LedgerHash { get; private set; }
 
         /// <summary>
-        /// The Ledger Index of this ledger.
+        /// The ledger index of the ledger version used to retrieve this data.
         /// </summary>
         public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
 
         /// <summary>
         /// The complete header data of this ledger.
@@ -171,16 +177,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public bool Closed { get; private set; }
 
-        /// <summary>
-        /// True if this data is from a validated ledger version.
-        /// </summary>
-        public bool Validated { get; private set; }
-
         public Hash256[] Transactions { get; private set; }
 
         internal LedgerResponse(JsonElement json)
         {
-            if(json.TryGetProperty("ledger_hash", out var ledger_hash))
+            if (json.TryGetProperty("ledger_hash", out var ledger_hash))
             {
                 LedgerHash = new Hash256(ledger_hash.GetString());
             }
@@ -188,7 +189,7 @@ namespace Ibasa.Ripple
             Closed = ledger.GetProperty("closed").GetBoolean();
             Validated = json.GetProperty("validated").GetBoolean();
 
-            if(json.TryGetProperty("ledger_index", out var ledger_index))
+            if (json.TryGetProperty("ledger_index", out var ledger_index))
             {
                 LedgerIndex = ledger_index.GetUInt32();
                 Ledger = new LedgerHeader(ledger.GetProperty("ledger_data").GetBytesFromBase16());
@@ -202,7 +203,7 @@ namespace Ibasa.Ripple
             {
                 var length = transactions.GetArrayLength();
                 Transactions = new Hash256[length];
-                for(int i = 0; i < length; ++i)
+                for (int i = 0; i < length; ++i)
                 {
                     Transactions[i] = new Hash256(transactions[i].GetString());
                 }
@@ -246,9 +247,22 @@ namespace Ibasa.Ripple
 
     public sealed class AccountInfoResponse
     {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
         //signer_lists Array(Omitted unless the request specified signer_lists and at least one SignerList is associated with the account.) Array of SignerList ledger objects associated with this account for Multi-Signing.Since an account can own at most one SignerList, this array must have exactly one member if it is present.New in: rippled 0.31.0 
-        //ledger_current_index Integer (Omitted if ledger_index is provided instead) The ledger index of the current in-progress ledger, which was used when retrieving this information.
-        //ledger_index Integer (Omitted if ledger_current_index is provided instead) The ledger index of the ledger version used when retrieving this information.The information does not contain any changes from ledger versions newer than this one.
         //queue_data Object(Omitted unless queue specified as true and querying the current open ledger.) Information about queued transactions sent by this account.This information describes the state of the local rippled server, which may be different from other servers in the peer-to-peer XRP Ledger network.Some fields may be omitted because the values are calculated "lazily" by the queuing mechanism.
 
         /// <summary>
@@ -256,14 +270,21 @@ namespace Ibasa.Ripple
         /// </summary>
         public AccountRoot AccountData { get; private set; }
 
-        /// <summary>
-        /// True if this data is from a validated ledger version; if omitted or set to false, this data is not final.
-        /// </summary>
-        public bool Validated { get; private set; }
-
         internal AccountInfoResponse(JsonElement json)
         {
             AccountData = new AccountRoot(json.GetProperty("account_data"));
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
             Validated = json.GetProperty("validated").GetBoolean();
         }
     }
@@ -313,7 +334,14 @@ namespace Ibasa.Ripple
 
     public sealed class LedgerClosedResponse
     {
+        /// <summary>
+        /// The unique hash of this ledger version.
+        /// </summary>
         public Hash256 LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of this ledger version.
+        /// </summary>
         public uint LedgerIndex { get; private set; }
 
         internal LedgerClosedResponse(JsonElement json)
@@ -434,13 +462,19 @@ namespace Ibasa.Ripple
     public sealed class AccountCurrenciesResponse
     {
         /// <summary>
-        /// The identifying hash of the ledger version used to retrieve this data, as hex.
+        /// The identifying hash of the ledger version used to retrieve this data.
         /// </summary>
         public Hash256? LedgerHash { get; private set; }
+
         /// <summary>
         /// The ledger index of the ledger version used to retrieve this data.
         /// </summary>
         public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
 
         /// <summary>
         /// Array of Currency Codes for currencies that this account can receive.
@@ -451,11 +485,6 @@ namespace Ibasa.Ripple
         /// Array of Currency Codes for currencies that this account can send.
         /// </summary>
         public ReadOnlyCollection<CurrencyCode> SendCurrencies { get; private set; }
-
-        /// <summary>
-        /// If true, this data comes from a validated ledger.
-        /// </summary>
-        public bool Validated { get; private set; }
 
         internal AccountCurrenciesResponse(JsonElement json)
         {
@@ -1069,12 +1098,12 @@ namespace Ibasa.Ripple
     public sealed class NoRippleCheckResponse
     {
         /// <summary>
-        /// The identifying hash of the ledger version used to calculate these results, as hex.
+        /// The identifying hash of the ledger version used to retrieve this data.
         /// </summary>
         public Hash256? LedgerHash { get; private set; }
 
         /// <summary>
-        /// The ledger index of the ledger used to calculate these results.
+        /// The ledger index of the ledger version used to retrieve this data.
         /// </summary>
         public uint LedgerIndex { get; private set; }
 
@@ -1099,7 +1128,6 @@ namespace Ibasa.Ripple
             {
                 LedgerHash = new Hash256(hash.GetString());
             }
-
             if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
             {
                 LedgerIndex = ledgerCurrentIndex.GetUInt32();
@@ -1168,7 +1196,7 @@ namespace Ibasa.Ripple
     public sealed class WalletProposeResponse
     {
         public string KeyType { get; private set; }
-        public string MasterSeed{ get; private set; }
+        public string MasterSeed { get; private set; }
         public string AccountId { get; private set; }
         public string PublicKey { get; private set; }
         public string Warning { get; private set; }
@@ -1183,6 +1211,146 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("warning", out var element))
             {
                 Warning = element.GetString();
+            }
+        }
+    }
+
+    public sealed class GatewayBalancesRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// The Address to check. 
+        /// This should be the issuing address.
+        /// </summary>
+        public AccountId Account { get; set; }
+
+        /// <summary>
+        /// (Optional) An array of operational addresses to exclude from the balances issued.
+        /// </summary>
+        public AccountId[] HotWallet { get; set; }
+    }
+
+    public sealed class GatewayBalancesResponse
+    {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
+        /// <summary>
+        /// The address of the account that issued the balances.
+        /// </summary>
+        public AccountId Account { get; private set; }
+
+        /// <summary>
+        /// (Omitted if empty) Total amounts issued to addresses not excluded, as a map of currencies to the total value issued.
+        /// </summary>
+        public ReadOnlyDictionary<CurrencyCode, Currency> Obligations { get; private set; }
+
+        /// <summary>
+        /// (Omitted if empty) Amounts issued to the hotwallet addresses from the request. 
+        /// The keys are addresses and the values are arrays of currency amounts they hold.
+        /// </summary>
+        public ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>> Balances { get; private set; }
+
+        /// <summary>
+        /// (Omitted if empty) Total amounts held that are issued by others. 
+        /// In the recommended configuration, the issuing address should have none.
+        /// </summary>
+        public ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>> Assets { get; private set; }
+
+        internal GatewayBalancesResponse(JsonElement json)
+        {
+            JsonElement element;
+
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            Account = new AccountId(json.GetProperty("account").GetString());
+
+            if (json.TryGetProperty("obligations", out element))
+            {
+                var obligations = new Dictionary<CurrencyCode, Currency>();
+                foreach(var item in element.EnumerateObject())
+                {
+                    var code = new CurrencyCode(item.Name);
+                    var amount = Currency.Parse(item.Value.GetString());
+                    obligations.Add(code, amount);
+                }
+                Obligations = new ReadOnlyDictionary<CurrencyCode, Currency>(obligations);
+            }
+            else
+            {
+                Obligations = new ReadOnlyDictionary<CurrencyCode, Currency>(EmptyDictionary<CurrencyCode, Currency>.Instance);
+            }
+
+            if (json.TryGetProperty("balances", out element))
+            {
+                var balances = new Dictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>();
+                foreach (var item in element.EnumerateObject())
+                {
+                    var account = new AccountId(item.Name);
+                    var currencies = new Dictionary<CurrencyCode, Currency>();
+                    foreach (var kv in item.Value.EnumerateArray())
+                    {
+                        var code = new CurrencyCode(kv.GetProperty("currency").GetString());
+                        var amount = Currency.Parse(kv.GetProperty("value").GetString());
+                        currencies.Add(code, amount);
+                    }
+                    balances.Add(account, new ReadOnlyDictionary<CurrencyCode, Currency>(currencies));
+                }
+                Balances = new ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>(balances);
+            }
+            else
+            {
+                Balances = new ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>(EmptyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>.Instance);
+            }
+
+            if (json.TryGetProperty("assets", out element))
+            {
+                var assets = new Dictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>();
+                foreach (var item in element.EnumerateObject())
+                {
+                    var account = new AccountId(item.Name);
+                    var currencies = new Dictionary<CurrencyCode, Currency>();
+                    foreach (var kv in item.Value.EnumerateArray())
+                    {
+                        var code = new CurrencyCode(kv.GetProperty("currency").GetString());
+                        var amount = Currency.Parse(kv.GetProperty("value").GetString());
+                        currencies.Add(code, amount);
+                    }
+                    assets.Add(account, new ReadOnlyDictionary<CurrencyCode, Currency>(currencies));
+                }
+                Assets = new ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>(assets);
+            }
+            else
+            {
+                Assets = new ReadOnlyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>(EmptyDictionary<AccountId, ReadOnlyDictionary<CurrencyCode, Currency>>.Instance);
             }
         }
     }

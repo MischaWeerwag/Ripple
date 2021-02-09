@@ -133,5 +133,12 @@ namespace Ibasa.Ripple
         /// To become a funded address stored in the ledger, the address must receive a Payment transaction that provides enough XRP to meet the reserve requirement.
         /// </summary>
         public abstract Task<WalletProposeResponse> WalletPropose(WalletProposeRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// The gateway_balances command calculates the total balances issued by a given account, optionally excluding amounts held by operational addresses. 
+        /// New in: rippled 0.28.2 
+        /// </summary>
+        public abstract Task<GatewayBalancesResponse> GatewayBalances(GatewayBalancesRequest request, CancellationToken cancellationToken = default);
+
     }
 }

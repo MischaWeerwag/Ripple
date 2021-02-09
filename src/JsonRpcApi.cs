@@ -428,5 +428,45 @@ namespace Ibasa.Ripple
             var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
             return new WalletProposeResponse(response);
         }
+
+        public override async Task<GatewayBalancesResponse> GatewayBalances(GatewayBalancesRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            var options = new System.Text.Json.JsonWriterOptions() { SkipValidation = true };
+            using (var writer = new System.Text.Json.Utf8JsonWriter(jsonBuffer, options))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("method", "gateway_balances");
+                writer.WritePropertyName("params");
+                writer.WriteStartArray();
+                writer.WriteStartObject();
+                LedgerSpecification.Write(writer, request.Ledger);
+                writer.WriteString("account", request.Account.ToString());
+                if (request.HotWallet != null)
+                {
+                    if (request.HotWallet.Length == 1)
+                    {
+                        writer.WriteString("hotwallet", request.HotWallet[0].ToString());
+                    }
+                    else
+                    {
+                        writer.WritePropertyName("hotwallet");
+                        writer.WriteStartArray();
+                        foreach (var account in request.HotWallet)
+                        {
+                            writer.WriteStringValue(account.ToString());
+                        }
+                        writer.WriteEndArray();
+                    }
+                }
+                writer.WriteBoolean("strict", true);
+                writer.WriteEndObject();
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+            var content = new ReadOnlyMemoryContent(jsonBuffer.WrittenMemory);
+            var response = await ReceiveAsync(await client.PostAsync("/", content, cancellationToken));
+            return new GatewayBalancesResponse(response);
+        }
     }
 }

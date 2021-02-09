@@ -236,14 +236,29 @@ namespace Ibasa.Ripple.Tests
         {
             var account = Setup.TestAccountOne.Address;
 
-            var request = new AccountInfoRequest()
-            {
-                Ledger = LedgerSpecification.Current,
-                Account = account,
-            };
-            var response = await Api.AccountInfo(request);
-            Assert.False(response.Validated);
-            Assert.Equal(account, response.AccountData.Account);
+            var request = new AccountInfoRequest { Account = account };
+
+            // Validated 
+            request.Ledger = LedgerSpecification.Validated;
+            var responseValidated = await Api.AccountInfo(request);
+            Assert.True(responseValidated.Validated);
+            Assert.NotNull(responseValidated.LedgerHash);
+            Assert.NotEqual(new Hash256(), responseValidated.LedgerHash);
+            Assert.NotEqual(default, responseValidated.LedgerIndex);
+            Assert.Equal(account, responseValidated.AccountData.Account);
+
+
+            // Current
+            request.Ledger = LedgerSpecification.Current;
+            var responseCurrent = await Api.AccountInfo(request);
+            Assert.False(responseCurrent.Validated);
+            Assert.Null(responseCurrent.LedgerHash);
+            Assert.NotEqual(default, responseCurrent.LedgerIndex);
+            Assert.Equal(account, responseCurrent.AccountData.Account);
+
+            Assert.True(
+                responseCurrent.LedgerIndex > responseValidated.LedgerIndex,
+                "Current index > Validated index");
         }
 
         [Fact]
@@ -525,6 +540,100 @@ namespace Ibasa.Ripple.Tests
                 Assert.NotEqual(default, response.LedgerIndex);
                 Assert.Empty(response.Problems);
                 Assert.Empty(response.Transactions);
+            }
+        }
+
+        [Fact]
+        public async Task TestGatewayBalances()
+        {
+            // We need a fresh accounts setup for this test
+            var gatewayAccount = await TestAccount.Create();
+            var account1 = await TestAccount.Create();
+            var account2 = await TestAccount.Create();
+            var hotwallet = await TestAccount.Create();
+            await Setup.WaitForAccount(gatewayAccount.Address);
+            await Setup.WaitForAccount(account1.Address);
+            await Setup.WaitForAccount(account2.Address);
+            await Setup.WaitForAccount(hotwallet.Address);
+
+            var testAccounts = new[] { account1, account2 };
+
+            // Setup trust lines from account 1 and 2 to the gateway and send some money
+            foreach (var account in testAccounts)
+            {
+                var trustSet = new TrustSet();
+                trustSet.Account = account.Address;
+                // GBP
+                trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(1000m));
+                var (_, _) = await SubmitTransaction(account.Secret, trustSet);
+                // BTC
+                trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("BTC"), new Currency(100m));
+                var (_, _) = await SubmitTransaction(account.Secret, trustSet);
+
+                var payment = new Payment();
+                payment.Account = gatewayAccount.Address;
+                payment.Destination = account.Address;
+
+                // GBP
+                payment.Amount = new Amount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(50m));
+                var (_, _) = await SubmitTransaction(gatewayAccount.Secret, payment);
+                // BTC
+                payment.Amount = new Amount(gatewayAccount.Address, new CurrencyCode("BTC"), new Currency(10m));
+                var (_, _) = await SubmitTransaction(gatewayAccount.Secret, payment);
+            }
+
+            // Send some GBP to the hotwallet
+            {
+                var trustSet = new TrustSet();
+                trustSet.Account = hotwallet.Address;
+                trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(100m));
+                var (_, _) = await SubmitTransaction(hotwallet.Secret, trustSet);
+
+                var payment = new Payment();
+                payment.Account = gatewayAccount.Address;
+                payment.Destination = hotwallet.Address;
+                payment.Amount = new Amount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(24m));
+                var (_, _) = await SubmitTransaction(gatewayAccount.Secret, payment);
+            }
+
+            // Check gateway balance sums correctly
+            {
+                var request = new GatewayBalancesRequest
+                {
+                    Account = gatewayAccount.Address,
+                    HotWallet = new[] { hotwallet.Address }
+                };
+                var response = await Api.GatewayBalances(request);
+
+                Assert.Equal(2, response.Obligations.Count);
+                Assert.Equal(new Currency(100m), response.Obligations[new CurrencyCode("GBP")]);
+                Assert.Equal(new Currency(20m), response.Obligations[new CurrencyCode("BTC")]);
+
+                var balances = Assert.Single(response.Balances);
+                Assert.Equal(hotwallet.Address, balances.Key);
+                var balance = Assert.Single(balances.Value);
+                Assert.Equal(new CurrencyCode("GBP"), balance.Key);
+                Assert.Equal(new Currency(24m), balance.Value);
+
+                Assert.Empty(response.Assets);
+            }
+
+            // Check account balance sums correctly
+            {
+                var request = new GatewayBalancesRequest
+                {
+                    Account = account1.Address
+                };
+                var response = await Api.GatewayBalances(request);
+                Assert.Empty(response.Obligations);
+                Assert.Empty(response.Balances);
+
+                var asset = Assert.Single(response.Assets);
+                Assert.Equal(gatewayAccount.Address, asset.Key);
+                var currencies = asset.Value;
+                Assert.Equal(2, currencies.Count);
+                Assert.Equal(new Currency(50m), currencies[new CurrencyCode("GBP")]);
+                Assert.Equal(new Currency(10m), currencies[new CurrencyCode("BTC")]);
             }
         }
     }

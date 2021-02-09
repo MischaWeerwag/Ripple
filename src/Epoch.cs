@@ -2,7 +2,7 @@
 
 namespace Ibasa.Ripple
 {
-    public static class Epoch
+    internal static class Epoch
     {
         private static DateTimeOffset epoch = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
 

@@ -229,11 +229,6 @@ namespace Ibasa.Ripple
         public LedgerSpecification Ledger { get; set; }
 
         /// <summary>
-        /// If set to True, then the account field only accepts a public key or XRP Ledger address.
-        /// </summary>
-        public bool Strict { get; set; }
-
-        /// <summary>
         /// If true, and the FeeEscalation amendment is enabled, also returns stats about queued transactions associated with this account.
         /// Can only be used when querying for the data from the current open ledger.
         /// </summary>
@@ -533,11 +528,6 @@ namespace Ibasa.Ripple
         /// A unique identifier for the account, most commonly the account's Address.
         /// </summary>
         public AccountId Account { get; set; }
-
-        /// <summary>
-        /// If true, only accept an address or public key for the account parameter.
-        /// </summary>
-        public bool Strict { get; set; }
 
         /// <summary>
         /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.

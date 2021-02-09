@@ -249,7 +249,6 @@ namespace Ibasa.Ripple
                 writer.WriteString("command", "account_info");
                 LedgerSpecification.Write(writer, request.Ledger);
                 writer.WriteString("account", request.Account.ToString());
-                writer.WriteBoolean("strict", request.Strict);
                 writer.WriteBoolean("queue", request.Queue);
                 writer.WriteBoolean("signer_lists", request.SignerLists);
                 writer.WriteEndObject();
@@ -272,7 +271,6 @@ namespace Ibasa.Ripple
                 writer.WriteString("command", "account_currencies");
                 LedgerSpecification.Write(writer, request.Ledger);
                 writer.WriteString("account", request.Account.ToString());
-                writer.WriteBoolean("strict", request.Strict);
                 writer.WriteEndObject();
             }
 
@@ -485,7 +483,6 @@ namespace Ibasa.Ripple
                         writer.WriteEndArray();
                     }
                 }
-                writer.WriteBoolean("strict", true);
                 writer.WriteEndObject();
             }
 

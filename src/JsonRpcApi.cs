@@ -74,7 +74,6 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 LedgerSpecification.Write(writer, request.Ledger);
                 writer.WriteString("account", request.Account.ToString());
-                writer.WriteBoolean("strict", request.Strict);
                 writer.WriteEndObject();
                 writer.WriteEndArray();
                 writer.WriteEndObject();
@@ -97,7 +96,6 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 LedgerSpecification.Write(writer, request.Ledger);
                 writer.WriteString("account", request.Account.ToString());
-                writer.WriteBoolean("strict", request.Strict);
                 writer.WriteBoolean("queue", request.Queue);
                 writer.WriteBoolean("signer_lists", request.SignerLists);
                 writer.WriteEndObject();
@@ -459,7 +457,6 @@ namespace Ibasa.Ripple
                         writer.WriteEndArray();
                     }
                 }
-                writer.WriteBoolean("strict", true);
                 writer.WriteEndObject();
                 writer.WriteEndArray();
                 writer.WriteEndObject();

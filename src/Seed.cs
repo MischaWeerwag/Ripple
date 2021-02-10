@@ -32,17 +32,17 @@ namespace Ibasa.Ripple
 
         public Seed(string base58) : this()
         {
-            Span<byte> content = stackalloc byte[17];
+            Span<byte> content = stackalloc byte[19];
             Base58Check.ConvertFrom(base58, content);
             if (content[0] == 0x21)
             {
                 _type = KeyType.Secp256k1;
-                content.Slice(1).CopyTo(UnsafeAsSpan(ref this));
+                content.Slice(1, 16).CopyTo(UnsafeAsSpan(ref this));
             }
             else if (content[0] == 0x01 && content[1] == 0xE1 && content[2] == 0x4B)
             {
                 _type = KeyType.Ed25519;
-                content.Slice(3).CopyTo(UnsafeAsSpan(ref this));
+                content.Slice(3, 16).CopyTo(UnsafeAsSpan(ref this));
             }
             else
             {

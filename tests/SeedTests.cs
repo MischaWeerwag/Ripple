@@ -12,6 +12,8 @@ namespace Ibasa.Ripple.Tests
             {
                 yield return new object[] { "snoPBrXtMeMyMHUVTgbuqAfg1SUTb" };
                 yield return new object[] { "sp6JS7f14BuwFY8Mw6bTtLKWauoUs" };
+                yield return new object[] { "sEdTM1uX8pu2do5XvTnutH6HsouMaM2" };
+                yield return new object[] { "sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE" };
             }
         }
 
@@ -48,6 +50,8 @@ namespace Ibasa.Ripple.Tests
         [InlineData("shHHvEhCC6WdkJNV1AfBmqw3XJ3Uv", "rJgzgUKLw6dUoDFXgbHNb2euXdMcNn6ioh")]
         [InlineData("shbwxB2QWXVwviXArd8tNTu2Yu9LD", "r4q4qa57DsL6p6RtTwmh3WEmLZnP6jqdez")]
         [InlineData("snMp2HgqGPR2iWrGPt7FjYvBmRvNN", "rDq6a58wfbANJsR2H44zttaMihHFkV9hbm")]
+        [InlineData("sEdTM1uX8pu2do5XvTnutH6HsouMaM2", "rG31cLyErnqeVj2eomEjBZtq7PYaupGYzL")]
+        [InlineData("sEdSJHS4oiAdz7w2X2ni1gFiqtbJHqE", "r9zRhGr7b6xPekLvT6wP4qNdWMryaumZS7")]
         public void TestSeedToAccountId(string seed, string account)
         {
             var secret = new Seed(seed);

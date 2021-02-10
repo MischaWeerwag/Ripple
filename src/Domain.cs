@@ -186,7 +186,7 @@ namespace Ibasa.Ripple
                 if ((value & 0x8000_0000_0000_0000) == 0)
                 {
                     // XRP just return the positive drops
-                    return new XrpAmount(value & 0x3FFFFFFFFFFFFFFF);
+                    return Ripple.XrpAmount.FromDrops(value & 0x3FFFFFFFFFFFFFFF);
                 }
                 return null;
             }
@@ -274,13 +274,32 @@ namespace Ibasa.Ripple
     {
         public readonly ulong Drops;
 
-        public XrpAmount(ulong drops)
+        private XrpAmount(ulong drops)
         {
             if (drops > 100000000000000000)
             {
                 throw new ArgumentOutOfRangeException("drops", drops, "drops must be less than or equal to 100,000,000,000,000,000");
             }
             Drops = drops;
+        }
+
+        public static XrpAmount FromDrops(ulong drops)
+        {
+            return new XrpAmount(drops);
+        }
+
+        public static XrpAmount FromXrp(decimal xrp)
+        {
+            if (xrp < 0)
+            {
+                throw new ArgumentOutOfRangeException("xrp", xrp, "xrp must be positive");
+            }
+            if (xrp > 100000000000)
+            {
+                throw new ArgumentOutOfRangeException("xrp", xrp, "xrp must be less than or equal to 100,000,000,000");
+            }
+
+            return new XrpAmount((ulong)(xrp * 1000000));
         }
 
         public static implicit operator Amount(XrpAmount value)

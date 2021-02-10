@@ -16,7 +16,7 @@ namespace Ibasa.Ripple.Tests
         [InlineData(100_000_000_000_000_000ul, "100000000000 XRP")]
         public void TestToString(ulong drops, string expected)
         {
-            var amount = new XrpAmount(drops);
+            var amount = XrpAmount.FromDrops(drops);
             Assert.Equal(expected, amount.ToString());
         }
     }

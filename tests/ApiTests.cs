@@ -688,7 +688,7 @@ namespace Ibasa.Ripple.Tests
             transaction.Account = deleteAccount.Address;
             transaction.Destination = accountOne.Address;
             // Set the fee to a fixed number so our assert later is correct
-            transaction.Fee = new XrpAmount(5 * 1000000);
+            transaction.Fee = XrpAmount.FromXrp(5);
 
             // Got to wait for 256 ledgers to pass
             var info = await Api.AccountInfo(new AccountInfoRequest { Account = deleteAccount.Address });

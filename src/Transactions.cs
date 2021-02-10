@@ -63,11 +63,11 @@ namespace Ibasa.Ripple
             var fee = json.GetProperty("Fee");
             if (fee.ValueKind == JsonValueKind.Number)
             {
-                Fee = new XrpAmount(fee.GetUInt64());
+                Fee = XrpAmount.FromDrops(fee.GetUInt64());
             } 
             else 
             {
-                Fee = new XrpAmount(ulong.Parse(fee.GetString()));
+                Fee = XrpAmount.FromDrops(ulong.Parse(fee.GetString()));
             }
             JsonElement element;
             Sequence = json.GetProperty("Sequence").GetUInt32();

@@ -94,6 +94,21 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
+    public sealed class SubmitException : Exception
+    {
+        public readonly string _message;
+        public readonly SubmitResponse Response;
+
+        public SubmitException(string message, SubmitResponse response)
+        {
+            _message = message;
+            Response = response;
+        }
+
+        public override string Message => string.Format("{0}: {1}", _message, Response);
+    }
+
+
     public abstract class ApiTests<T> where T : Api
     {
         protected readonly ApiTestsSetup<T> Setup;
@@ -111,7 +126,12 @@ namespace Ibasa.Ripple.Tests
 
             transaction.LastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
             transaction.Sequence = infoResponse.AccountData.Sequence;
-            transaction.Fee = feeResponse.Drops.MedianFee;
+            // Some transactions have higher or fixed fee requirements.
+            // Don't overwrite them.
+            if (transaction.Fee.Drops == 0)
+            {
+                transaction.Fee = feeResponse.Drops.MedianFee;
+            }
 
             secret.KeyPair(out var _, out var keyPair);
 
@@ -121,7 +141,15 @@ namespace Ibasa.Ripple.Tests
             var submitResponse = await Api.Submit(request);
             if (!submitResponse.Accepted)
             {
-                throw new Exception(string.Format("Transaction {0} was not accepted", transactionHash));
+                throw new SubmitException("Transaction was not accepted", submitResponse);
+            }
+            else
+            {
+                Assert.True(
+                    submitResponse.Kept ||
+                    submitResponse.Queued ||
+                    submitResponse.Applied ||
+                    submitResponse.Broadcast);
             }
 
             var txRequest = new TxRequest()
@@ -142,7 +170,7 @@ namespace Ibasa.Ripple.Tests
 
                 if (ledgerCurrent > txRequest.MaxLedger)
                 {
-                    throw new Exception(string.Format("Never got transaction {0} validated", transactionHash));
+                    throw new SubmitException("Transaction was not validated", submitResponse);
                 }
 
                 System.Threading.Thread.Sleep(2000);
@@ -635,6 +663,62 @@ namespace Ibasa.Ripple.Tests
                 Assert.Equal(new Currency(50m), currencies[new CurrencyCode("GBP")]);
                 Assert.Equal(new Currency(10m), currencies[new CurrencyCode("BTC")]);
             }
+        }
+
+        [Fact(Skip = "This takes about 13 minutes to run")]
+        public async Task TestAccountDelete()
+        {
+            // Make a fresh account to delete and send funds to account 1
+            var deleteAccount = await TestAccount.Create();
+            await Setup.WaitForAccount(deleteAccount.Address);
+
+            var accountOne = Setup.TestAccountOne;
+
+            ulong startingDrops;
+            {
+                var response = await Api.AccountInfo(new AccountInfoRequest()
+                {
+                    Ledger = LedgerSpecification.Current,
+                    Account = accountOne.Address,
+                });
+                startingDrops = response.AccountData.Balance.Drops;
+            }
+
+            var transaction = new AccountDelete();
+            transaction.Account = deleteAccount.Address;
+            transaction.Destination = accountOne.Address;
+            // Set the fee to a fixed number so our assert later is correct
+            transaction.Fee = new XrpAmount(5 * 1000000);
+
+            // Got to wait for 256 ledgers to pass
+            var info = await Api.AccountInfo(new AccountInfoRequest { Account = deleteAccount.Address });
+
+            while (true)
+            {
+                var ledger = await Api.LedgerCurrent();
+                if (ledger > info.AccountData.Sequence + 256) break;
+                System.Threading.Thread.Sleep(60 * 1000);
+            }
+
+            var (_, transactionResponse) = await SubmitTransaction(deleteAccount.Secret, transaction);
+            var pr = Assert.IsType<AccountDelete>(transactionResponse.Transaction);
+            Assert.Equal(transaction.Account, pr.Account);
+            Assert.Equal(transaction.Destination, pr.Destination);
+            Assert.Equal(transaction.DestinationTag, pr.DestinationTag);
+
+            ulong endingDrops;
+            {
+                var response = await Api.AccountInfo(new AccountInfoRequest()
+                {
+                    Ledger = LedgerSpecification.Current,
+                    Account = accountOne.Address,
+                });
+                endingDrops = response.AccountData.Balance.Drops;
+            }
+
+            Assert.Equal(
+                deleteAccount.Amount - transaction.Fee.Drops, 
+                endingDrops - startingDrops);
         }
     }
 }

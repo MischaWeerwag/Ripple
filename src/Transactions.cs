@@ -1,10 +1,6 @@
 ﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Ibasa.Ripple
 {
@@ -146,9 +142,14 @@ namespace Ibasa.Ripple
             {
                 transaction = new SetRegularKey();
             }
+            else if (transactionType == "AccountDelete")
+            {
+                transaction = new AccountDelete();
+            }
             else
             {
-                throw new NotImplementedException();
+                throw new NotImplementedException(
+                    string.Format("Transaction type '{0}' not implemented", transactionType));
             }
 
             transaction.ReadJson(json);
@@ -187,7 +188,7 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteUInt16(2, 5);
+            writer.WriteTransactionType(TransactionType.SetRegularKey);
             writer.WriteUInt32(4, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
@@ -301,7 +302,7 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteUInt16(2, 3);
+            writer.WriteTransactionType(TransactionType.AccountSet);
             writer.WriteUInt32(4, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             if (SetFlag.HasValue)
@@ -376,7 +377,7 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteUInt16(2, 0);
+            writer.WriteTransactionType(TransactionType.Payment);
             writer.WriteUInt32(4, Sequence);
             if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
@@ -482,7 +483,7 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteUInt16(2, 20);
+            writer.WriteTransactionType(TransactionType.TrustSet);
             writer.WriteUInt32(2, (uint)Flags);
             writer.WriteUInt32(4, Sequence);
             if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
@@ -496,6 +497,62 @@ namespace Ibasa.Ripple
                 writer.WriteVl(4, this.TxnSignature);
             }
             writer.WriteAccount(1, Account);
+        }
+    }
+
+    /// <summary>
+    /// An AccountDelete transaction deletes an account and any objects it owns in the XRP Ledger, if possible, sending the account's remaining XRP to a specified destination account. 
+    /// See Deletion of Accounts for the requirements to delete an account.
+    /// </summary>
+    public sealed class AccountDelete : Transaction
+    {
+        /// <summary>
+        /// The address of an account to receive any leftover XRP after deleting the sending account. 
+        /// Must be a funded account in the ledger, and must not be the sending account.
+        /// </summary>
+        public AccountId Destination { get; set; }
+
+        /// <summary>
+        /// (Optional) Arbitrary destination tag that identifies a hosted recipient or other information for the recipient of the deleted account's leftover XRP.
+        /// </summary>
+        public UInt32? DestinationTag { get; set; }
+        
+        public AccountDelete()
+        {
+        }
+
+        public override void ReadJson(JsonElement json)
+        {
+            base.ReadJson(json);
+            JsonElement element;
+
+            if (json.TryGetProperty("Destination", out element))
+            {
+                Destination = new AccountId(element.GetString());
+            }
+
+            if (json.TryGetProperty("DestinationTag", out element))
+            {
+                DestinationTag = element.GetUInt32();
+            }
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(TransactionType.AccountDelete);
+            //writer.WriteUInt32(2, (uint)Flags);
+            writer.WriteUInt32(4, Sequence);
+            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteAmount(8, Fee);
+            writer.WriteVl(3, this.SigningPubKey);
+            if (!forSigning)
+            {
+                writer.WriteVl(4, this.TxnSignature);
+            }
+            writer.WriteAccount(1, Account);
+            writer.WriteAccount(3, Destination);
         }
     }
 }

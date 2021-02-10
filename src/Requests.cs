@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Buffers;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
@@ -987,6 +985,16 @@ namespace Ibasa.Ripple
             Queued = json.GetProperty("queued").GetBoolean();
             OpenLedgerCost = ulong.Parse(json.GetProperty("open_ledger_cost").GetString());
             ValidatedLedgerIndex = json.GetProperty("validated_ledger_index").GetUInt32();
+        }
+
+        public override string ToString()
+        {
+            return ToString(null);
+        }
+
+        public string ToString(JsonSerializerOptions options)
+        {
+            return JsonSerializer.Serialize(this, options);
         }
     }
 

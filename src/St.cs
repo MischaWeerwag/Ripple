@@ -3,6 +3,40 @@ using System.Buffers;
 
 namespace Ibasa.Ripple
 {
+    public enum TransactionType : ushort
+    {
+        Invalid = 0xffff,
+        
+        Payment = 0,
+        EscrowCreate = 1,
+        EscrowFinish = 2,
+        AccountSet = 3,
+        EscrowCancel = 4,
+        SetRegularKey = 5,
+        NicknameSet = 6,
+        OfferCreate = 7,
+        OfferCancel = 8,
+
+        TicketCreate = 10,
+        
+        SignerListSet = 12,
+        PaychanCreate = 13,
+        PaychanFund = 14,
+        PaychanClaim = 15,
+        CheckCreate = 16,
+        CheckCash = 17,
+        CheckCancel = 18,
+        DepositPreauth = 19,
+        TrustSet = 20,
+        AccountDelete = 21,
+        
+        HookSet = 22,
+        
+        Amendment = 100,
+        Fee = 101,
+        UnlModify = 102,
+    }
+
     public struct StWriter
     {
         readonly IBufferWriter<byte> bufferWriter;
@@ -80,11 +114,17 @@ namespace Ibasa.Ripple
                 bufferWriter.Advance(3);
             }
         }
-
         public void WriteUInt16(uint fieldCode, ushort value)
         {
             WriteFieldId(StTypeCode.UInt16, fieldCode);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), value);
+            bufferWriter.Advance(2);
+        }
+
+        public void WriteTransactionType(TransactionType type)
+        {
+            WriteFieldId(StTypeCode.UInt16, 2);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), (ushort)type);
             bufferWriter.Advance(2);
         }
 

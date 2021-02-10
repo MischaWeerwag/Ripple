@@ -8,7 +8,7 @@ namespace Ibasa.Ripple.Tests
     public class Base58Tests
     {
         [Property]
-        public Property RoundTrip()
+        public Property TestRoundTrip()
         {
             return Prop.ForAll(
                 Arb.From<byte[]>(),
@@ -64,7 +64,7 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Property]
-        public Property RoundTrip()
+        public Property TestRoundTrip()
         {
             return Prop.ForAll(
                 Arb.From<byte[]>(),

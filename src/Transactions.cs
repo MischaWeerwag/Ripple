@@ -204,6 +204,8 @@ namespace Ibasa.Ripple
                 bufferWriter.Clear();
             }
 
+            Array.Sort<Signer>(Signers, (x, y) => x.Account.CompareTo(y.Account));
+
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpTXN);
             bufferWriter.Advance(4);

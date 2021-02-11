@@ -20,7 +20,7 @@ namespace Ibasa.Ripple
 
     [JsonConverter(typeof(AccountIdConverter))]
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
-    public struct AccountId : IEquatable<AccountId>
+    public struct AccountId : IEquatable<AccountId>, IComparable<AccountId>
     {
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private uint _data0;
@@ -128,6 +128,18 @@ namespace Ibasa.Ripple
                 return Equals((AccountId)other);
             }
             return false;
+        }
+
+        public int CompareTo(AccountId other)
+        {
+            var us = UnsafeAsSpan(ref this);
+            var them = UnsafeAsSpan(ref other);
+            for(int i = 0; i < 20; ++i)
+            {
+                if (us[i] < them[i]) { return -1; }
+                else if (us[i] > them[i]) { return 1; }
+            }
+            return 0;
         }
 
         /// <summary>

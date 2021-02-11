@@ -87,5 +87,24 @@ namespace Ibasa.Ripple.Tests
                 ".";
             Assert.Equal(expected, exc.Message);
         }
+
+        [Theory]
+        [InlineData(0, 0, 0)]
+        [InlineData(1, 0, 1)]
+        [InlineData(0, 1, -1)]
+        [InlineData(256, 255, 1)]
+        [InlineData(255, 256, -1)]
+        public void TestCompareTo(ulong x, ulong y, int expected)
+        {
+            var bytes = new byte[20];
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bytes, x);
+            var ax = new AccountId(bytes);
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bytes, y);
+            var ay = new AccountId(bytes);
+
+            Assert.Equal(expected, ax.CompareTo(ay));
+        }
     }
 }

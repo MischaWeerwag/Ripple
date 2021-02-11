@@ -761,11 +761,19 @@ namespace Ibasa.Ripple.Tests
             await Setup.WaitForAccount(testAccount.Address);
 
             // Make up three "accounts"
+            var random = new Random();
+            var buffer = new byte[16];
+            Func<KeyType, Seed> makeSeed = type =>
+            {
+                random.NextBytes(buffer);
+                return new Seed(buffer, type);
+            };
+
             var accounts = new[]
             {
-                TestAccount.FromSeed(new Seed("saDR7ewZcD6FdAv5UqutrCj3n1zbu")),
-                TestAccount.FromSeed(new Seed("saa5ApAGinwMgzpRsF7csrSPabqsx")),
-                TestAccount.FromSeed(new Seed("sEdTwsr9nh1mRsneSCeqDsa1P9oCp6E")),
+                TestAccount.FromSeed(makeSeed(KeyType.Secp256k1)),
+                TestAccount.FromSeed(makeSeed(KeyType.Secp256k1)),
+                TestAccount.FromSeed(makeSeed(KeyType.Ed25519)),
             };
 
             var signerListSet = new SignerListSet();
@@ -791,10 +799,11 @@ namespace Ibasa.Ripple.Tests
 
             Assert.Equal(SignerListFlags.lsfOneOwnerCount, accountInfoResponse.SignerList.Flags);
             Assert.Equal(signerListSet.SignerQuorum, accountInfoResponse.SignerList.SignerQuorum);
-            // The SignerList object sorts the entries by account id
-            Assert.Equal(signerListSet.SignerEntries[1], accountInfoResponse.SignerList.SignerEntries[0]);
-            Assert.Equal(signerListSet.SignerEntries[2], accountInfoResponse.SignerList.SignerEntries[1]);
-            Assert.Equal(signerListSet.SignerEntries[0], accountInfoResponse.SignerList.SignerEntries[2]);
+            // The SignerList object sorts the entries by account id so we can't just check [0] == [0]
+            Assert.Equal(3, accountInfoResponse.SignerList.SignerEntries.Count);
+            Assert.Contains(signerListSet.SignerEntries[0], accountInfoResponse.SignerList.SignerEntries);
+            Assert.Contains(signerListSet.SignerEntries[1], accountInfoResponse.SignerList.SignerEntries);
+            Assert.Contains(signerListSet.SignerEntries[2], accountInfoResponse.SignerList.SignerEntries);
 
             // And multi sign a transaction (paying accounts[0])
             var payment = new Payment();
@@ -803,15 +812,29 @@ namespace Ibasa.Ripple.Tests
             payment.Amount = XrpAmount.FromDrops(50_000_000);
 
             // Try and sign with just account[0] and account[1]
-            var signers = new Tuple<AccountId, Seed>[]
             {
-                Tuple.Create(accounts[1].Address, accounts[1].Secret),
-                Tuple.Create(accounts[0].Address, accounts[0].Secret),
-            };
+                var signers = new Tuple<AccountId, Seed>[]
+                {
+                    Tuple.Create(accounts[0].Address, accounts[0].Secret),
+                    Tuple.Create(accounts[1].Address, accounts[1].Secret),
+                };
 
-            var (_, paymentResponse) = await SubmitTransaction(signers, payment);
-            var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
-            Assert.Equal(payment.Amount, pr.Amount);
+                var (_, paymentResponse) = await SubmitTransaction(signers, payment);
+                var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
+                Assert.Equal(payment.Amount, pr.Amount);
+            }
+
+            // Try and sign with just account[2]
+            {
+                var signers = new Tuple<AccountId, Seed>[]
+                {
+                    Tuple.Create(accounts[2].Address, accounts[2].Secret),
+                };
+
+                var (_, paymentResponse) = await SubmitTransaction(signers, payment);
+                var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
+                Assert.Equal(payment.Amount, pr.Amount);
+            }
 
             accountInfoResponse = await Api.AccountInfo(new AccountInfoRequest()
             {
@@ -819,7 +842,7 @@ namespace Ibasa.Ripple.Tests
                 Account = accounts[0].Address,
             });
 
-            Assert.Equal(50_000_000ul, accountInfoResponse.AccountData.Balance.Drops);
+            Assert.Equal(100_000_000ul, accountInfoResponse.AccountData.Balance.Drops);
 
         }
     }

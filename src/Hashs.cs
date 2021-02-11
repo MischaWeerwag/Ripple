@@ -106,7 +106,7 @@ namespace Ibasa.Ripple
 
         public override string ToString()
         {
-            return String.Format("{0,16:X}{1,16:X}{2,16:X}{3,16:X}", a, b, c, d).Replace(' ', '0');
+            return string.Format("{0,16:X}{1,16:X}{2,16:X}{3,16:X}", a, b, c, d).Replace(' ', '0');
         }
 
         public override bool Equals(object obj)

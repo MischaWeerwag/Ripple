@@ -132,7 +132,7 @@ namespace Ibasa.Ripple
 
                         writer.WriteVl(3, signer.SigningPubKey);
                         writer.WriteVl(4, signer.TxnSignature);
-                        writer.WriteAccount(1, signer.Account);
+                        writer.WriteAccount(AccountFieldCode.Account, signer.Account);
 
                         writer.WriteEndObject();
                     }
@@ -250,6 +250,14 @@ namespace Ibasa.Ripple
             {
                 transaction = new SignerListSet();
             }
+            else if (transactionType == "CheckCreate")
+            {
+                transaction = new CheckCreate();
+            }
+            else if (transactionType == "CheckCancel")
+            {
+                transaction = new CheckCancel();
+            }
             else
             {
                 throw new NotImplementedException(
@@ -297,8 +305,8 @@ namespace Ibasa.Ripple
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(1, Account);
-            if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            if (RegularKey.HasValue) { writer.WriteAccount(AccountFieldCode.RegularKey, RegularKey.Value); }
             WriteSigners(writer, forSigning);
         }
     }
@@ -417,7 +425,7 @@ namespace Ibasa.Ripple
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
             if (Domain != null) { writer.WriteVl(7, Domain); }
-            writer.WriteAccount(1, Account);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }
@@ -485,8 +493,8 @@ namespace Ibasa.Ripple
             if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
             if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(1, Account);
-            writer.WriteAccount(3, Destination);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(AccountFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
         }
     }
@@ -535,8 +543,8 @@ namespace Ibasa.Ripple
         public UInt32? QualityIn { get; set; }
 
         /// <summary>
-        ///  (Optional) Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units.
-        ///  A value of 0 is shorthand for treating balances at face value.
+        /// (Optional) Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units.
+        /// A value of 0 is shorthand for treating balances at face value.
         /// </summary>
         public UInt32? QualityOut { get; set; }
 
@@ -569,10 +577,7 @@ namespace Ibasa.Ripple
                 QualityOut = element.GetUInt32();
             }
 
-            if (json.TryGetProperty("LimitAmount", out element))
-            {
-                LimitAmount = IssuedAmount.ReadJson(element);
-            }
+            LimitAmount = IssuedAmount.ReadJson(json.GetProperty("LimitAmount"));
         }
 
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
@@ -587,7 +592,7 @@ namespace Ibasa.Ripple
             writer.WriteAmount(3, LimitAmount);
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(1, Account);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }
@@ -616,14 +621,10 @@ namespace Ibasa.Ripple
         public override void ReadJson(JsonElement json)
         {
             base.ReadJson(json);
-            JsonElement element;
+            
+            Destination = new AccountId(json.GetProperty("Destination").GetString());
 
-            if (json.TryGetProperty("Destination", out element))
-            {
-                Destination = new AccountId(element.GetString());
-            }
-
-            if (json.TryGetProperty("DestinationTag", out element))
+            if (json.TryGetProperty("DestinationTag", out var element))
             {
                 DestinationTag = element.GetUInt32();
             }
@@ -639,8 +640,8 @@ namespace Ibasa.Ripple
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(1, Account);
-            writer.WriteAccount(3, Destination);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(AccountFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
         }
     }
@@ -665,7 +666,7 @@ namespace Ibasa.Ripple
         internal SignerEntry(JsonElement json)
         {
             var entry = json.GetProperty("SignerEntry");
-            Account = new AccountId(entry.GetProperty("Account").ToString());
+            Account = new AccountId(entry.GetProperty("Account").GetString());
             SignerWeight = entry.GetProperty("SignerWeight").GetUInt16();
         }
 
@@ -755,7 +756,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(35, SignerQuorum);
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(1, Account);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
             if (SignerEntries != null)
             {
@@ -764,11 +765,133 @@ namespace Ibasa.Ripple
                 {
                     writer.WriteStartObject(ObjectFieldCode.SignerEntry);
                     writer.WriteUInt16(3, entry.SignerWeight);
-                    writer.WriteAccount(1, entry.Account);
+                    writer.WriteAccount(AccountFieldCode.Account, entry.Account);
                     writer.WriteEndObject();                    
                 }
                 writer.WriteEndArray();
             }
+        }
+    }
+
+    /// <summary>
+    /// Create a Check object in the ledger, which is a deferred payment that can be cashed by its intended destination.
+    /// The sender of this transaction is the sender of the Check.
+    /// </summary>
+    public sealed class CheckCreate : Transaction
+    {
+        /// <summary>
+        /// The unique address of the account that can cash the Check.
+        /// </summary>
+        public AccountId Destination { get; set; }
+
+        /// <summary>
+        /// Maximum amount of source currency the Check is allowed to debit the sender, including transfer fees on non-XRP currencies.
+        /// The Check can only credit the destination with the same currency (from the same issuer, for non-XRP currencies).
+        /// For non-XRP amounts, the nested field names MUST be lower-case.
+        /// </summary>
+        public Amount SendMax { get; set; }
+
+        /// <summary>
+        /// (Optional) Arbitrary tag that identifies the reason for the Check, or a hosted recipient to pay.
+        /// </summary>
+        public UInt32? DestinationTag { get; set; }
+
+        /// <summary>
+        /// (Optional) Time after which the Check is no longer valid, in seconds since the Ripple Epoch.
+        /// </summary>
+        public DateTimeOffset? Expiration { get; set; }
+
+        /// <summary>
+        /// (Optional) Arbitrary 256-bit hash representing a specific reason or identifier for this Check.
+        /// </summary>
+        public Hash256? InvoiceID { get; set; }
+
+        public CheckCreate()
+        {
+
+        }
+
+        public override void ReadJson(JsonElement json)
+        {
+            base.ReadJson(json);
+            JsonElement element;
+
+            Destination = new AccountId(json.GetProperty("Destination").GetString());
+            SendMax = Amount.ReadJson(json.GetProperty("SendMax"));
+
+            if (json.TryGetProperty("DestinationTag", out element))
+            {
+                DestinationTag = element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("Expiration", out element))
+            {
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
+            }
+
+            if (json.TryGetProperty("InvoiceID", out element))
+            {
+                InvoiceID = new Hash256(element.GetString());
+            }
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(TransactionType.CheckCreate);
+            //writer.WriteUInt32(2, (uint)Flags);
+            writer.WriteUInt32(4, Sequence);
+            if (Expiration.HasValue)
+            {
+                writer.WriteUInt32(10, Epoch.FromDateTimeOffset(Expiration.Value));
+            }
+            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
+            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(9, SendMax);
+            WriteSigner(writer, forSigning);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(AccountFieldCode.Destination, Destination);
+            WriteSigners(writer, forSigning);
+        }
+    }
+
+    /// <summary>
+    /// Cancels an unredeemed Check, removing it from the ledger without sending any money.
+    /// The source or the destination of the check can cancel a Check at any time using this transaction type.
+    /// If the Check has expired, any address can cancel it.
+    /// </summary>
+    public sealed class CheckCancel : Transaction
+    {
+        /// <summary>
+        /// The ID of the Check ledger object to cancel, as a 64-character hexadecimal string.
+        /// </summary>
+        public Hash256 CheckId { get; set; }
+
+        public CheckCancel()
+        {
+
+        }
+
+        public override void ReadJson(JsonElement json)
+        {
+            base.ReadJson(json);
+            CheckId = new Hash256(json.GetProperty("CheckID").GetString());
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(TransactionType.CheckCancel);
+            //writer.WriteUInt32(2, (uint)Flags);
+            writer.WriteUInt32(4, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteHash256(24, CheckId);
+            writer.WriteAmount(8, Fee);
+            WriteSigner(writer, forSigning);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            WriteSigners(writer, forSigning);
         }
     }
 }

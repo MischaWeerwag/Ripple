@@ -37,6 +37,18 @@ namespace Ibasa.Ripple.St
         UnlModify = 102,
     }
 
+    public enum AccountFieldCode : uint
+    {
+        Account =  1,
+        Owner = 2,
+        Destination = 3,
+        Issuer = 4,
+        Authorize = 5,
+        Unauthorize = 6,
+
+        RegularKey = 8,
+    }
+
     public enum ArrayFieldCode : uint
     {
         Signers = 3,
@@ -214,9 +226,9 @@ namespace Ibasa.Ripple.St
             }
         }
 
-        public void WriteAccount(uint fieldCode, AccountId value)
+        public void WriteAccount(AccountFieldCode fieldCode, AccountId value)
         {
-            WriteFieldId(StTypeCode.Account, fieldCode);
+            WriteFieldId(StTypeCode.Account, (uint)fieldCode);
             WriteLengthPrefix(20);
             value.CopyTo(bufferWriter.GetSpan(20));
             bufferWriter.Advance(20);

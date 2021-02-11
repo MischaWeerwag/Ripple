@@ -1101,7 +1101,7 @@ namespace Ibasa.Ripple
     public sealed class TransactionResponse
     {
         /// <summary>
-        /// The SHA-512 hash of the transaction
+        /// The SHA-512 hash of the transaction.
         /// </summary>
         public Hash256 Hash { get; private set; }
 

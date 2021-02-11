@@ -245,6 +245,21 @@ namespace Ibasa.Ripple
             this.issuer = issuer;
         }
 
+        internal static Amount ReadJson(JsonElement json)
+        {
+            if (json.ValueKind == JsonValueKind.Object)
+            {
+                return new Amount(
+                    new AccountId(json.GetProperty("issuer").GetString()),
+                    new CurrencyCode(json.GetProperty("currency").GetString()),
+                    Currency.Parse(json.GetProperty("value").GetString()));
+            }
+            else
+            {
+                return new Amount(ulong.Parse(json.GetString()));
+            }
+        }
+
         public override string ToString()
         {
             var xrp = XrpAmount;

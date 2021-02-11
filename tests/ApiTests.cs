@@ -188,7 +188,8 @@ namespace Ibasa.Ripple.Tests
         private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
         {
             secret.KeyPair(out var _, out var keyPair);
-            return await SubmitTransaction(transaction => {
+            return await SubmitTransaction(transaction =>
+            {
                 var bytes = transaction.Sign(keyPair, out var transactionHash);
                 return Tuple.Create(bytes, transactionHash);
             }, transaction);
@@ -203,7 +204,8 @@ namespace Ibasa.Ripple.Tests
                     return ValueTuple.Create(tuple.Item1, keyPair);
                 }).ToArray();
 
-            return await SubmitTransaction(transaction => {
+            return await SubmitTransaction(transaction =>
+            {
                 var bytes = transaction.Sign(signers, out var transactionHash);
                 return Tuple.Create(bytes, transactionHash);
             }, transaction);
@@ -843,6 +845,53 @@ namespace Ibasa.Ripple.Tests
             });
 
             Assert.Equal(100_000_000ul, accountInfoResponse.AccountData.Balance.Drops);
+        }
+
+        [Fact]
+        public async Task TestChecks()
+        {
+            var accountOne = Setup.TestAccountOne;
+            var accountTwo = Setup.TestAccountTwo;
+
+            // Create a check
+            var checkCreate = new CheckCreate();
+            checkCreate.Account = accountOne.Address;
+            checkCreate.Destination = accountTwo.Address;
+            checkCreate.SendMax = new Amount(500);
+            checkCreate.InvoiceID = new Hash256("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+
+            var (_, checkCreateResponse) = await SubmitTransaction(accountOne.Secret, checkCreate);
+            var ccrr = Assert.IsType<CheckCreate>(checkCreateResponse.Transaction);
+            Assert.Equal(checkCreate.Account, ccrr.Account);
+            Assert.Equal(checkCreate.Destination, ccrr.Destination);
+            Assert.Equal(checkCreate.SendMax, ccrr.SendMax);
+            Assert.Equal(checkCreate.InvoiceID, ccrr.InvoiceID);
+
+            //The ID of a Check object is the SHA - 512Half of the following values, concatenated in order:
+            //The Check space key(0x0043)
+            //The AccountID of the sender of the CheckCreate transaction that created the Check object
+            //The Sequence number of the CheckCreate transaction that created the Check object
+            Memory<byte> buffer = new byte[2 + 20 + 4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(buffer.Span, 0x0043);
+            accountOne.Address.CopyTo(buffer.Slice(2).Span);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(22).Span, ccrr.Sequence);
+            Hash256 checkId;
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                byte[] hashBuffer = new byte[64];
+                sha512.TryComputeHash(buffer.Span, hashBuffer, out var bytesWritten);
+                checkId = new Hash256(hashBuffer);
+            }
+
+
+            // Cancel that check with account two
+            var checkCancel = new CheckCancel();
+            checkCancel.Account = accountTwo.Address;
+            checkCancel.CheckId = checkId;
+            var (_, checkCancelResponse) = await SubmitTransaction(accountTwo.Secret, checkCancel);
+            var ccar = Assert.IsType<CheckCancel>(checkCancelResponse.Transaction);
+            Assert.Equal(checkCancel.Account, ccar.Account);
+            Assert.Equal(checkCancel.CheckId, ccar.CheckId);
         }
     }
 }

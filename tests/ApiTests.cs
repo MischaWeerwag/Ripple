@@ -867,31 +867,40 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(checkCreate.SendMax, ccrr.SendMax);
             Assert.Equal(checkCreate.InvoiceID, ccrr.InvoiceID);
 
-            //The ID of a Check object is the SHA - 512Half of the following values, concatenated in order:
-            //The Check space key(0x0043)
-            //The AccountID of the sender of the CheckCreate transaction that created the Check object
-            //The Sequence number of the CheckCreate transaction that created the Check object
-            Memory<byte> buffer = new byte[2 + 20 + 4];
-            System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(buffer.Span, 0x0043);
-            accountOne.Address.CopyTo(buffer.Slice(2).Span);
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(22).Span, ccrr.Sequence);
-            Hash256 checkId;
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
-            {
-                byte[] hashBuffer = new byte[64];
-                sha512.TryComputeHash(buffer.Span, hashBuffer, out var bytesWritten);
-                checkId = new Hash256(hashBuffer);
-            }
-
-
             // Cancel that check with account two
             var checkCancel = new CheckCancel();
             checkCancel.Account = accountTwo.Address;
-            checkCancel.CheckId = checkId;
+            checkCancel.CheckID = Check.ID(accountOne.Address, ccrr.Sequence);
             var (_, checkCancelResponse) = await SubmitTransaction(accountTwo.Secret, checkCancel);
-            var ccar = Assert.IsType<CheckCancel>(checkCancelResponse.Transaction);
-            Assert.Equal(checkCancel.Account, ccar.Account);
-            Assert.Equal(checkCancel.CheckId, ccar.CheckId);
+            var ccanr = Assert.IsType<CheckCancel>(checkCancelResponse.Transaction);
+            Assert.Equal(checkCancel.Account, ccanr.Account);
+            Assert.Equal(checkCancel.CheckID, ccanr.CheckID);
+
+
+            // Create a new check
+            var sndCheckCreate = new CheckCreate();
+            sndCheckCreate.Account = accountOne.Address;
+            sndCheckCreate.Destination = accountTwo.Address;
+            sndCheckCreate.SendMax = new Amount(1000);
+
+            var (_, sndCheckCreateResponse) = await SubmitTransaction(accountOne.Secret, sndCheckCreate);
+            ccrr = Assert.IsType<CheckCreate>(sndCheckCreateResponse.Transaction);
+            Assert.Equal(sndCheckCreate.Account, ccrr.Account);
+            Assert.Equal(sndCheckCreate.Destination, ccrr.Destination);
+            Assert.Equal(sndCheckCreate.SendMax, ccrr.SendMax);
+            Assert.Equal(sndCheckCreate.InvoiceID, ccrr.InvoiceID);
+
+            // Try to claim the check
+            var checkCash = new CheckCash();
+            checkCash.Account = accountTwo.Address;
+            checkCash.CheckID = Check.ID(accountOne.Address, ccrr.Sequence);
+            checkCash.Amount = new Amount(750);
+            var (_, checkCashResponse) = await SubmitTransaction(accountTwo.Secret, checkCash);
+            var ccashr = Assert.IsType<CheckCash>(checkCashResponse.Transaction);
+            Assert.Equal(checkCash.Account, ccashr.Account);
+            Assert.Equal(checkCash.CheckID, ccashr.CheckID);
+            Assert.Equal(checkCash.Amount, ccashr.Amount);
+            Assert.Equal(checkCash.DeliverMin, ccashr.DeliverMin);
         }
     }
 }

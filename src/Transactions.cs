@@ -258,6 +258,10 @@ namespace Ibasa.Ripple
             {
                 transaction = new CheckCancel();
             }
+            else if (transactionType == "CheckCash")
+            {
+                transaction = new CheckCash();
+            }
             else
             {
                 throw new NotImplementedException(
@@ -867,7 +871,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// The ID of the Check ledger object to cancel, as a 64-character hexadecimal string.
         /// </summary>
-        public Hash256 CheckId { get; set; }
+        public Hash256 CheckID { get; set; }
 
         public CheckCancel()
         {
@@ -877,7 +881,7 @@ namespace Ibasa.Ripple
         public override void ReadJson(JsonElement json)
         {
             base.ReadJson(json);
-            CheckId = new Hash256(json.GetProperty("CheckID").GetString());
+            CheckID = new Hash256(json.GetProperty("CheckID").GetString());
         }
 
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
@@ -887,8 +891,77 @@ namespace Ibasa.Ripple
             //writer.WriteUInt32(2, (uint)Flags);
             writer.WriteUInt32(4, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
-            writer.WriteHash256(24, CheckId);
+            writer.WriteHash256(24, CheckID);
             writer.WriteAmount(8, Fee);
+            WriteSigner(writer, forSigning);
+            writer.WriteAccount(AccountFieldCode.Account, Account);
+            WriteSigners(writer, forSigning);
+        }
+    }
+
+    /// <summary>
+    /// Attempts to redeem a Check object in the ledger to receive up to the amount authorized by the corresponding CheckCreate transaction. Only the Destination address of a Check can cash it with a CheckCash transaction. Cashing a check this way is similar to executing a Payment initiated by the destination.
+    /// Since the funds for a check are not guaranteed, redeeming a Check can fail because the sender does not have a high enough balance or because there is not enough liquidity to deliver the funds.If this happens, the Check remains in the ledger and the destination can try to cash it again later, or for a different amount.
+    /// </summary>
+    public sealed class CheckCash : Transaction
+    {
+        /// <summary>
+        /// The ID of the Check ledger object to cash, as a 64-character hexadecimal string.
+        /// </summary>
+        public Hash256 CheckID { get; set; }
+
+        /// <summary>
+        /// (Optional) Redeem the Check for exactly this amount, if possible.
+        /// The currency must match that of the SendMax of the corresponding CheckCreate transaction.
+        /// You must provide either this field or DeliverMin.
+        /// </summary>
+        public Amount? Amount { get; set; }
+
+        /// <summary>
+        /// (Optional) Redeem the Check for at least this amount and for as much as possible.
+        /// The currency must match that of the SendMax of the corresponding CheckCreate transaction.
+        /// You must provide either this field or Amount.
+        /// </summary>
+        public Amount? DeliverMin { get; set; }
+
+        public CheckCash()
+        {
+
+        }
+
+        public override void ReadJson(JsonElement json)
+        {
+            base.ReadJson(json);
+            CheckID = new Hash256(json.GetProperty("CheckID").GetString());
+
+            JsonElement element;
+            if (json.TryGetProperty("Amount", out element))
+            {
+                Amount = Ripple.Amount.ReadJson(element);
+            }
+            if (json.TryGetProperty("DeliverMin", out element))
+            {
+                DeliverMin = Ripple.Amount.ReadJson(element);
+            }
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(TransactionType.CheckCash);
+            //writer.WriteUInt32(2, (uint)Flags);
+            writer.WriteUInt32(4, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteHash256(24, CheckID);
+            if (Amount.HasValue)
+            {
+                writer.WriteAmount(1, Amount.Value);
+            }
+            writer.WriteAmount(8, Fee);
+            if (DeliverMin.HasValue)
+            {
+                writer.WriteAmount(10, DeliverMin.Value);
+            }
             WriteSigner(writer, forSigning);
             writer.WriteAccount(AccountFieldCode.Account, Account);
             WriteSigners(writer, forSigning);

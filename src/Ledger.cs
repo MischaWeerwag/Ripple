@@ -1,13 +1,50 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using Ibasa.Ripple.St;
 
 namespace Ibasa.Ripple
 {
+    public interface ILedgerObject
+    {
+        /// <summary>
+        /// Each object in a ledger's state data has a unique ID. 
+        /// The ID is derived by hashing important contents of the object, along with a namespace identifier.
+        /// The ledger object type determines which namespace identifier to use and which contents to include in the hash.
+        /// This ensures every ID is unique.
+        /// To calculate the hash, rippled uses SHA-512 and then truncates the result to the first 256 bits.
+        /// This algorithm, informally called SHA-512Half, provides an output that has comparable security to SHA-256, but runs faster on 64-bit processors.
+        /// 
+        /// Generally, a ledger object's ID is returned as the index field in JSON, at the same level as the object's contents.In transaction metadata, the ledger object's ID in JSON is LedgerIndex.
+        /// </summary>
+        Hash256 ID { get; }
+    }
+
+    /// <summary>
+    /// A Check object describes a check, similar to a paper personal check, which can be cashed by its destination to get money from its sender.
+    /// (The potential payment has already been approved by its sender, but no money moves until it is cashed. Unlike an Escrow, the money for a Check is not set aside, so cashing the Check could fail due to lack of funds.)
+    /// </summary>
+    public sealed class Check
+    {
+        public static Hash256 ID(AccountId account, uint sequence)
+        {
+            //The ID of a Check object is the SHA - 512Half of the following values, concatenated in order:
+            //The Check space key(0x0043)
+            //The AccountID of the sender of the CheckCreate transaction that created the Check object
+            //The Sequence number of the CheckCreate transaction that created the Check object
+            Span<byte> buffer = stackalloc byte[2 + 20 + 4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(buffer, 0x0043);
+            account.CopyTo(buffer.Slice(2));
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(22), sequence);
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashBuffer = stackalloc byte[64];
+                sha512.TryComputeHash(buffer, hashBuffer, out var bytesWritten);
+                return new Hash256(hashBuffer);
+            }
+        }
+    }
+
     /// <summary>
     /// SignerList objects can have the following flag value.
     /// </summary>

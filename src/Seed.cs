@@ -105,12 +105,13 @@ namespace Ibasa.Ripple
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
+                Span<byte> destination = stackalloc byte[64];
+
                 uint i;
                 Org.BouncyCastle.Math.BigInteger secpRootSecret = default;
                 for (i = 0; i < uint.MaxValue; ++i)
                 {
                     System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(rootSource.Slice(16), i);
-                    Span<byte> destination = stackalloc byte[64];
                     var done = sha512.TryComputeHash(rootSource, destination, out var bytesWritten);
                     destination.Slice(0, 32).CopyTo(secpSecretBytes);
 
@@ -133,7 +134,6 @@ namespace Ibasa.Ripple
                 for (i = 0; i < uint.MaxValue; ++i)
                 {
                     System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(37), i);
-                    Span<byte> destination = stackalloc byte[64];
                     var done = sha512.TryComputeHash(intermediateSource, destination, out var bytesWritten);
                     destination.Slice(0, 32).CopyTo(secpSecretBytes);
 

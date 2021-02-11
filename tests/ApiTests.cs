@@ -22,6 +22,13 @@ namespace Ibasa.Ripple.Tests
             Amount = amount;
         }
 
+        public static TestAccount FromSeed(Seed secret)
+        {
+            secret.KeyPair(out var _, out var keyPair);
+            var address = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
+            return new TestAccount(address, secret, 0);
+        }
+
         public static async Task<TestAccount> Create()
         {
             var response = await HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null);
@@ -118,7 +125,7 @@ namespace Ibasa.Ripple.Tests
         /// We always submit a single transaction and then wait for it to be validated before continuing with the tests.
         /// This is a little slow (ledgers only validate every 4s or so), but it keeps test logic simple.
         /// </summary>
-        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
+        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Func<Transaction, Tuple<ReadOnlyMemory<byte>, Hash256>> sign, Transaction transaction)
         {
             AccountInfoResponse infoResponse = await Setup.WaitForAccount(transaction.Account);
 
@@ -133,11 +140,12 @@ namespace Ibasa.Ripple.Tests
                 transaction.Fee = feeResponse.Drops.MedianFee;
             }
 
-            secret.KeyPair(out var _, out var keyPair);
+            var signature = sign(transaction);
+            var transactionHash = signature.Item2;
 
             var request = new SubmitRequest();
             request.FailHard = true;
-            request.TxBlob = transaction.Sign(keyPair, out var transactionHash);
+            request.TxBlob = signature.Item1;
             var submitResponse = await Api.Submit(request);
             if (!submitResponse.Accepted)
             {
@@ -175,6 +183,30 @@ namespace Ibasa.Ripple.Tests
 
                 System.Threading.Thread.Sleep(2000);
             }
+        }
+
+        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
+        {
+            secret.KeyPair(out var _, out var keyPair);
+            return await SubmitTransaction(transaction => {
+                var bytes = transaction.Sign(keyPair, out var transactionHash);
+                return Tuple.Create(bytes, transactionHash);
+            }, transaction);
+        }
+
+        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Tuple<AccountId, Seed>[] secrets, Transaction transaction)
+        {
+            var signers =
+                secrets.Select(tuple =>
+                {
+                    tuple.Item2.KeyPair(out var _, out var keyPair);
+                    return ValueTuple.Create(tuple.Item1, keyPair);
+                }).ToArray();
+
+            return await SubmitTransaction(transaction => {
+                var bytes = transaction.Sign(signers, out var transactionHash);
+                return Tuple.Create(bytes, transactionHash);
+            }, transaction);
         }
 
         public ApiTests(ApiTestsSetup<T> setup)
@@ -701,10 +733,10 @@ namespace Ibasa.Ripple.Tests
             }
 
             var (_, transactionResponse) = await SubmitTransaction(deleteAccount.Secret, transaction);
-            var pr = Assert.IsType<AccountDelete>(transactionResponse.Transaction);
-            Assert.Equal(transaction.Account, pr.Account);
-            Assert.Equal(transaction.Destination, pr.Destination);
-            Assert.Equal(transaction.DestinationTag, pr.DestinationTag);
+            var adr = Assert.IsType<AccountDelete>(transactionResponse.Transaction);
+            Assert.Equal(transaction.Account, adr.Account);
+            Assert.Equal(transaction.Destination, adr.Destination);
+            Assert.Equal(transaction.DestinationTag, adr.DestinationTag);
 
             ulong endingDrops;
             {
@@ -717,8 +749,78 @@ namespace Ibasa.Ripple.Tests
             }
 
             Assert.Equal(
-                deleteAccount.Amount - transaction.Fee.Drops, 
+                deleteAccount.Amount - transaction.Fee.Drops,
                 endingDrops - startingDrops);
+        }
+
+        [Fact]
+        public async Task TestSignerListSet()
+        {
+            // Make a fresh account to set signer list on
+            var testAccount = await TestAccount.Create();
+            await Setup.WaitForAccount(testAccount.Address);
+
+            // Make up three "accounts"
+            var accounts = new[]
+            {
+                TestAccount.FromSeed(new Seed("saDR7ewZcD6FdAv5UqutrCj3n1zbu")),
+                TestAccount.FromSeed(new Seed("saa5ApAGinwMgzpRsF7csrSPabqsx")),
+                TestAccount.FromSeed(new Seed("sEdTwsr9nh1mRsneSCeqDsa1P9oCp6E")),
+            };
+
+            var signerListSet = new SignerListSet();
+            signerListSet.Account = testAccount.Address;
+            signerListSet.SignerQuorum = 2;
+            signerListSet.SignerEntries = new[] {
+                new SignerEntry(accounts[0].Address, 1),
+                new SignerEntry(accounts[1].Address, 1),
+                new SignerEntry(accounts[2].Address, 2),
+            };
+
+            var (_, transactionResponse) = await SubmitTransaction(testAccount.Secret, signerListSet);
+            var slsr = Assert.IsType<SignerListSet>(transactionResponse.Transaction);
+            Assert.Equal(signerListSet.Account, slsr.Account);
+            Assert.Equal(signerListSet.SignerQuorum, slsr.SignerQuorum);
+            Assert.Equal(signerListSet.SignerEntries[0], slsr.SignerEntries[0]);
+            Assert.Equal(signerListSet.SignerEntries[1], slsr.SignerEntries[1]);
+            Assert.Equal(signerListSet.SignerEntries[2], slsr.SignerEntries[2]);
+
+            // Check the signer list show in account info now
+            var accountInfoRequest = new AccountInfoRequest { Account = testAccount.Address, SignerLists = true };
+            var accountInfoResponse = await Api.AccountInfo(accountInfoRequest);
+
+            Assert.Equal(SignerListFlags.lsfOneOwnerCount, accountInfoResponse.SignerList.Flags);
+            Assert.Equal(signerListSet.SignerQuorum, accountInfoResponse.SignerList.SignerQuorum);
+            // The SignerList object sorts the entries by account id
+            Assert.Equal(signerListSet.SignerEntries[1], accountInfoResponse.SignerList.SignerEntries[0]);
+            Assert.Equal(signerListSet.SignerEntries[2], accountInfoResponse.SignerList.SignerEntries[1]);
+            Assert.Equal(signerListSet.SignerEntries[0], accountInfoResponse.SignerList.SignerEntries[2]);
+
+            // And multi sign a transaction (paying accounts[0])
+            var payment = new Payment();
+            payment.Account = testAccount.Address;
+            payment.Destination = accounts[0].Address;
+            payment.Amount = XrpAmount.FromDrops(50_000_000);
+
+            // Try and sign with just account[0] and account[1]
+            var signers = new Tuple<AccountId, Seed>[]
+            {
+                Tuple.Create(accounts[1].Address, accounts[1].Secret),
+                Tuple.Create(accounts[0].Address, accounts[0].Secret),
+            };
+
+            var (_, paymentResponse) = await SubmitTransaction(signers, payment);
+            var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
+            Assert.Equal(payment.Amount, pr.Amount);
+
+            accountInfoResponse = await Api.AccountInfo(new AccountInfoRequest()
+            {
+                Ledger = LedgerSpecification.Current,
+                Account = accounts[0].Address,
+            });
+
+            Assert.Equal(50_000_000ul, accountInfoResponse.AccountData.Balance.Drops);
+
         }
     }
 }

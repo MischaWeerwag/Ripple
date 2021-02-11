@@ -5,7 +5,7 @@ namespace Ibasa.Ripple
 {
     public static class Utf8JsonWriterExtensions
     {
-        public static void WriteBase16String(this Utf8JsonWriter writer, string propertyName, byte[] bytes)
+        public static void WriteBase16String(this Utf8JsonWriter writer, string propertyName, ReadOnlySpan<byte> bytes)
         {
             writer.WritePropertyName(propertyName);
 

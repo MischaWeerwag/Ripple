@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers;
 
-namespace Ibasa.Ripple
+namespace Ibasa.Ripple.St
 {
     public enum TransactionType : ushort
     {
@@ -35,6 +35,36 @@ namespace Ibasa.Ripple
         Amendment = 100,
         Fee = 101,
         UnlModify = 102,
+    }
+
+    public enum ArrayFieldCode : uint
+    {
+        Signers = 3,
+        SignerEntries = 4,
+        Template = 5,
+        Necessary = 6,
+        Sufficient = 7,
+        AffectedNodes = 8,
+        Memos = 9,
+    }
+
+    public enum ObjectFieldCode : uint
+    {
+        TransactionMetaData = 2,
+        CreatedNode = 3,
+        DeletedNode = 4,
+        ModifiedNode = 5,
+        PreviousFields = 6,
+        FinalFields = 7,
+        NewFields = 8,
+        TemplateEntry = 9,
+        Memo = 10,
+        SignerEntry = 11,
+               
+        Signer = 16,
+
+        Majority = 18,
+        DisabledValidator = 19,
     }
 
     public struct StWriter
@@ -164,12 +194,24 @@ namespace Ibasa.Ripple
             }
         }
 
-        public void WriteVl(uint fieldCode, byte[] value)
+        /// <summary>
+        /// Write byte array as a vector field. value can be null and is treated as an array of length 0.
+        /// </summary>
+        /// <param name="fieldCode"></param>
+        /// <param name="value"></param>
+        public void WriteVl(uint fieldCode, ReadOnlySpan<byte> value)
         {
             WriteFieldId(StTypeCode.Vl, fieldCode);
-            WriteLengthPrefix(value.Length);
-            value.CopyTo(bufferWriter.GetSpan(value.Length));
-            bufferWriter.Advance(value.Length);
+            if (value == null)
+            {
+                WriteLengthPrefix(0);
+            }
+            else
+            {
+                WriteLengthPrefix(value.Length);
+                value.CopyTo(bufferWriter.GetSpan(value.Length));
+                bufferWriter.Advance(value.Length);
+            }
         }
 
         public void WriteAccount(uint fieldCode, AccountId value)
@@ -185,6 +227,26 @@ namespace Ibasa.Ripple
             WriteFieldId(StTypeCode.Hash256, fieldCode);
             value.CopyTo(bufferWriter.GetSpan(32));
             bufferWriter.Advance(32);
+        }
+
+        public void WriteStartArray(ArrayFieldCode fieldCode)
+        {
+            WriteFieldId(StTypeCode.Array, (uint)fieldCode);
+        }
+
+        public void WriteEndArray()
+        {
+            WriteFieldId(StTypeCode.Array, 1);
+        }
+
+        public void WriteStartObject(ObjectFieldCode fieldCode)
+        {
+            WriteFieldId(StTypeCode.Object, (uint)fieldCode);
+        }
+
+        public void WriteEndObject()
+        {
+            WriteFieldId(StTypeCode.Object, 1);
         }
     }
 

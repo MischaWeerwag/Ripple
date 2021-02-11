@@ -4,9 +4,93 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Ibasa.Ripple.St;
 
 namespace Ibasa.Ripple
 {
+    /// <summary>
+    /// SignerList objects can have the following flag value.
+    /// </summary>
+    [Flags]
+    public enum SignerListFlags : uint
+    {
+        /// <summary>
+        /// If this flag is enabled, this SignerList counts as one item for purposes of the owner reserve.
+        /// Otherwise, this list counts as N+2 items, where N is the number of signers it contains.
+        /// This flag is automatically enabled if you add or update a signer list after the MultiSignReserve amendment is enabled.
+        /// </summary>
+        lsfOneOwnerCount = 0x00010000,
+    }
+
+    /// <summary>
+    /// The SignerList object type represents a list of parties that, as a group, are authorized to sign a transaction in place of an individual account.
+    /// You can create, replace, or remove a signer list using a SignerListSet transaction.
+    /// </summary>
+    public sealed class SignerList
+    {
+        /// <summary>
+        /// A bit-map of Boolean flags enabled for this signer list. 
+        /// For more information, see SignerList Flags.
+        /// </summary>
+        public SignerListFlags Flags { get; private set; }
+
+        /// <summary>
+        /// The identifying hash of the transaction that most recently modified this object.
+        /// </summary>
+        public Hash256 PreviousTxnID { get; private set; }
+
+        /// <summary>
+        /// The index of the ledger that contains the transaction that most recently modified this object.
+        /// </summary>
+        public UInt32 PreviousTxnLgrSeq { get; private set; }
+
+        /// <summary>
+        /// A hint indicating which page of the owner directory links to this object, in case the directory consists of multiple pages.
+        /// </summary>
+        public UInt64 OwnerNode { get; private set; }
+
+        /// <summary>
+        /// An array of Signer Entry objects representing the parties who are part of this signer list.
+        /// </summary>
+        public ReadOnlyCollection<SignerEntry> SignerEntries { get; private set; }
+
+        /// <summary>
+        /// An ID for this signer list.
+        /// Currently always set to 0.
+        /// If a future amendment allows multiple signer lists for an account, this may change.
+        /// </summary>
+        public UInt32 SignerListID { get; private set; }
+
+        /// <summary>
+        /// A target number for signer weights.
+        /// To produce a valid signature for the owner of this SignerList, the signers must provide valid signatures whose weights sum to this value or more.
+        /// </summary>
+        public UInt32 SignerQuorum { get; private set; }
+
+        internal SignerList(JsonElement json)
+        {
+            if(json.GetProperty("LedgerEntryType").GetString() != "SignerList")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"SignerList\"", "json");
+            }
+
+            Flags = (SignerListFlags)json.GetProperty("Flags").GetUInt32();
+            PreviousTxnID = new Hash256(json.GetProperty("PreviousTxnID").GetString());
+            PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
+            OwnerNode = ulong.Parse(json.GetProperty("OwnerNode").GetString());
+            var signerEntriesJson = json.GetProperty("SignerEntries");
+            var signerEntries = new SignerEntry[signerEntriesJson.GetArrayLength()];
+            for(int i = 0; i < signerEntries.Length; ++i)
+            {
+                signerEntries[i] = new SignerEntry(signerEntriesJson[i]);
+            }
+            SignerEntries = Array.AsReadOnly(signerEntries);
+            SignerListID = json.GetProperty("SignerListID").GetUInt32();
+            SignerQuorum = json.GetProperty("SignerQuorum").GetUInt32();
+        }
+    }
+
+
     public sealed class AccountRoot
     {
         //LedgerEntryType String  UInt16 The value 0x0061, mapped to the string AccountRoot, indicates that this is an AccountRoot object.
@@ -255,30 +339,46 @@ namespace Ibasa.Ripple
         /// </summary>
         public bool Validated { get; private set; }
 
-        //signer_lists Array(Omitted unless the request specified signer_lists and at least one SignerList is associated with the account.) Array of SignerList ledger objects associated with this account for Multi-Signing.Since an account can own at most one SignerList, this array must have exactly one member if it is present.New in: rippled 0.31.0 
-        //queue_data Object(Omitted unless queue specified as true and querying the current open ledger.) Information about queued transactions sent by this account.This information describes the state of the local rippled server, which may be different from other servers in the peer-to-peer XRP Ledger network.Some fields may be omitted because the values are calculated "lazily" by the queuing mechanism.
+        /// <summary>
+        /// SignerList ledger object associated with this account for Multi-Signing.
+        /// Omitted unless the request specified signer_lists and at least one SignerList is associated with the account.
+        /// New in: rippled 0.31.0 
+        /// </summary>
+        public SignerList SignerList { get; private set; }
 
         /// <summary>
         /// The AccountRoot ledger object with this account's information, as stored in the ledger.
         /// </summary>
         public AccountRoot AccountData { get; private set; }
 
+        //queue_data Object(Omitted unless queue specified as true and querying the current open ledger.) Information about queued transactions sent by this account.This information describes the state of the local rippled server, which may be different from other servers in the peer-to-peer XRP Ledger network.Some fields may be omitted because the values are calculated "lazily" by the queuing mechanism.
+
         internal AccountInfoResponse(JsonElement json)
         {
-            AccountData = new AccountRoot(json.GetProperty("account_data"));
-            if (json.TryGetProperty("ledger_hash", out var hash))
+            JsonElement element;
+
+            if (json.TryGetProperty("ledger_hash", out element))
             {
-                LedgerHash = new Hash256(hash.GetString());
+                LedgerHash = new Hash256(element.GetString());
             }
-            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            if (json.TryGetProperty("ledger_current_index", out element))
             {
-                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+                LedgerIndex = element.GetUInt32();
             }
             else
             {
                 LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
             }
             Validated = json.GetProperty("validated").GetBoolean();
+
+            var accountData = json.GetProperty("account_data");
+            AccountData = new AccountRoot(accountData);
+
+            // signer_lists is embeded in account_data (contrary to what the xrp documentation would suggest https://github.com/ripple/xrpl-dev-portal/issues/938 )
+            if (accountData.TryGetProperty("signer_lists", out element))
+            {
+                SignerList = new SignerList(element[0]);
+            }
         }
     }
 
@@ -896,7 +996,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Hex representation of the signed transaction to submit. This can be a multi-signed transaction.
         /// </summary>
-        public byte[] TxBlob { get; set; }
+        public ReadOnlyMemory<byte> TxBlob { get; set; }
         /// <summary>
         /// If true, and the transaction fails locally, do not retry or relay the transaction to other servers
         /// </summary>

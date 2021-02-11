@@ -354,7 +354,7 @@ namespace Ibasa.Ripple
                 writer.WriteStartObject();
                 writer.WriteNumber("id", thisId);
                 writer.WriteString("command", "submit");
-                writer.WriteBase16String("tx_blob", request.TxBlob);
+                writer.WriteBase16String("tx_blob", request.TxBlob.Span);
                 writer.WriteBoolean("fail_hard", request.FailHard);
                 writer.WriteEndObject();
             }

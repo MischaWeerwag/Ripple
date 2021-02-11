@@ -1,8 +1,24 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Ibasa.Ripple
 {
+    public sealed class AccountIdConverter : JsonConverter<AccountId>
+    {
+        public override AccountId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            return new AccountId(reader.GetString());
+        }
+
+        public override void Write(Utf8JsonWriter writer, AccountId value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value.ToString());
+        }
+    }
+
+    [JsonConverter(typeof(AccountIdConverter))]
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 20)]
     public struct AccountId : IEquatable<AccountId>
     {

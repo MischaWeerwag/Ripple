@@ -1,9 +1,18 @@
 ﻿using System;
 using System.Buffers;
 using System.Text.Json;
+using Ibasa.Ripple.St;
 
 namespace Ibasa.Ripple
 {
+    public struct Signer
+    {
+        public AccountId Account;
+        public byte[] SigningPubKey;
+        public byte[] TxnSignature;
+    }
+
+
     public abstract class Transaction
     {
         /// <summary>
@@ -31,6 +40,11 @@ namespace Ibasa.Ripple
         public byte[] SigningPubKey { get; set; }
 
         /// <summary>
+        /// (Optional) Array of objects that represent a multi-signature which authorizes this transaction.
+        /// </summary>
+        public Signer[] Signers { get; set; }
+
+        /// <summary>
         /// (Automatically added when signing) The signature that verifies this transaction as originating from the account it says it is from.
         /// </summary>
         public byte[] TxnSignature { get; set; }
@@ -47,7 +61,6 @@ namespace Ibasa.Ripple
         //Flags Unsigned Integer UInt32  (Optional) Set of bit-flags for this transaction.
 
         //Memos Array of Objects    Array   (Optional) Additional arbitrary information used to identify this transaction.
-        //Signers Array   Array   (Optional) Array of objects that represent a multi-signature which authorizes this transaction.
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
 
 
@@ -92,25 +105,65 @@ namespace Ibasa.Ripple
             return bufferWriter.WrittenMemory;
         }
 
-        public abstract void Serialize(System.Buffers.IBufferWriter<byte> bufferWriter, bool forSigning);
+        public abstract void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning);
 
-        public byte[] Sign(KeyPair keyPair, out Hash256 hash)
-        {         
-            this.SigningPubKey = keyPair.GetCanonicalPublicKey();
-            var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+        protected void WriteSigner(StWriter writer, bool forSigning)
+        {
+            writer.WriteVl(3, SigningPubKey);
+            if (TxnSignature != null)
+            {
+                if (!forSigning)
+                {
+                    writer.WriteVl(4, TxnSignature);
+                }
+            }
+        }
 
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), 0x53545800u);
+        protected void WriteSigners(StWriter writer, bool forSigning)
+        {
+            if (Signers != null)
+            {
+                if (!forSigning)
+                {
+                    writer.WriteStartArray(ArrayFieldCode.Signers);
+                    foreach (var signer in Signers)
+                    {
+                        writer.WriteStartObject(ObjectFieldCode.Signer);
+
+                        writer.WriteVl(3, signer.SigningPubKey);
+                        writer.WriteVl(4, signer.TxnSignature);
+                        writer.WriteAccount(1, signer.Account);
+
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+        }
+
+        private uint hpTXN = 0x54584E00u; // TXN
+        private uint hpSTX = 0x53545800u; // STX
+        private uint hpSMT = 0x534D5400u; // SMT
+
+        public ReadOnlyMemory<byte> Sign(KeyPair keyPair, out Hash256 hash)
+        {
+            Signers = null;
+            TxnSignature = null;
+            SigningPubKey = keyPair.GetCanonicalPublicKey();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpSTX);
             bufferWriter.Advance(4);
-            this.Serialize(bufferWriter, true);
+            Serialize(bufferWriter, true);
 
             // Calculate signature and serialize again
-            this.TxnSignature = keyPair.Sign(bufferWriter.WrittenSpan);
+            TxnSignature = keyPair.Sign(bufferWriter.WrittenSpan);
             bufferWriter.Clear();
 
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), 0x54584E00u);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpTXN);
             bufferWriter.Advance(4);
 
-            this.Serialize(bufferWriter, false);
+            Serialize(bufferWriter, false);
 
             using (var sha512 = System.Security.Cryptography.SHA512.Create())
             {
@@ -119,7 +172,52 @@ namespace Ibasa.Ripple
                 hash = new Hash256(hashSpan.Slice(0, 32));
             }
 
-            return bufferWriter.WrittenMemory.Slice(4).ToArray();
+            return bufferWriter.WrittenMemory.Slice(4);
+        }
+
+        public ReadOnlyMemory<byte> Sign(ReadOnlySpan<ValueTuple<AccountId, KeyPair>> signers, out Hash256 hash)
+        {
+            Signers = new Signer[signers.Length];
+            for (int i = 0; i < signers.Length; ++i)
+            {
+                var signer = new Signer();
+                signer.Account = signers[i].Item1;
+                signer.SigningPubKey = signers[i].Item2.GetCanonicalPublicKey();
+                signer.TxnSignature = null;
+                Signers[i] = signer;
+            }
+            TxnSignature = null;
+            SigningPubKey = null;
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            // Calculate signatures and then serialize again
+            for(int i = 0; i < signers.Length; ++i)
+            {
+                // For each signer we need to write the account being signed for the the buffer, sign that then rewind
+                System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpSMT);
+                bufferWriter.Advance(4);
+                Serialize(bufferWriter, true);
+                Signers[i].Account.CopyTo(bufferWriter.GetSpan(20));
+                bufferWriter.Advance(20);
+
+                Signers[i].TxnSignature = signers[i].Item2.Sign(bufferWriter.WrittenSpan);
+                bufferWriter.Clear();
+            }
+
+
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpTXN);
+            bufferWriter.Advance(4);
+
+            Serialize(bufferWriter, false);
+
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(bufferWriter.WrittenSpan, hashSpan, out var bytesWritten);
+                hash = new Hash256(hashSpan.Slice(0, 32));
+            }
+
+            return bufferWriter.WrittenMemory.Slice(4);
         }
 
         internal static Transaction FromJson(JsonElement json)
@@ -145,6 +243,10 @@ namespace Ibasa.Ripple
             else if (transactionType == "AccountDelete")
             {
                 transaction = new AccountDelete();
+            }
+            else if (transactionType == "SignerListSet")
+            {
+                transaction = new SignerListSet();
             }
             else
             {
@@ -192,13 +294,10 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(4, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, this.SigningPubKey);
-            if (!forSigning)
-            {
-                writer.WriteVl(4, this.TxnSignature);
-            }
+            WriteSigner(writer, forSigning);
             writer.WriteAccount(1, Account);
             if (RegularKey.HasValue) { writer.WriteAccount(8, RegularKey.Value); }
+            WriteSigners(writer, forSigning);
         }
     }
 
@@ -314,13 +413,10 @@ namespace Ibasa.Ripple
                 writer.WriteUInt32(34, (uint)ClearFlag.Value);
             }
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, this.SigningPubKey);
-            if (!forSigning)
-            {
-                writer.WriteVl(4, this.TxnSignature);
-            }
+            WriteSigner(writer, forSigning);
             if (Domain != null) { writer.WriteVl(7, Domain); }
             writer.WriteAccount(1, Account);
+            WriteSigners(writer, forSigning);
         }
     }
 
@@ -386,13 +482,10 @@ namespace Ibasa.Ripple
             writer.WriteAmount(8, Fee);
             if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
             if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
-            writer.WriteVl(3, this.SigningPubKey);
-            if (!forSigning)
-            {
-                writer.WriteVl(4, this.TxnSignature);
-            }
+            WriteSigner(writer, forSigning);
             writer.WriteAccount(1, Account);
             writer.WriteAccount(3, Destination);
+            WriteSigners(writer, forSigning);
         }
     }
 
@@ -491,12 +584,9 @@ namespace Ibasa.Ripple
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(3, LimitAmount);
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, this.SigningPubKey);
-            if (!forSigning)
-            {
-                writer.WriteVl(4, this.TxnSignature);
-            }
+            WriteSigner(writer, forSigning);
             writer.WriteAccount(1, Account);
+            WriteSigners(writer, forSigning);
         }
     }
 
@@ -546,13 +636,137 @@ namespace Ibasa.Ripple
             if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
-            writer.WriteVl(3, this.SigningPubKey);
-            if (!forSigning)
-            {
-                writer.WriteVl(4, this.TxnSignature);
-            }
+            WriteSigner(writer, forSigning);
             writer.WriteAccount(1, Account);
             writer.WriteAccount(3, Destination);
+            WriteSigners(writer, forSigning);
+        }
+    }
+
+    /// <summary>
+    /// Each member of the SignerEntries field is an object that describes that signer in the list.
+    /// </summary>
+    public struct SignerEntry : IEquatable<SignerEntry>
+    {
+        /// <summary>
+        /// An XRP Ledger address whose signature contributes to the multi-signature.
+        /// It does not need to be a funded address in the ledger.
+        /// </summary>
+        public AccountId Account { get; private set; }
+
+        /// <summary>
+        /// The weight of a signature from this signer.
+        /// A multi-signature is only valid if the sum weight of the signatures provided meets or exceeds the signer list's SignerQuorum value.
+        /// </summary>
+        public UInt16 SignerWeight { get; private set; }
+
+        internal SignerEntry(JsonElement json)
+        {
+            var entry = json.GetProperty("SignerEntry");
+            Account = new AccountId(entry.GetProperty("Account").ToString());
+            SignerWeight = entry.GetProperty("SignerWeight").GetUInt16();
+        }
+
+        public SignerEntry(AccountId account, UInt16 signerWeight)
+        {
+            Account = account;
+            SignerWeight = signerWeight;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Account, SignerWeight);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if(obj is SignerEntry)
+            {
+                return Equals((SignerEntry)obj);
+            }
+            return false;
+        }
+
+        public bool Equals(SignerEntry other)
+        {
+            return Account == other.Account && SignerWeight == other.SignerWeight;
+        }
+
+        public override string ToString()
+        {
+            return JsonSerializer.Serialize<SignerEntry>(this);
+        }
+    }
+
+    /// <summary>
+    /// The SignerListSet transaction creates, replaces, or removes a list of signers that can be used to multi-sign a transaction.
+    /// This transaction type was introduced by the MultiSign amendment.
+    /// New in: rippled 0.31.0
+    /// </summary>
+    public sealed class SignerListSet : Transaction
+    {
+        /// <summary>
+        /// A target number for the signer weights.
+        /// A multi-signature from this list is valid only if the sum weights of the signatures provided is greater than or equal to this value.
+        /// To delete a signer list, use the value 0.
+        /// </summary>
+        public UInt32 SignerQuorum { get; set; }
+
+        /// <summary>
+        /// (Omitted when deleting) Array of SignerEntry objects, indicating the addresses and weights of signers in this list.
+        /// This signer list must have at least 1 member and no more than 8 members.
+        /// No address may appear more than once in the list, nor may the Account submitting the transaction appear in the list.
+        /// </summary>
+        public SignerEntry[] SignerEntries { get; set; }
+
+        public SignerListSet()
+        {
+        }
+
+        public override void ReadJson(JsonElement json)
+        {
+            base.ReadJson(json);
+            JsonElement element;
+
+            if (json.TryGetProperty("SignerQuorum", out element))
+            {
+                SignerQuorum = element.GetUInt32();
+            }
+
+            if (json.TryGetProperty("SignerEntries", out element))
+            {
+                SignerEntries = new SignerEntry[element.GetArrayLength()];
+                for (var i = 0; i < SignerEntries.Length; ++i)
+                {
+                    SignerEntries[i] = new SignerEntry(element[i]);
+                }
+            }
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(TransactionType.SignerListSet);
+            //writer.WriteUInt32(2, (uint)Flags);
+            writer.WriteUInt32(4, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteUInt32(35, SignerQuorum);
+            writer.WriteAmount(8, Fee);
+            WriteSigner(writer, forSigning);
+            writer.WriteAccount(1, Account);
+            WriteSigners(writer, forSigning);
+            if (SignerEntries != null)
+            {
+                writer.WriteStartArray(ArrayFieldCode.SignerEntries);
+                foreach (var entry in SignerEntries)
+                {
+                    writer.WriteStartObject(ObjectFieldCode.SignerEntry);
+                    writer.WriteUInt16(3, entry.SignerWeight);
+                    writer.WriteAccount(1, entry.Account);
+                    writer.WriteEndObject();                    
+                }
+                writer.WriteEndArray();
+            }
         }
     }
 }

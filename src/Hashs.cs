@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Ibasa.Ripple
 {
-    public struct Hash128 : IEquatable<Hash128>
+    public readonly struct Hash128 : IEquatable<Hash128>
     {
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long a;
@@ -69,7 +69,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public struct Hash256 : IEquatable<Hash256>
+    public readonly struct Hash256 : IEquatable<Hash256>
     {
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         readonly long a;

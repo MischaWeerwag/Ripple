@@ -173,7 +173,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The "Amount" type is a special field type that represents an amount of currency, either XRP or an issued currency.
     /// </summary>
-    public struct Amount
+    public readonly struct Amount
     {
         private readonly ulong value;
         private readonly AccountId issuer;
@@ -270,7 +270,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// An "Amount" that must be in XRP.
     /// </summary>
-    public struct XrpAmount
+    public readonly struct XrpAmount
     {
         public readonly ulong Drops;
 
@@ -321,7 +321,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// An "Amount" that must be an issued currency.
     /// </summary>
-    public struct IssuedAmount
+    public readonly struct IssuedAmount
     {
         public readonly Currency Value;
         public readonly AccountId Issuer;

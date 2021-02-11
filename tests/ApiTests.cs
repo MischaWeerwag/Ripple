@@ -346,7 +346,7 @@ namespace Ibasa.Ripple.Tests
             submitRequest.TxBlob = txBlob;
             var submitResponse = await Api.Submit(submitRequest);
 
-            Assert.Equal(submitRequest.TxBlob, submitResponse.TxBlob);
+            Assert.Equal(Base16.Encode(submitRequest.TxBlob.Span), Base16.Encode(submitResponse.TxBlob));
             Assert.Equal(EngineResult.terPRE_SEQ, submitResponse.EngineResult);
         }
 
@@ -843,7 +843,6 @@ namespace Ibasa.Ripple.Tests
             });
 
             Assert.Equal(100_000_000ul, accountInfoResponse.AccountData.Balance.Drops);
-
         }
     }
 }

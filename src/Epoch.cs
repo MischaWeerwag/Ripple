@@ -21,6 +21,7 @@ namespace Ibasa.Ripple
         {
             return epoch.AddSeconds(timestamp).UtcDateTime;
         }
+
         public static uint FromDateTimeOffset(DateTimeOffset dateTimeOffset)
         {
             var utc = dateTimeOffset.ToUniversalTime();

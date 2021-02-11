@@ -5,7 +5,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Represents a 64-bit decimal floating-point number with 16 units of precision.
     /// </summary>
-    public struct Currency : IEquatable<Currency>
+    public readonly struct Currency : IEquatable<Currency>
     {
         /// <summary>
         /// Represents the smallest positive System.Single value that is greater than zero.

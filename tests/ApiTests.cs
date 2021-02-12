@@ -904,5 +904,80 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(checkCash.Amount, ccashr.Amount);
             Assert.Equal(checkCash.DeliverMin, ccashr.DeliverMin);
         }
+
+
+        [Fact]
+        public async Task TestAccountLines()
+        {
+            // We need a fresh accounts setup for this test
+            var account1 = await TestAccount.Create();
+            var account2 = await TestAccount.Create();
+            var account3 = await TestAccount.Create();
+            await Setup.WaitForAccount(account1.Address);
+            await Setup.WaitForAccount(account2.Address);
+            await Setup.WaitForAccount(account3.Address);
+
+
+            var currencies = new CurrencyCode[10];
+            currencies[0] = new CurrencyCode("GBP");
+            currencies[1] = new CurrencyCode("BTC");
+            currencies[2] = new CurrencyCode("USD");
+            currencies[3] = new CurrencyCode("EUR");
+            for(int i = 4; i < currencies.Length; ++i)
+            {
+                var bytes = String.Concat(Enumerable.Repeat(i.ToString("x2"), 20));
+                currencies[i] = new CurrencyCode(bytes);
+            }
+
+            // Setup a whole load of trust lines from 2 and 3 to 1
+            var testAccounts = new[] { account2, account3 };
+            foreach (var account in testAccounts)
+            {
+                for(int i = 0; i < currencies.Length; ++i)
+                {
+                    var currency = currencies[i];
+
+                    var trustSet = new TrustSet();
+                    trustSet.Account = account.Address;
+                    trustSet.LimitAmount = new IssuedAmount(account1.Address, currency, new Currency(1000m));
+                    var (_, _) = await SubmitTransaction(account.Secret, trustSet);
+
+                    var payment = new Payment();
+                    payment.Account = account1.Address;
+                    payment.Destination = account.Address;
+                    payment.Amount = new Amount(account1.Address, currency, new Currency(i + 1));
+                    var (_, _) = await SubmitTransaction(account1.Secret, payment);
+                }
+            }
+
+            // Check all the trust lines from account 1
+            var request = new AccountLinesRequest();
+            request.Account = account1.Address;
+            var response = await Api.AccountLines(request);
+            Assert.Equal(account1.Address, response.Account);
+            var results = new Dictionary<AccountId, List<Tuple<CurrencyCode, Currency>>>();
+            results[account2.Address] = new List<Tuple<CurrencyCode, Currency>>();
+            results[account3.Address] = new List<Tuple<CurrencyCode, Currency>>();
+            await foreach(var line in response)
+            {
+                var amounts = results[line.Account];
+                amounts.Add(Tuple.Create(line.Currency, line.Balance));                
+            }
+
+            var expectedAmounts =
+                currencies.Select((code, i) =>
+                    Tuple.Create(code, new Currency(-(i + 1)))
+                ).OrderBy(tuple => tuple.Item2)
+                .ToArray();
+
+            void CheckAmounts(List<Tuple<CurrencyCode, Currency>> amounts)
+            {
+                var sorted = amounts.OrderBy(tuple => tuple.Item2);
+                Assert.Equal(expectedAmounts, sorted);
+            }
+
+            CheckAmounts(results[account2.Address]);
+            CheckAmounts(results[account3.Address]);
+        }
     }
 }

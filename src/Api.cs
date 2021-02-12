@@ -168,6 +168,7 @@ namespace Ibasa.Ripple
             jsonWriter.WriteStartObject();
             var requestId = WriteHeader(jsonWriter, "ledger_data");
             LedgerSpecification.Write(jsonWriter, request.Ledger);
+            jsonWriter.WriteBoolean("binary", true);
             if (request.Limit.HasValue)
             {
                 jsonWriter.WriteNumber("limit", request.Limit.Value);

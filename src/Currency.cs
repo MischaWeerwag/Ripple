@@ -5,7 +5,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Represents a 64-bit decimal floating-point number with 16 units of precision.
     /// </summary>
-    public readonly struct Currency : IEquatable<Currency>
+    public readonly struct Currency : IEquatable<Currency>, IComparable<Currency>
     {
         /// <summary>
         /// Represents the smallest positive System.Single value that is greater than zero.
@@ -399,6 +399,31 @@ namespace Ibasa.Ripple
         public static Currency FromUInt64Bits(ulong value)
         {
             return new Currency(value & ~0x8000_0000_0000_0000);
+        }
+
+        public int CompareTo(Currency other)
+        {
+            return bits.CompareTo(other.bits);
+        }
+
+        public static bool operator <(Currency c1, Currency c2)
+        {
+            return c1.CompareTo(c2) < 0;
+        }
+
+        public static bool operator >(Currency c1, Currency c2)
+        {
+            return c1.CompareTo(c2) > 0;
+        }
+
+        public static bool operator <=(Currency c1, Currency c2)
+        {
+            return c1.CompareTo(c2) <= 0;
+        }
+
+        public static bool operator >=(Currency c1, Currency c2)
+        {
+            return c1.CompareTo(c2) >= 0;
         }
 
         /// <summary>

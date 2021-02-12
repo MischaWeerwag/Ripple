@@ -78,6 +78,7 @@ namespace Ibasa.Ripple
                 throw new ArgumentException("code must be either be a 3 character standard currency code, or a 40 character nonstandard hex code", "code");
             }
         }
+
         public CurrencyCode(ReadOnlySpan<byte> bytes) : this()
         {
             bytes.CopyTo(UnsafeAsSpan(ref this));

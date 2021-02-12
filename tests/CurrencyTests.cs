@@ -1,3 +1,5 @@
+using FsCheck;
+using FsCheck.Xunit;
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -130,6 +132,33 @@ namespace Ibasa.Ripple.Tests
         {
             var currency = new Currency(value);
             Assert.Equal(value, (decimal)currency);
+        }
+
+        [Property]
+        public Property TestOrdering()
+        {
+            var arb =
+                Arb.From<decimal>().Convert(d => (Currency)d, c => (decimal)c);
+
+            return Prop.ForAll(arb, arb, arb, (v1, v2, v3) =>
+                {
+                    if (v1 < v2 && v2 < v3)
+                    {
+                        Assert.True(v1 < v3, "v1 < v3");
+                    }
+                    if (v2 < v1 && v1 < v3)
+                    {
+                        Assert.True(v2 < v3, "v2 < v3");
+                    }
+                    if (v3 < v1 && v1 < v2)
+                    {
+                        Assert.True(v3 < v2, "v3 < v2");
+                    }
+                    if (v2 < v3 && v3 < v1)
+                    {
+                        Assert.True(v2 < v1, "v2 < v1");
+                    }
+                });
         }
     }
 }

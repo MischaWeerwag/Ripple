@@ -268,30 +268,20 @@ namespace Ibasa.Ripple
             {
                 jsonWriter.WriteString("peer", request.Peer.Value.ToString());
             }
+            if (request.Limit.HasValue)
+            {
+                jsonWriter.WriteNumber("limit", request.Limit.Value);
+            }
+            if (request.Marker.HasValue)
+            {
+                jsonWriter.WritePropertyName("marker");
+                request.Marker.Value.WriteTo(jsonWriter);
+            }
             WriteFooter(jsonWriter);
             jsonWriter.WriteEndObject();
             jsonWriter.Flush();
             var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
-            return new AccountLinesResponse(response, async (marker, cancellationToken) =>
-                {
-                    jsonBuffer.Clear();
-                    jsonWriter.Reset();
-                    jsonWriter.WriteStartObject();
-                    var requestId = WriteHeader(jsonWriter, "account_lines");
-                    LedgerSpecification.Write(jsonWriter, request.Ledger);
-                    jsonWriter.WriteString("account", request.Account.ToString());
-                    if (request.Peer.HasValue)
-                    {
-                        jsonWriter.WriteString("peer", request.Peer.Value.ToString());
-                    }
-                    jsonWriter.WritePropertyName("marker");
-                    marker.WriteTo(jsonWriter);
-                    WriteFooter(jsonWriter);
-                    jsonWriter.WriteEndObject();
-                    jsonWriter.Flush();
-                    return await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
-                }
-            );
+            return new AccountLinesResponse(response, request, this);
         }
 
         /// <summary>

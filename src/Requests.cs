@@ -730,10 +730,25 @@ namespace Ibasa.Ripple
         public LedgerSpecification Ledger { get; set; }
 
         /// <summary>
-        /// The Address of a second account.
+        /// (Optional) The Address of a second account.
         /// If provided, show only lines of trust connecting the two accounts.
         /// </summary>
         public AccountId? Peer { get; set; }
+
+        /// <summary>
+        /// (Optional) Value from a previous paginated response.
+        /// Resume retrieving data where that response left off.
+        /// New in: rippled 0.26.4 
+        /// </summary>
+        public JsonElement? Marker { get; set; }
+
+        /// <summary>
+        /// (Optional, default varies) Limit the number of trust lines to retrieve.
+        /// The server is not required to honor this value.
+        /// Must be within the inclusive range 10 to 400.
+        /// New in: rippled 0.26.4 
+        /// </summary>
+        public uint? Limit { get; set; }
 
     }
 
@@ -755,33 +770,114 @@ namespace Ibasa.Ripple
         /// </summary>
         public CurrencyCode Currency { get; private set; }
 
-        //limit String  The maximum amount of the given currency that this account is willing to owe the peer account
-        //limit_peer String  The maximum amount of currency that the counterparty account is willing to owe the perspective account
-        //quality_in Unsigned Integer Rate at which the account values incoming balances on this trust line, as a ratio of this value per 1 billion units. (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
-        //quality_out Unsigned Integer Rate at which the account values outgoing balances on this trust line, as a ratio of this value per 1 billion units. (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
-        //no_ripple Boolean(May be omitted) true if this account has enabled the NoRipple flag for this line.If omitted, that is the same as false.
-        //no_ripple_peer Boolean(May be omitted) true if the peer account has enabled the NoRipple flag.If omitted, that is the same as false.
-        //authorized Boolean (May be omitted) true if this account has authorized this trust line. If omitted, that is the same as false.
-        //peer_authorized Boolean (May be omitted) true if the peer account has authorized this trust line. If omitted, that is the same as false.
-        //freeze Boolean (May be omitted) true if this account has frozen this trust line. If omitted, that is the same as false.
-        //freeze_peer Boolean (May be omitted) true if the peer account has frozen this trust line. If omitted, that is the same as false.
+        /// <summary>
+        /// The maximum amount of the given currency that this account is willing to owe the peer account.
+        /// </summary>
+        public Currency Limit { get; private set; }
+
+        /// <summary>
+        /// The maximum amount of currency that the counterparty account is willing to owe the perspective account.
+        /// </summary>
+        public Currency LimitPeer { get; private set; }
+
+        /// <summary>
+        /// Rate at which the account values incoming balances on this trust line, as a ratio of this value per 1 billion units.
+        /// (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
+        /// </summary>
+        public uint QualityIn { get; private set; }
+
+        /// <summary>
+        /// Rate at which the account values outgoing balances on this trust line, as a ratio of this value per 1 billion units.
+        /// (For example, a value of 500 million represents a 0.5:1 ratio.) As a special case, 0 is treated as a 1:1 ratio.
+        /// </summary>
+        public uint QualityOut { get; private set; }
+
+        /// <summary>
+        /// true if this account has enabled the NoRipple flag for this line.
+        /// </summary>
+        public bool NoRipple { get; private set; }
+
+        /// <summary>
+        /// true if the peer account has enabled the NoRipple flag.
+        /// </summary>
+        public bool NoRipplePeer { get; private set; }
+
+        /// <summary>
+        /// true if this account has authorized this trust line.
+        /// </summary>
+        public bool Authorized { get; private set; }
+
+        /// <summary>
+        /// true if the peer account has authorized this trust line.
+        /// </summary>
+        public bool PeerAuthorized { get; private set; }
+
+        /// <summary>
+        /// true if this account has frozen this trust line.
+        /// </summary>
+        public bool Freeze { get; private set; }
+
+        /// <summary>
+        /// true if the peer account has frozen this trust line.
+        /// </summary>
+        public bool FreezePeer { get; private set; }
+
         internal TrustLine(JsonElement json)
         {
             Account = new AccountId(json.GetProperty("account").GetString());
             Balance = Ripple.Currency.Parse(json.GetProperty("balance").GetString());
             Currency = new CurrencyCode(json.GetProperty("currency").GetString());
-            //ValueKind = Object : "{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-4","currency":"EUR","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0}"
+            Limit = Ripple.Currency.Parse(json.GetProperty("limit").GetString());
+            LimitPeer = Ripple.Currency.Parse(json.GetProperty("limit_peer").GetString());
+            QualityIn = json.GetProperty("quality_in").GetUInt32();
+            QualityOut = json.GetProperty("quality_out").GetUInt32();
+
+            JsonElement element;
+            if (json.TryGetProperty("no_ripple", out element))
+            {
+                NoRipple = element.GetBoolean();
+            }
+            if (json.TryGetProperty("no_ripple_peer", out element))
+            {
+                NoRipplePeer = element.GetBoolean();
+            }
+
+            if (json.TryGetProperty("authorized", out element))
+            {
+                Authorized = element.GetBoolean();
+            }
+            if (json.TryGetProperty("peer_authorized", out element))
+            {
+                PeerAuthorized = element.GetBoolean();
+            }
+
+            if (json.TryGetProperty("freeze", out element))
+            {
+                Freeze = element.GetBoolean();
+            }
+            if (json.TryGetProperty("freeze_peer", out element))
+            {
+                FreezePeer = element.GetBoolean();
+            }
         }
     }
 
     public sealed class AccountLinesResponse : IAsyncEnumerable<TrustLine>
     {
-        // TODO: I'm not sure about this API
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
 
-        //ledger_current_index Integer - Ledger Index  (Omitted if ledger_hash or ledger_index provided) The ledger index of the current open ledger, which was used when retrieving this information. New in: rippled 0.26.4-sp1
-        //ledger_index Integer - Ledger Index  (Omitted if ledger_current_index provided instead) The ledger index of the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
-        //ledger_hash String - Hash(May be omitted) The identifying hash the ledger version that was used when retrieving this data.New in: rippled 0.26.4-sp1
-        //marker  Marker Server-defined value indicating the response is paginated.Pass this to the next call to resume where this call left off.Omitted when there are no additional pages after this one.New in: rippled 0.26.4 
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
 
         /// <summary>
         /// Unique Address of the account this request corresponds to.
@@ -789,50 +885,73 @@ namespace Ibasa.Ripple
         /// </summary>
         public AccountId Account { get; private set; }
 
-        private Func<JsonElement, CancellationToken, Task<JsonElement>> PostAsync;
-        private JsonElement? Marker;
-        private JsonElement Lines;
+        /// <summary>
+        /// Server-defined value indicating the response is paginated.
+        /// Pass this to the next call to resume where this call left off.
+        /// Omitted when there are no additional pages after this one.
+        /// New in: rippled 0.26.4 
+        /// </summary>
+        public JsonElement? Marker { get; private set; }
 
+        /// <summary>
+        /// Array of trust line objects, as described below.
+        /// If the number of trust lines is large, only returns up to the limit at a time.
+        /// </summary>
+        public ReadOnlyCollection<TrustLine> Lines { get; private set; }
 
-        internal AccountLinesResponse(JsonElement json, Func<JsonElement, CancellationToken, Task<JsonElement>> postAsync)
+        private AccountLinesRequest request;
+        private Api api;
+
+        internal AccountLinesResponse(JsonElement json, AccountLinesRequest request, Api api)
         {
-            PostAsync = postAsync;
+            this.request = request;
+            this.api = api;
+
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
             Account = new AccountId(json.GetProperty("account").GetString());
 
             if (json.TryGetProperty("marker", out var marker))
             {
-                Marker = marker;
+                Marker = marker.Clone();
             }
 
-            Lines = json.GetProperty("lines");
-            //ValueKind = Object : "{"account":"rDAiGWf9khKPvmJYc72co2o9z6qHYkcwU7","ledger_current_index":14891792,"lines":[{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-4","currency":"EUR","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-2","currency":"BTC","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-10","currency":"0909090909090909090909090909090909090909","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-4","currency":"EUR","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-5","currency":"0404040404040404040404040404040404040404","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-1","currency":"GBP","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-7","currency":"0606060606060606060606060606060606060606","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-7","currency":"0606060606060606060606060606060606060606","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-8","currency":"0707070707070707070707070707070707070707","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-6","currency":"0505050505050505050505050505050505050505","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-1","currency":"GBP","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-10","currency":"0909090909090909090909090909090909090909","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-8","currency":"0707070707070707070707070707070707070707","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-9","currency":"0808080808080808080808080808080808080808","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-3","currency":"USD","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-6","currency":"0505050505050505050505050505050505050505","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-5","currency":"0404040404040404040404040404040404040404","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-3","currency":"USD","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rGyNyamKkazz3XU9c5pWkjVJhsXmmAdaSy","balance":"-2","currency":"BTC","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0},{"account":"rG3rnKczT7wNhGpdzEJjvZtfn5agWxsE2q","balance":"-9","currency":"0808080808080808080808080808080808080808","limit":"0","limit_peer":"1000","no_ripple":true,"no_ripple_peer":false,"quality_in":0,"quality_out":0}],"validated":false}"
+            var linesJson = json.GetProperty("lines");
+            var lines = new TrustLine[linesJson.GetArrayLength()];
+            for (int i = 0; i < lines.Length; ++i)
+            {
+                lines[i] = new TrustLine(linesJson[i]);
+            }
+            Lines = Array.AsReadOnly(lines);
         }
 
         public async IAsyncEnumerator<TrustLine> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
-            var marker = Marker;
-            var lines = Lines;
-
+            var response = this;
+        
             while (true)
             {
-                foreach (var line in lines.EnumerateArray())
+                foreach (var line in response.Lines)
                 {
-                    yield return new TrustLine(line);
+                    yield return line;
                 }
-
-                if (marker.HasValue)
+        
+                if (response.Marker.HasValue)
                 {
-                    var response = await PostAsync(marker.Value, cancellationToken);
-                    if (response.TryGetProperty("marker", out var newMarker))
-                    {
-                        marker = newMarker;
-                    }
-                    else
-                    {
-                        marker = null;
-                    }
-
-                    lines = response.GetProperty("lines");
+                    request.Marker = response.Marker;
+                    response = await api.AccountLines(request, cancellationToken);
                 }
                 else
                 {

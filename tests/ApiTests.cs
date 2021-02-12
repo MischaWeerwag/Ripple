@@ -90,7 +90,7 @@ namespace Ibasa.Ripple.Tests
 
                     if (exc.Error != "actNotFound") { throw; }
 
-                    System.Threading.Thread.Sleep(2000);
+                    System.Threading.Thread.Sleep(1000);
                 }
             }
             return infoResponse;
@@ -127,77 +127,111 @@ namespace Ibasa.Ripple.Tests
         /// We always submit a single transaction and then wait for it to be validated before continuing with the tests.
         /// This is a little slow (ledgers only validate every 4s or so), but it keeps test logic simple.
         /// </summary>
-        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Func<Transaction, Tuple<ReadOnlyMemory<byte>, Hash256>> sign, Transaction transaction)
+        private async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Func<Transaction, Tuple<ReadOnlyMemory<byte>, Hash256>> sign, IEnumerable<Transaction> transactions)
         {
-            AccountInfoResponse infoResponse = await Setup.WaitForAccount(transaction.Account);
-
+            var account = transactions.First().Account;
+            AccountInfoResponse infoResponse = await Setup.WaitForAccount(account);
             var feeResponse = await Api.Fee();
 
-            transaction.LastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
-            transaction.Sequence = infoResponse.AccountData.Sequence;
-            // Some transactions have higher or fixed fee requirements.
-            // Don't overwrite them.
-            if (transaction.Fee.Drops == 0)
-            {
-                transaction.Fee = feeResponse.Drops.MedianFee;
-            }
+            var lastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
+            var sequence = infoResponse.AccountData.Sequence;
 
-            var signature = sign(transaction);
-            var transactionHash = signature.Item2;
-
-            var request = new SubmitRequest();
-            request.FailHard = true;
-            request.TxBlob = signature.Item1;
-            var submitResponse = await Api.Submit(request);
-            if (!submitResponse.Accepted)
+            var submits = new List<(SubmitResponse, Hash256)>();
+            foreach (var transaction in transactions)
             {
-                throw new SubmitException("Transaction was not accepted", submitResponse);
-            }
-            else
-            {
-                Assert.True(
-                    submitResponse.Kept ||
-                    submitResponse.Queued ||
-                    submitResponse.Applied ||
-                    submitResponse.Broadcast);
-            }
-
-            var txRequest = new TxRequest()
-            {
-                Transaction = transactionHash,
-                MinLedger = feeResponse.LedgerCurrentIndex,
-                MaxLedger = transaction.LastLedgerSequence,
-            };
-            while (true)
-            {
-                var ledgerCurrent = await Api.LedgerCurrent();
-                var transactionResponse = await Api.Tx(txRequest);
-                Assert.Equal(transactionHash, transactionResponse.Hash);
-                if (transactionResponse.Validated)
+                if(transaction.Account != account)
                 {
-                    return Tuple.Create(submitResponse, transactionResponse);
+                    throw new Exception(string.Format("Transaction in submit batch did not match first transactions account"));
                 }
 
-                if (ledgerCurrent > txRequest.MaxLedger)
+                transaction.LastLedgerSequence = lastLedgerSequence;
+                // Give each transaction a unique sequence number
+                transaction.Sequence = sequence++;
+                // Some transactions have higher or fixed fee requirements.
+                // Don't overwrite them.
+                if (transaction.Fee.Drops == 0)
                 {
-                    throw new SubmitException("Transaction was not validated", submitResponse);
+                    transaction.Fee = feeResponse.Drops.MedianFee;
                 }
 
-                System.Threading.Thread.Sleep(2000);
+                var signature = sign(transaction);
+
+                var request = new SubmitRequest();
+                request.FailHard = true;
+                request.TxBlob = signature.Item1;
+                var submitResponse = await Api.Submit(request);
+                if (!submitResponse.Accepted)
+                {
+                    throw new SubmitException("Transaction was not accepted", submitResponse);
+                }
+                else
+                {
+                    Assert.True(
+                        submitResponse.Kept ||
+                        submitResponse.Queued ||
+                        submitResponse.Applied ||
+                        submitResponse.Broadcast);
+                }
+
+                submits.Add((submitResponse, signature.Item2));
             }
+
+            var results = new (SubmitResponse, TransactionResponse)[submits.Count];
+            for(int i = 0; i < submits.Count; ++i)
+            {
+                var submit = submits[i];
+
+                var txRequest = new TxRequest()
+                {
+                    Transaction = submit.Item2,
+                    MinLedger = feeResponse.LedgerCurrentIndex,
+                    MaxLedger = lastLedgerSequence,
+                };
+                while (true)
+                {
+                    var ledgerCurrent = await Api.LedgerCurrent();
+                    var transactionResponse = await Api.Tx(txRequest);
+                    Assert.Equal(submit.Item2, transactionResponse.Hash);
+                    if (transactionResponse.Validated)
+                    {
+                        results[i] = (submit.Item1, transactionResponse);
+                        break;
+                    }
+
+                    if (ledgerCurrent > txRequest.MaxLedger)
+                    {
+                        throw new SubmitException("Transaction was not validated", submit.Item1);
+                    }
+
+                    System.Threading.Thread.Sleep(2000);
+                }
+            }
+
+            return results;
         }
 
-        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Seed secret, Transaction transaction)
+        private async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Seed secret, IEnumerable<Transaction> transactions)
         {
             secret.KeyPair(out var _, out var keyPair);
-            return await SubmitTransaction(transaction =>
+            return await SubmitTransactions(transaction =>
             {
                 var bytes = transaction.Sign(keyPair, out var transactionHash);
                 return Tuple.Create(bytes, transactionHash);
-            }, transaction);
+            }, transactions);
         }
 
-        private async Task<Tuple<SubmitResponse, TransactionResponse>> SubmitTransaction(Tuple<AccountId, Seed>[] secrets, Transaction transaction)
+        private async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Seed secret, Transaction transaction)
+        {
+            secret.KeyPair(out var _, out var keyPair);
+            var results = await SubmitTransactions(transaction =>
+            {
+                var bytes = transaction.Sign(keyPair, out var transactionHash);
+                return Tuple.Create(bytes, transactionHash);
+            }, new[] { transaction });
+            return results.First();
+        }
+
+        private async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Tuple<AccountId, Seed>[] secrets, Transaction transaction)
         {
             var signers =
                 secrets.Select(tuple =>
@@ -206,11 +240,12 @@ namespace Ibasa.Ripple.Tests
                     return ValueTuple.Create(tuple.Item1, keyPair);
                 }).ToArray();
 
-            return await SubmitTransaction(transaction =>
+            var results = await SubmitTransactions(transaction =>
             {
                 var bytes = transaction.Sign(signers, out var transactionHash);
                 return Tuple.Create(bytes, transactionHash);
-            }, transaction);
+            }, new[] { transaction });
+            return results.First();
         }
 
         public ApiTests(ApiTestsSetup<T> setup)
@@ -918,7 +953,7 @@ namespace Ibasa.Ripple.Tests
             await Setup.WaitForAccount(account3.Address);
 
 
-            var currencies = new CurrencyCode[10];
+            var currencies = new CurrencyCode[20];
             currencies[0] = new CurrencyCode("GBP");
             currencies[1] = new CurrencyCode("BTC");
             currencies[2] = new CurrencyCode("USD");
@@ -933,47 +968,67 @@ namespace Ibasa.Ripple.Tests
             var testAccounts = new[] { account2, account3 };
             foreach (var account in testAccounts)
             {
-                for(int i = 0; i < currencies.Length; ++i)
+                var trustSetTransactions = new List<Transaction>();
+                for (int i = 0; i < currencies.Length; ++i)
                 {
                     var currency = currencies[i];
 
                     var trustSet = new TrustSet();
                     trustSet.Account = account.Address;
                     trustSet.LimitAmount = new IssuedAmount(account1.Address, currency, new Currency(1000m));
-                    var (_, _) = await SubmitTransaction(account.Secret, trustSet);
+                    trustSetTransactions.Add(trustSet);
+                }
+                await SubmitTransactions(account.Secret, trustSetTransactions);
+            }
+
+            var paymentTransactions = new List<Transaction>();
+            foreach (var account in testAccounts)
+            {
+                for (int i = 0; i < currencies.Length; ++i)
+                {
+                    var currency = currencies[i];
 
                     var payment = new Payment();
                     payment.Account = account1.Address;
                     payment.Destination = account.Address;
                     payment.Amount = new Amount(account1.Address, currency, new Currency(i + 1));
-                    var (_, _) = await SubmitTransaction(account1.Secret, payment);
+                    paymentTransactions.Add(payment);
                 }
             }
+            await SubmitTransactions(account1.Secret, paymentTransactions);
 
             // Check all the trust lines from account 1
             var request = new AccountLinesRequest();
             request.Account = account1.Address;
+            request.Limit = 10; // Artifically low limit to try and force paging
             var response = await Api.AccountLines(request);
             Assert.Equal(account1.Address, response.Account);
-            var results = new Dictionary<AccountId, List<Tuple<CurrencyCode, Currency>>>();
-            results[account2.Address] = new List<Tuple<CurrencyCode, Currency>>();
-            results[account3.Address] = new List<Tuple<CurrencyCode, Currency>>();
+            var results = new Dictionary<AccountId, List<TrustLine>>();
+            results[account2.Address] = new List<TrustLine>();
+            results[account3.Address] = new List<TrustLine>();
             await foreach(var line in response)
             {
                 var amounts = results[line.Account];
-                amounts.Add(Tuple.Create(line.Currency, line.Balance));                
+                amounts.Add(line);
             }
 
-            var expectedAmounts =
-                currencies.Select((code, i) =>
-                    Tuple.Create(code, new Currency(-(i + 1)))
-                ).OrderBy(tuple => tuple.Item2)
-                .ToArray();
-
-            void CheckAmounts(List<Tuple<CurrencyCode, Currency>> amounts)
+            void CheckAmounts(List<TrustLine> lines)
             {
-                var sorted = amounts.OrderBy(tuple => tuple.Item2);
-                Assert.Equal(expectedAmounts, sorted);
+                Assert.Equal(currencies.Length, lines.Count);
+
+                for(int i = 0; i < currencies.Length; ++i)
+                {
+                    var currency = currencies[i];
+                    var amount = new Currency(i + 1);
+
+                    Assert.Contains(lines, line =>
+                        line.Currency == currency &&
+                        line.Balance == -amount &&
+                        line.LimitPeer == new Currency(1000m) &&
+                        line.Limit == Currency.Zero &&
+                        line.NoRipple && !line.NoRipplePeer);
+                }
+
             }
 
             CheckAmounts(results[account2.Address]);

@@ -8,6 +8,14 @@ namespace Ibasa.Ripple.Tests
 {
     public class CurrencyTests
     {
+        public static Arbitrary<Currency> Arb
+        {
+            get
+            {
+                return FsCheck.Arb.From<decimal>().Convert(d => (Currency)d, c => (decimal)c);
+            }
+        }
+
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -76,8 +84,10 @@ namespace Ibasa.Ripple.Tests
         [InlineData("0.99", "0.99")]
         [InlineData("0.01", "0.01")]
         [InlineData("0.1", "0.1")]
+        [InlineData("0.0", "0")]
         [InlineData("0", "0")]
         [InlineData("1", "1")]
+        [InlineData("1.0", "1")]
         [InlineData("10", "10")]
         [InlineData("99", "99")]
         [InlineData("9.9", "9.9")]
@@ -90,6 +100,7 @@ namespace Ibasa.Ripple.Tests
         {
             var decimalValue = decimal.Parse(value);
             Assert.Equal(expected, new Currency(decimalValue).ToString());
+            Assert.Equal(expected, Currency.Parse(value).ToString());
         }
 
         [Theory]
@@ -99,6 +110,8 @@ namespace Ibasa.Ripple.Tests
         [InlineData(true, 0, 9999_9999_9999_9999)]
         [InlineData(true, 80, 1000_0000_0000_0000)]
         [InlineData(true, 80, 9999_9999_9999_9999)]
+        [InlineData(true, 0, 0)]
+        [InlineData(false, 0, 0)]
         [InlineData(false, -96, 1000_0000_0000_0000)]
         [InlineData(false, -96, 9999_9999_9999_9999)]
         [InlineData(false, 0, 1000_0000_0000_0000)]
@@ -135,12 +148,20 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Property]
+        public Property TestToStringRoundTrip()
+        {
+            return Prop.ForAll(Arb, c =>
+            {
+                var str = c.ToString();
+                var rt = Currency.Parse(str);
+                Assert.Equal(c, rt);
+            });
+        }
+
+        [Property]
         public Property TestOrdering()
         {
-            var arb =
-                Arb.From<decimal>().Convert(d => (Currency)d, c => (decimal)c);
-
-            return Prop.ForAll(arb, arb, arb, (v1, v2, v3) =>
+            return Prop.ForAll(Arb, Arb, Arb, (v1, v2, v3) =>
                 {
                     if (v1 < v2 && v2 < v3)
                     {

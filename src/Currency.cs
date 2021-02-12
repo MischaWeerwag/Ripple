@@ -332,9 +332,9 @@ namespace Ibasa.Ripple
 
         public static Currency Parse(string s)
         {
-            Span<char> mantissaChars = stackalloc char[17];
+            Span<char> mantissaChars = stackalloc char[s.Length];
             int mantissaCount = 0;
-            Span<char> exponentChars = stackalloc char[3];
+            Span<char> exponentChars = stackalloc char[s.Length];
             int exponentCount = 0;
             int fraction = 0;
 
@@ -375,6 +375,11 @@ namespace Ibasa.Ripple
             var isPositive = iMantissa > 0;
             var mantissa = (ulong)Math.Abs(iMantissa);
 
+            if(mantissa == 0)
+            {
+                return Currency.Zero;
+            }
+
             while (mantissa < minMantissa)
             {
                 exponent -= 1;
@@ -404,6 +409,11 @@ namespace Ibasa.Ripple
         public int CompareTo(Currency other)
         {
             return bits.CompareTo(other.bits);
+        }
+
+        public static Currency operator -(Currency c)
+        {
+            return new Currency(c.bits ^ 0x4000_0000_0000_0000);
         }
 
         public static bool operator <(Currency c1, Currency c2)

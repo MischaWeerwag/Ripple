@@ -67,7 +67,7 @@ namespace Ibasa.Ripple.Tests
         /// </summary>
         public async Task<AccountInfoResponse> WaitForAccount(AccountId account)
         {
-            var terminationTimeout = DateTime.UtcNow + TimeSpan.FromMinutes(5.0);
+            var terminationTimeout = DateTime.UtcNow + TimeSpan.FromMinutes(1.0);
 
             var infoRequest = new AccountInfoRequest()
             {
@@ -89,6 +89,8 @@ namespace Ibasa.Ripple.Tests
                     }
 
                     if (exc.Error != "actNotFound") { throw; }
+
+                    System.Threading.Thread.Sleep(2000);
                 }
             }
             return infoResponse;

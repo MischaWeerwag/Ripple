@@ -77,6 +77,12 @@ namespace Ibasa.Ripple
         public abstract Task<uint> LedgerCurrent(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// The ledger_data method retrieves contents of the specified ledger.
+        /// You can iterate through several calls to retrieve the entire contents of a single ledger version.
+        /// </summary>
+        //public abstract Task<LedgerDataResponse> LedgerData(LedgerDataRequest request, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// The fee command reports the current state of the open-ledger requirements for the transaction cost.
         /// </summary>
         public abstract Task<FeeResponse> Fee(CancellationToken cancellationToken = default);

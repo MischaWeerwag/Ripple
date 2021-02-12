@@ -219,6 +219,81 @@ namespace Ibasa.Ripple
         }
     }
 
+    public sealed class LedgerDataRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// (Optional, default varies) Limit the number of ledger objects to retrieve.
+        /// The server is not required to honor this value.
+        /// </summary>
+        public uint? Limit { get; set; }
+
+        /// <summary>
+        /// Value from a previous paginated response.
+        /// Resume retrieving data where that response left off.
+        /// </summary>
+        public JsonElement Marker { get; set; }
+    }
+
+    public sealed class LedgerDataResponse
+    {
+        /// <summary>
+        /// Unique identifying hash of this ledger version.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of this ledger version.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// Server-defined value indicating the response is paginated.
+        /// Pass this to the next call to resume where this call left off.
+        /// </summary>
+        public JsonElement Marker { get; private set; }
+
+        /// <summary>
+        /// Array of JSON objects containing data from the ledger's state tree, as defined below.
+        /// </summary>
+        public ReadOnlyCollection<ValueTuple<string, Hash256>> State { get; private set; }
+
+        internal LedgerDataResponse(JsonElement json)
+        {
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+
+            if (json.TryGetProperty("marker", out var marker))
+            {
+                Marker = marker.Clone();
+            }
+
+            var stateJson = json.GetProperty("state");
+            var state = new ValueTuple<string, Hash256>[stateJson.GetArrayLength()];
+            for(int i = 0; i < state.Length; ++i)
+            {
+                var obj = stateJson[i];
+                state[i] = ValueTuple.Create(obj.GetProperty("data").GetString(), new Hash256(obj.GetProperty("index").GetString()));
+            }
+            State = Array.AsReadOnly(state);
+        }
+    }
+
     public sealed class FeeResponseDrops
     {
         /// <summary>
@@ -697,7 +772,6 @@ namespace Ibasa.Ripple
             Currency = new CurrencyCode(json.GetProperty("currency").GetString());
         }
     }
-
 
     public sealed class AccountLinesResponse : IAsyncEnumerable<TrustLine>
     {

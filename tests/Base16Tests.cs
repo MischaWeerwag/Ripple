@@ -15,14 +15,14 @@ namespace Ibasa.Ripple.Tests
         {
             var utf8 = System.Text.Encoding.UTF8.GetBytes(data);
 
-            var bytes = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length)];
+            var bytes = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length)];
             var status = Base16.DecodeFromUtf8(utf8, bytes, out var bytesConsumed, out var bytesWritten);
 
             Assert.Equal(OperationStatus.Done, status);
             Assert.Equal(utf8.Length, bytesConsumed);
             Assert.Equal(bytes.Length, bytesWritten);
 
-            utf8 = new byte[Base16.GetMaxEncodedToUtf8Length(bytes.Length)];
+            utf8 = new byte[Base16.GetEncodedToUtf8Length(bytes.Length)];
             status = Base16.EncodeToUtf8(bytes, utf8, out bytesConsumed, out bytesWritten);
 
             Assert.Equal(OperationStatus.Done, status);
@@ -39,7 +39,7 @@ namespace Ibasa.Ripple.Tests
         {
             var utf8 = System.Text.Encoding.UTF8.GetBytes(data);
 
-            var bytes = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length)];
+            var bytes = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length)];
             var status = Base16.DecodeFromUtf8(utf8, bytes, out var bytesConsumed, out var bytesWritten);
 
             Assert.Equal(OperationStatus.InvalidData, status);
@@ -52,7 +52,7 @@ namespace Ibasa.Ripple.Tests
         {
             var utf8 = System.Text.Encoding.UTF8.GetBytes(data);
 
-            var bytes = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length) - 1];
+            var bytes = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length) - 1];
             var status = Base16.DecodeFromUtf8(utf8, bytes, out var bytesConsumed, out var bytesWritten);
 
             Assert.Equal(OperationStatus.DestinationTooSmall, status);

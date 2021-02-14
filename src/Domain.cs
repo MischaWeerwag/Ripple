@@ -108,7 +108,7 @@ namespace Ibasa.Ripple
             else
             {
                 // Nonstandard Currency Code
-                Span<byte> utf8 = stackalloc byte[Base16.GetMaxEncodedToUtf8Length(bytes.Length)];
+                Span<byte> utf8 = stackalloc byte[Base16.GetEncodedToUtf8Length(bytes.Length)];
                 var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var _);
                 return System.Text.Encoding.UTF8.GetString(utf8);
             }

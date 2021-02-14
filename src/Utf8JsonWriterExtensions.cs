@@ -11,7 +11,7 @@ namespace Ibasa.Ripple
 
             byte[] rented = null;
 
-            var count = Base16.GetMaxEncodedToUtf8Length(bytes.Length);
+            var count = Base16.GetEncodedToUtf8Length(bytes.Length);
             Span<byte> utf8 = count <= 256 ? stackalloc byte[count] : (rented = System.Buffers.ArrayPool<byte>.Shared.Rent(count));
 
             var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var written);

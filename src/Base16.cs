@@ -193,7 +193,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Returns the maximum length (in bytes) of the result if you were to decode base-16 encoded text within a byte span of size length.
         /// </summary>
-        public static int GetMaxDecodedFromUtf8Length(int length)
+        public static int GetDecodedFromUtf8Length(int length)
         {
             return (length + 1) / 2;
         }
@@ -201,7 +201,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Returns the maximum length (in bytes) of the result if you were to encode binary data within a byte span of size length.
         /// </summary>
-        public static int GetMaxEncodedToUtf8Length(int length)
+        public static int GetEncodedToUtf8Length(int length)
         {
             return length * 2;
         }
@@ -209,7 +209,7 @@ namespace Ibasa.Ripple
         public static byte[] Decode(string base16)
         {
             var utf8 = System.Text.Encoding.UTF8.GetBytes(base16);
-            var buffer = new byte[GetMaxDecodedFromUtf8Length(utf8.Length)];
+            var buffer = new byte[GetDecodedFromUtf8Length(utf8.Length)];
             var status = DecodeFromUtf8(utf8, buffer, out var bytesConsumed, out var bytesWritten);
             if (status != OperationStatus.Done || bytesWritten != buffer.Length || bytesConsumed != utf8.Length)
             {
@@ -220,7 +220,7 @@ namespace Ibasa.Ripple
 
         public static string Encode(ReadOnlySpan<byte> bytes)
         {
-            var utf8 = new byte[GetMaxEncodedToUtf8Length(bytes.Length)];
+            var utf8 = new byte[GetEncodedToUtf8Length(bytes.Length)];
             var status = EncodeToUtf8(bytes, utf8, out var bytesConsumed, out var bytesWritten);
             if (status != OperationStatus.Done || bytesWritten != utf8.Length || bytesConsumed != bytes.Length)
             {

@@ -173,6 +173,11 @@ namespace Ibasa.Ripple
             {
                 jsonWriter.WriteNumber("limit", request.Limit.Value);
             }
+            if (request.Marker.HasValue)
+            {
+                jsonWriter.WritePropertyName("marker");
+                request.Marker.Value.WriteTo(jsonWriter);
+            }
             WriteFooter(jsonWriter);
             jsonWriter.WriteEndObject();
             jsonWriter.Flush();

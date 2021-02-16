@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Buffers.Text;
 
 namespace Ibasa.Ripple
 {
@@ -199,6 +198,14 @@ namespace Ibasa.Ripple
         }
 
         /// <summary>
+        /// Returns the maximum length (in bytes) of the result if you were to decode base-16 encoded text within a byte span of size length.
+        /// </summary>
+        public static int GetDecodedFromCharsLength(int length)
+        {
+            return (length + 1) / 2;
+        }
+
+        /// <summary>
         /// Returns the maximum length (in bytes) of the result if you were to encode binary data within a byte span of size length.
         /// </summary>
         public static int GetEncodedToUtf8Length(int length)
@@ -206,12 +213,70 @@ namespace Ibasa.Ripple
             return length * 2;
         }
 
+        public static OperationStatus DecodeFromChars(ReadOnlySpan<char> chars, Span<byte> bytes, out int charsConsumed, out int bytesWritten, bool isFinalBlock = true)
+        {
+            bytesWritten = 0;
+            for (charsConsumed = 0; charsConsumed < chars.Length; charsConsumed += 2)
+            {
+                if (bytes.Length <= bytesWritten)
+                {
+                    return OperationStatus.DestinationTooSmall;
+                }
+
+                int high = chars[charsConsumed];
+
+                if (48 <= high && high <= 57)
+                {
+                    high -= 48;
+                }
+                else if (65 <= high && high <= 70)
+                {
+                    high = (high - 65) + 10;
+                }
+                else if (97 <= high && high <= 102)
+                {
+                    high = (high - 97) + 10;
+                }
+                else
+                {
+                    return OperationStatus.InvalidData;
+                }
+
+                int low = 0;
+                if (chars.Length > charsConsumed + 1)
+                {
+                    low = chars[charsConsumed + 1];
+
+                    if (48 <= low && low <= 57)
+                    {
+                        low -= 48;
+                    }
+                    else if (65 <= low && low <= 70)
+                    {
+                        low = (low - 65) + 10;
+                    }
+                    else if (97 <= low && low <= 102)
+                    {
+                        low = (low - 97) + 10;
+                    }
+                    else
+                    {
+                        return OperationStatus.InvalidData;
+                    }
+                }
+
+                bytes[bytesWritten++] = (byte)(high << 4 | low);
+            }
+
+            return OperationStatus.Done;
+        }
+
         public static byte[] Decode(string base16)
         {
-            var utf8 = System.Text.Encoding.UTF8.GetBytes(base16);
-            var buffer = new byte[GetDecodedFromUtf8Length(utf8.Length)];
-            var status = DecodeFromUtf8(utf8, buffer, out var bytesConsumed, out var bytesWritten);
-            if (status != OperationStatus.Done || bytesWritten != buffer.Length || bytesConsumed != utf8.Length)
+            var chars = base16.AsSpan();
+            var buffer = new byte[GetDecodedFromCharsLength(chars.Length)];
+            var status = DecodeFromChars(chars, buffer, out var charsConsumed, out var bytesWritten);
+            if (status != OperationStatus.Done || bytesWritten != buffer.Length || charsConsumed != chars.Length)
             {
                 throw new Exception("Unreachable");
             }

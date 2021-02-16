@@ -236,7 +236,7 @@ namespace Ibasa.Ripple
         /// Value from a previous paginated response.
         /// Resume retrieving data where that response left off.
         /// </summary>
-        public JsonElement Marker { get; set; }
+        public JsonElement? Marker { get; set; }
     }
 
     public sealed class LedgerDataResponse
@@ -255,7 +255,7 @@ namespace Ibasa.Ripple
         /// Server-defined value indicating the response is paginated.
         /// Pass this to the next call to resume where this call left off.
         /// </summary>
-        public JsonElement Marker { get; private set; }
+        public JsonElement? Marker { get; private set; }
 
         /// <summary>
         /// Array of JSON objects containing data from the ledger's state tree, as defined below.

@@ -13,14 +13,21 @@ namespace Ibasa.Ripple
 
             var count = Base16.GetEncodedToUtf8Length(bytes.Length);
             Span<byte> utf8 = count <= 256 ? stackalloc byte[count] : (rented = System.Buffers.ArrayPool<byte>.Shared.Rent(count));
-
-            var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var written);
-
-            writer.WriteStringValue(utf8.Slice(0, written));
-
-            if (rented != null)
+            try
             {
-                System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+                var status = Base16.EncodeToUtf8(bytes, utf8, out var _, out var written);
+                if(status != System.Buffers.OperationStatus.Done)
+                {
+                    throw new Exception("Unexpected failure in Base16 encode");
+                }
+                writer.WriteStringValue(utf8.Slice(0, written));
+            }
+            finally
+            {
+                if (rented != null)
+                {
+                    System.Buffers.ArrayPool<byte>.Shared.Return(rented);
+                }
             }
         }
     }

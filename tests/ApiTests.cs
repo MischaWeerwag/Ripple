@@ -377,7 +377,7 @@ namespace Ibasa.Ripple.Tests
             // Example tx blob from ripple documentation (https://xrpl.org/submit.html)
             var hex = "1200002280000000240000001E61D4838D7EA4C6800000000000000000000000000055534400000000004B4E9C06F24296074F7BC48F92A97916C6DC5EA968400000000000000B732103AB40A0490F9B7ED8DF29D246BF2D6269820A0EE7742ACDD457BEA7C7D0931EDB7447304502210095D23D8AF107DF50651F266259CC7139D0CD0C64ABBA3A958156352A0D95A21E02207FCF9B77D7510380E49FF250C21B57169E14E9B4ACFD314CEDC79DDD0A38B8A681144B4E9C06F24296074F7BC48F92A97916C6DC5EA983143E9D4A2B8AA0780F682D136F7A56D6724EF53754";
             var utf8 = System.Text.Encoding.UTF8.GetBytes(hex);
-            var txBlob = new byte[Base16.GetMaxDecodedFromUtf8Length(utf8.Length)];
+            var txBlob = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length)];
             var status = Base16.DecodeFromUtf8(utf8, txBlob, out var _, out var _);
             Assert.Equal(System.Buffers.OperationStatus.Done, status);
 
@@ -940,7 +940,6 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(checkCash.DeliverMin, ccashr.DeliverMin);
         }
 
-
         [Fact]
         public async Task TestAccountLines()
         {
@@ -1033,6 +1032,31 @@ namespace Ibasa.Ripple.Tests
 
             CheckAmounts(results[account2.Address]);
             CheckAmounts(results[account3.Address]);
+        }
+
+        [Fact]
+        public async Task TestLedgerData()
+        {
+            var request = new LedgerDataRequest
+            {
+                Ledger = LedgerSpecification.Validated
+            };
+
+            do
+            {
+                var response = await Api.LedgerData(request);
+                Assert.NotNull(response.LedgerHash);
+
+                foreach(var obj in response.State)
+                {
+                    Assert.NotNull(obj.Item1);
+                    Assert.NotEqual("", obj.Item1);
+                    Assert.NotEqual(default, obj.Item2);
+                }
+
+                request.Ledger = new LedgerSpecification(response.LedgerIndex);
+                request.Marker = response.Marker;
+            } while (request.Marker.HasValue);
         }
     }
 }

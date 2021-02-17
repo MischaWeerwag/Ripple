@@ -1,6 +1,8 @@
 using System;
 using Xunit;
 
+using Ibasa.Ripple.St;
+
 namespace Ibasa.Ripple.Tests
 {
     public class AccountRootTests
@@ -12,14 +14,9 @@ namespace Ibasa.Ripple.Tests
             Span<byte> data = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length)];
             Assert.Equal(System.Buffers.OperationStatus.Done, Base16.DecodeFromUtf8(utf8, data, out var _, out var _));
 
-            var expectedHash = new Hash256("00001A2969BE1FC85F1D7A55282FA2E6D95C71D2E4B9C0FDD3D9994F3C00FF8F");
-
-            var reader = new St.StReader(data);
-
-            reader.TryReadFieldId(out var type, out var field);
-            Assert.Equal(St.StTypeCode.UInt16, type);
-            Assert.Equal(1u, field);
-            Assert.Equal(St.StLedgerEntryTypes.AccountRoot, (St.StLedgerEntryTypes)reader.ReadUInt16());
+            var reader = new StReader(data);
+            Assert.Equal(StFieldId.UInt16_LedgerEntryType, reader.ReadFieldId());
+            Assert.Equal(StLedgerEntryType.AccountRoot, (StLedgerEntryType)reader.ReadUInt16());
 
             var accountRoot = new AccountRoot(reader);
             Assert.Equal(new AccountId("rKKzk9ghA2iuy3imqMXUHJqdRPMtNDGf4c"), accountRoot.Account);
@@ -29,7 +26,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(new Hash256("C204A65CF2542946289A3358C67D991B5E135FABFA89F271DBA7A150C08CA046"), accountRoot.PreviousTxnID);
             Assert.Equal(6487716u, accountRoot.PreviousTxnLgrSeq);
             Assert.Equal(1u, accountRoot.Sequence);
-            Assert.Equal(expectedHash, accountRoot.ID);
+            Assert.Equal(new Hash256("00001A2969BE1FC85F1D7A55282FA2E6D95C71D2E4B9C0FDD3D9994F3C00FF8F"), accountRoot.ID);
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public abstract Hash256 ID { get; }
 
-        internal static Hash256 CalculateId(ushort addressSpace, ReadOnlySpan<byte> data)
+        protected static Hash256 CalculateId(ushort addressSpace, ReadOnlySpan<byte> data)
         {
             Span<byte> buffer = stackalloc byte[2 + data.Length];
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer, addressSpace);
@@ -36,25 +36,53 @@ namespace Ibasa.Ripple
 
         internal static LedgerObject FromSt(StReader reader)
         {
-            reader.TryReadFieldId(out var typeCode, out var fieldCode);
-            if(typeCode != StTypeCode.UInt16 || fieldCode != 1)
+            var fieldId = reader.ReadFieldId();
+            if(fieldId.TypeCode != StTypeCode.UInt16 || fieldId.FieldCode != 1)
             {
-                throw new ArgumentException(
-                    string.Format("Expected LedgerEntryType field, got ({0}, {1}", typeCode, fieldCode),
-                    "reader");
+                throw new RippleException(
+                    string.Format("Expected LedgerEntryType field, got {0}", fieldId));
             }
-            var type = (StLedgerEntryTypes)reader.ReadUInt16();
+            var type = (StLedgerEntryType)reader.ReadUInt16();
 
             switch(type)
             {
-                case StLedgerEntryTypes.AccountRoot:
-                    return new AccountRoot(reader);                
+                case StLedgerEntryType.AccountRoot:
+                    return new AccountRoot(reader);
+            //   case StLedgerEntryTypes.DirectoryNode:
+            //       return new DirectoryNode(reader);
+            //   case StLedgerEntryTypes.RippleState:
+            //       return new RippleState(reader);
+            //   case StLedgerEntryTypes.Ticket:
+            //       return new Ticket(reader);
+            //   case StLedgerEntryTypes.SignerList:
+            //       return new SignerList(reader);
+            //   case StLedgerEntryTypes.Offer:
+            //       return new Offer(reader);
+            //   case StLedgerEntryTypes.LedgerHashes:
+            //       return new LedgerHashes(reader);
+            //   case StLedgerEntryTypes.Amendments:
+            //       return new Amendments(reader);
+            //   case StLedgerEntryTypes.FeeSettings:
+            //       return new FeeSettings(reader);
+            //   case StLedgerEntryTypes.Escrow:
+            //       return new Escrow(reader);
+            //   case StLedgerEntryTypes.PayChannel:
+            //       return new PayChannel(reader);
+            //   case StLedgerEntryTypes.DepositPreauth:
+            //       return new DepositPreauth(reader);
+            //   case StLedgerEntryTypes.Check:
+            //       return new Check(reader);
+            //   case StLedgerEntryTypes.Nickname:
+            //       return new Nickname(reader);
+            //   case StLedgerEntryTypes.Contract:
+            //       return new Contract(reader);
+            //   case StLedgerEntryTypes.GeneratorMap:
+            //       return new GeneratorMap(reader);
+            //   case StLedgerEntryTypes.NegativeUNL:
+            //       return new NegativeUNL(reader);
             }
 
-            return null;
-
-
-            //throw new Exception("Not yet implemented");
+            throw new RippleException(string.Format("Unrecognized ledger entry type: {0}", type));
         }
     }
 
@@ -62,18 +90,70 @@ namespace Ibasa.Ripple
     /// A Check object describes a check, similar to a paper personal check, which can be cashed by its destination to get money from its sender.
     /// (The potential payment has already been approved by its sender, but no money moves until it is cashed. Unlike an Escrow, the money for a Check is not set aside, so cashing the Check could fail due to lack of funds.)
     /// </summary>
-    public sealed class Check 
+    public sealed class Check : LedgerObject
     {
-        public static Hash256 ID(AccountId account, uint sequence)
+        /// <summary>
+        /// The sender of the Check.
+        /// Cashing the Check debits this address's balance.
+        /// </summary>
+        public AccountId Account { get; private set; }
+
+        /// <summary>
+        /// The sequence number of the CheckCreate transaction that created this check.
+        /// </summary>
+        public uint Sequence { get; private set; }
+
+        //LedgerEntryType String  UInt16 The value 0x0043, mapped to the string Check, indicates that this object is a Check object.
+        //Destination String  Account The intended recipient of the Check.Only this address can cash the Check, using a CheckCash transaction.
+        //Flags   Number UInt32  A bit-map of boolean flags. No flags are defined for Checks, so this value is always 0.
+        //OwnerNode String  UInt64 A hint indicating which page of the sender's owner directory links to this object, in case the directory consists of multiple pages. Note: The object does not contain a direct link to the owner directory containing it, since that value can be derived from the Account.
+        //PreviousTxnID String  Hash256 The identifying hash of the transaction that most recently modified this object.
+        //PreviousTxnLgrSeq Number  UInt32 The index of the ledger that contains the transaction that most recently modified this object.
+        //SendMax String or Object    Amount The maximum amount of currency this Check can debit the sender.If the Check is successfully cashed, the destination is credited in the same currency for up to this amount.
+        //DestinationNode String  UInt64  (Optional) A hint indicating which page of the destination's owner directory links to this object, in case the directory consists of multiple pages.
+        //DestinationTag Number  UInt32  (Optional) An arbitrary tag to further specify the destination for this Check, such as a hosted recipient at the destination address.
+        //Expiration Number  UInt32  (Optional) Indicates the time after which this Check is considered expired. See Specifying Time for details.
+        //InvoiceID String  Hash256 (Optional) Arbitrary 256-bit hash provided by the sender as a specific reason or identifier for this Check.
+        //SourceTag Number  UInt32  (Optional) An arbitrary tag to further specify the source for this Check, such as a hosted recipient at the sender's address.
+
+        public static Hash256 CalculateId(AccountId account, uint sequence)
         {
-            //The ID of a Check object is the SHA - 512Half of the following values, concatenated in order:
-            //The Check space key(0x0043)
-            //The AccountID of the sender of the CheckCreate transaction that created the Check object
-            //The Sequence number of the CheckCreate transaction that created the Check object
             Span<byte> buffer = stackalloc byte[20 + 4];
             account.CopyTo(buffer);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(20), sequence);
-            return LedgerObject.CalculateId(0x0043, buffer);
+            return CalculateId(0x0043, buffer);
+        }
+
+
+        public override Hash256 ID => CalculateId(Account, Sequence);
+
+
+        internal Check(JsonElement json)
+        {
+            if (json.GetProperty("LedgerEntryType").GetString() != "Check")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"Check\"", "json");
+            }
+        }
+
+        internal Check(StReader reader)
+        {
+            while (reader.TryReadFieldId(out var fieldId))
+            {
+                if (fieldId == StFieldId.AccountID_Account)
+                {
+                    Account = reader.ReadAccount();
+                } 
+                else if(fieldId == StFieldId.UInt32_Sequence)
+                {
+                    Sequence = reader.ReadUInt32();
+                }
+                else
+                {
+                    throw new RippleException(
+                        string.Format("Got unexpected field {0} while reading Check", fieldId));
+                }
+            }
         }
     }
 
@@ -156,6 +236,11 @@ namespace Ibasa.Ripple
             SignerEntries = Array.AsReadOnly(signerEntries);
             SignerListID = json.GetProperty("SignerListID").GetUInt32();
             SignerQuorum = json.GetProperty("SignerQuorum").GetUInt32();
+        }
+
+        internal SignerList(StReader reader)
+        {
+
         }
     }
 
@@ -301,6 +386,11 @@ namespace Ibasa.Ripple
 
         internal AccountRoot(JsonElement json)
         {
+            if (json.GetProperty("LedgerEntryType").GetString() != "AccountRoot")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"AccountRoot\"", "json");
+            }
+
             JsonElement element;
 
             Account = new AccountId(json.GetProperty("Account").GetString());
@@ -315,69 +405,79 @@ namespace Ibasa.Ripple
 
         internal AccountRoot(StReader reader)
         {
-            while(reader.TryReadFieldId(out var typeCode, out var fieldCode))
+            while(reader.TryReadFieldId(out var fieldId))
             {
-                switch(typeCode, fieldCode)
+                if (fieldId == StFieldId.AccountID_Account)
                 {
-                    case (StTypeCode.Account, 1):
-                        Account = reader.ReadAccount();
-                        break;
-                    case (StTypeCode.Amount, 2):
-                        var amount  = reader.ReadAmount();
-                        var xrpAmount = amount.XrpAmount;
-                        if (xrpAmount.HasValue)
-                        {
-                            Balance = xrpAmount.Value;
-                        }
-                        else
-                        {
-                            throw new ArgumentException(
-                                string.Format("Got unexpected issued amount while reading Balance field AccountRoot", amount.IssuedAmount),
-                                "reader");
+                    Account = reader.ReadAccount();
+                }
+                else if (fieldId == StFieldId.Amount_Balance)
+                {
+                    var amount = reader.ReadAmount();
+                    var xrpAmount = amount.XrpAmount;
+                    if (xrpAmount.HasValue)
+                    {
+                        Balance = xrpAmount.Value;
+                    }
+                    else
+                    {
+                        throw new RippleException(
+                            string.Format("Got unexpected issued amount while reading Balance field AccountRoot", amount.IssuedAmount));
 
-                        }
-                        break;
-                    case (StTypeCode.UInt32, 2):
-                        Flags = (AccountRootFlags)reader.ReadUInt32();
-                        break;
-                    case (StTypeCode.UInt32, 13):
-                        OwnerCount = reader.ReadUInt32();
-                        break;
-                    case (StTypeCode.Hash256, 5):
-                        PreviousTxnID = reader.ReadHash256();
-                        break;
-                    case (StTypeCode.UInt32, 5):
-                        PreviousTxnLgrSeq = reader.ReadUInt32();
-                        break;
-                    case (StTypeCode.UInt32, 4):
-                        Sequence = reader.ReadUInt32();
-                        break;
-                    case (StTypeCode.Hash256, 9):
-                        AccountTxnID = reader.ReadHash256();
-                        break;
-                    case (StTypeCode.Vl, 7):
-                        Domain = reader.ReadVl();
-                        break;
-                    case (StTypeCode.Hash128, 1):
-                        EmailHash = reader.ReadHash128();
-                        break;
-                    case (StTypeCode.Vl, 2):
-                        MessageKey = reader.ReadVl();
-                        break;
-                    case (StTypeCode.Account, 8):
-                        RegularKey = reader.ReadAccount();
-                        break;
-                    case (StTypeCode.UInt8, 16):
-                        TickSize = reader.ReadUInt8();
-                        break;
-                    case (StTypeCode.UInt32, 11):
-                        TransferRate = reader.ReadUInt32();
-                        break;
-                    
-                    default:
-                        throw new ArgumentException(
-                            string.Format("Got unexpected field ({0}, {1}) while reading AccountRoot", typeCode, fieldCode),
-                            "reader");
+                    }
+                }
+                else if (fieldId == StFieldId.UInt32_Flags)
+                {
+                    Flags = (AccountRootFlags)reader.ReadUInt32();
+                }
+                else if (fieldId == StFieldId.UInt32_OwnerCount)
+                {
+                    OwnerCount = reader.ReadUInt32();
+                }
+                else if (fieldId == StFieldId.Hash256_PreviousTxnID)
+                {
+                    PreviousTxnID = reader.ReadHash256();
+                }
+                else if (fieldId == StFieldId.UInt32_PreviousTxnLgrSeq)
+                {
+                    PreviousTxnLgrSeq = reader.ReadUInt32();
+                }
+                else if (fieldId == StFieldId.UInt32_Sequence)
+                {
+                    Sequence = reader.ReadUInt32();
+                }
+                else if (fieldId == StFieldId.Hash256_AccountTxnID)
+                {
+                    AccountTxnID = reader.ReadHash256();
+                }
+                else if (fieldId == StFieldId.Blob_Domain)
+                {
+                    Domain = reader.ReadBlob();
+                }
+                else if (fieldId == StFieldId.Hash128_EmailHash)
+                {
+                    EmailHash = reader.ReadHash128();
+                }
+                else if (fieldId == StFieldId.Blob_MessageKey)
+                {
+                    MessageKey = reader.ReadBlob();
+                }
+                else if (fieldId == StFieldId.AccountID_RegularKey)
+                {
+                    RegularKey = reader.ReadAccount();
+                }
+                else if (fieldId == StFieldId.UInt8_TickSize)
+                {
+                    TickSize = reader.ReadUInt8();
+                }
+                else if (fieldId == StFieldId.UInt32_TransferRate)
+                {
+                    TransferRate = reader.ReadUInt32();
+                }
+                else
+                { 
+                    throw new RippleException(
+                        string.Format("Got unexpected field {0} while reading AccountRoot", fieldId));
                 }
             }
         }

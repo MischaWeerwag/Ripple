@@ -109,12 +109,12 @@ namespace Ibasa.Ripple
 
         protected void WriteSigner(StWriter writer, bool forSigning)
         {
-            writer.WriteVl(3, SigningPubKey);
+            writer.WriteBlob(3, SigningPubKey);
             if (TxnSignature != null)
             {
                 if (!forSigning)
                 {
-                    writer.WriteVl(4, TxnSignature);
+                    writer.WriteBlob(4, TxnSignature);
                 }
             }
         }
@@ -125,14 +125,14 @@ namespace Ibasa.Ripple
             {
                 if (!forSigning)
                 {
-                    writer.WriteStartArray(ArrayFieldCode.Signers);
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
                     foreach (var signer in Signers)
                     {
-                        writer.WriteStartObject(ObjectFieldCode.Signer);
+                        writer.WriteStartObject(StObjectFieldCode.Signer);
 
-                        writer.WriteVl(3, signer.SigningPubKey);
-                        writer.WriteVl(4, signer.TxnSignature);
-                        writer.WriteAccount(AccountFieldCode.Account, signer.Account);
+                        writer.WriteBlob(3, signer.SigningPubKey);
+                        writer.WriteBlob(4, signer.TxnSignature);
+                        writer.WriteAccount(StAccountIDFieldCode.Account, signer.Account);
 
                         writer.WriteEndObject();
                     }
@@ -304,13 +304,13 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.SetRegularKey);
-            writer.WriteUInt32(4, Sequence);
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteTransactionType(StTransactionType.SetRegularKey);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
-            if (RegularKey.HasValue) { writer.WriteAccount(AccountFieldCode.RegularKey, RegularKey.Value); }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            if (RegularKey.HasValue) { writer.WriteAccount(StAccountIDFieldCode.RegularKey, RegularKey.Value); }
             WriteSigners(writer, forSigning);
         }
     }
@@ -415,21 +415,21 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.AccountSet);
-            writer.WriteUInt32(4, Sequence);
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteTransactionType(StTransactionType.AccountSet);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             if (SetFlag.HasValue)
             {
-                writer.WriteUInt32(33, (uint)SetFlag.Value);
+                writer.WriteUInt32(StUInt32FieldCode.SetFlag, (uint)SetFlag.Value);
             }
             if (ClearFlag.HasValue)
             {
-                writer.WriteUInt32(34, (uint)ClearFlag.Value);
+                writer.WriteUInt32(StUInt32FieldCode.ClearFlag, (uint)ClearFlag.Value);
             }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            if (Domain != null) { writer.WriteVl(7, Domain); }
-            writer.WriteAccount(AccountFieldCode.Account, Account);
+            if (Domain != null) { writer.WriteBlob(7, Domain); }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }
@@ -487,18 +487,18 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.Payment);
-            writer.WriteUInt32(4, Sequence);
-            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteTransactionType(StTransactionType.Payment);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
             writer.WriteAmount(1, Amount);
             writer.WriteAmount(8, Fee);
             if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
             if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
-            writer.WriteAccount(AccountFieldCode.Destination, Destination);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
         }
     }
@@ -587,16 +587,16 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.TrustSet);
-            writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
-            if (QualityIn.HasValue) { writer.WriteUInt32(20, QualityIn.Value); }
-            if (QualityOut.HasValue) { writer.WriteUInt32(21, QualityOut.Value); }
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteTransactionType(StTransactionType.TrustSet);
+            writer.WriteUInt32(StUInt32FieldCode.Flags, (uint)Flags);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (QualityIn.HasValue) { writer.WriteUInt32(StUInt32FieldCode.QualityIn, QualityIn.Value); }
+            if (QualityOut.HasValue) { writer.WriteUInt32(StUInt32FieldCode.QualityOut, QualityOut.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteAmount(3, LimitAmount);
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }
@@ -637,15 +637,15 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.AccountDelete);
+            writer.WriteTransactionType(StTransactionType.AccountDelete);
             //writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
-            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
-            writer.WriteAccount(AccountFieldCode.Destination, Destination);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
         }
     }
@@ -753,23 +753,23 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.SignerListSet);
+            writer.WriteTransactionType(StTransactionType.SignerListSet);
             //writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
-            writer.WriteUInt32(35, SignerQuorum);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
+            writer.WriteUInt32(StUInt32FieldCode.SignerQuorum, SignerQuorum);
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
             if (SignerEntries != null)
             {
-                writer.WriteStartArray(ArrayFieldCode.SignerEntries);
+                writer.WriteStartArray(StArrayFieldCode.SignerEntries);
                 foreach (var entry in SignerEntries)
                 {
-                    writer.WriteStartObject(ObjectFieldCode.SignerEntry);
-                    writer.WriteUInt16(3, entry.SignerWeight);
-                    writer.WriteAccount(AccountFieldCode.Account, entry.Account);
+                    writer.WriteStartObject(StObjectFieldCode.SignerEntry);
+                    writer.WriteUInt16(StUInt16FieldCode.SignerWeight, entry.SignerWeight);
+                    writer.WriteAccount(StAccountIDFieldCode.Account, entry.Account);
                     writer.WriteEndObject();                    
                 }
                 writer.WriteEndArray();
@@ -842,21 +842,21 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.CheckCreate);
+            writer.WriteTransactionType(StTransactionType.CheckCreate);
             //writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (Expiration.HasValue)
             {
-                writer.WriteUInt32(10, Epoch.FromDateTimeOffset(Expiration.Value));
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Epoch.FromDateTimeOffset(Expiration.Value));
             }
-            if (DestinationTag.HasValue) { writer.WriteUInt32(14, DestinationTag.Value); }
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
             writer.WriteAmount(8, Fee);
             writer.WriteAmount(9, SendMax);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
-            writer.WriteAccount(AccountFieldCode.Destination, Destination);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
         }
     }
@@ -887,14 +887,14 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.CheckCancel);
+            writer.WriteTransactionType(StTransactionType.CheckCancel);
             //writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteHash256(24, CheckID);
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }
@@ -948,10 +948,10 @@ namespace Ibasa.Ripple
         public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
         {
             var writer = new StWriter(bufferWriter);
-            writer.WriteTransactionType(TransactionType.CheckCash);
+            writer.WriteTransactionType(StTransactionType.CheckCash);
             //writer.WriteUInt32(2, (uint)Flags);
-            writer.WriteUInt32(4, Sequence);
-            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(27, LastLedgerSequence.Value); }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteHash256(24, CheckID);
             if (Amount.HasValue)
             {
@@ -963,7 +963,7 @@ namespace Ibasa.Ripple
                 writer.WriteAmount(10, DeliverMin.Value);
             }
             WriteSigner(writer, forSigning);
-            writer.WriteAccount(AccountFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
     }

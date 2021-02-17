@@ -3,80 +3,54 @@ using System.Buffers;
 
 namespace Ibasa.Ripple.St
 {
-    public enum TransactionType : ushort
+    /// <summary>
+    /// When you combine a field's type code and field code, you get the field's unique identifier, which is prefixed before the field in the final serialized blob.
+    /// The size of the Field ID is one to three bytes depending on the type code and field codes it combines.
+    /// </summary>
+    public partial struct StFieldId
     {
-        Invalid = 0xffff,
-        
-        Payment = 0,
-        EscrowCreate = 1,
-        EscrowFinish = 2,
-        AccountSet = 3,
-        EscrowCancel = 4,
-        SetRegularKey = 5,
-        NicknameSet = 6,
-        OfferCreate = 7,
-        OfferCancel = 8,
+        public readonly StTypeCode TypeCode;
+        public readonly uint FieldCode;
 
-        TicketCreate = 10,
-        
-        SignerListSet = 12,
-        PaychanCreate = 13,
-        PaychanFund = 14,
-        PaychanClaim = 15,
-        CheckCreate = 16,
-        CheckCash = 17,
-        CheckCancel = 18,
-        DepositPreauth = 19,
-        TrustSet = 20,
-        AccountDelete = 21,
-        
-        HookSet = 22,
-        
-        Amendment = 100,
-        Fee = 101,
-        UnlModify = 102,
-    }
+        public StFieldId(StTypeCode typeCode, uint fieldCode)
+        {
+            TypeCode = typeCode;
+            FieldCode = fieldCode;
+        }
 
-    public enum AccountFieldCode : uint
-    {
-        Account =  1,
-        Owner = 2,
-        Destination = 3,
-        Issuer = 4,
-        Authorize = 5,
-        Unauthorize = 6,
+        public static bool operator ==(StFieldId a, StFieldId b)
+        {
+            return a.TypeCode == b.TypeCode && a.FieldCode == b.FieldCode;
+        }
 
-        RegularKey = 8,
-    }
+        public static bool operator !=(StFieldId a, StFieldId b)
+        {
+            return a.TypeCode != b.TypeCode || a.FieldCode != b.FieldCode;
+        }
 
-    public enum ArrayFieldCode : uint
-    {
-        Signers = 3,
-        SignerEntries = 4,
-        Template = 5,
-        Necessary = 6,
-        Sufficient = 7,
-        AffectedNodes = 8,
-        Memos = 9,
-    }
+        public bool Equals(StFieldId other)
+        {
+            return this == other;
+        }
 
-    public enum ObjectFieldCode : uint
-    {
-        TransactionMetaData = 2,
-        CreatedNode = 3,
-        DeletedNode = 4,
-        ModifiedNode = 5,
-        PreviousFields = 6,
-        FinalFields = 7,
-        NewFields = 8,
-        TemplateEntry = 9,
-        Memo = 10,
-        SignerEntry = 11,
-               
-        Signer = 16,
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(TypeCode, FieldCode);
+        }
 
-        Majority = 18,
-        DisabledValidator = 19,
+        public override bool Equals(object obj)
+        {
+            if (obj is StFieldId)
+            {
+                return Equals((StFieldId)obj);
+            }
+            return false;
+        }
+
+        public override string ToString()
+        {
+            return string.Format("({0}, {1})", TypeCode, FieldCode);
+        }
     }
 
     public struct StWriter
@@ -156,23 +130,30 @@ namespace Ibasa.Ripple.St
                 bufferWriter.Advance(3);
             }
         }
-        public void WriteUInt16(uint fieldCode, ushort value)
+        public void WriteUInt8(StUInt8FieldCode fieldCode, byte value)
         {
-            WriteFieldId(StTypeCode.UInt16, fieldCode);
+            WriteFieldId(StTypeCode.UInt8, (uint)fieldCode);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), value);
             bufferWriter.Advance(2);
         }
 
-        public void WriteTransactionType(TransactionType type)
+        public void WriteUInt16(StUInt16FieldCode fieldCode, ushort value)
+        {
+            WriteFieldId(StTypeCode.UInt16, (uint)fieldCode);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), value);
+            bufferWriter.Advance(2);
+        }
+
+        public void WriteTransactionType(StTransactionType type)
         {
             WriteFieldId(StTypeCode.UInt16, 2);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(bufferWriter.GetSpan(2), (ushort)type);
             bufferWriter.Advance(2);
         }
 
-        public void WriteUInt32(uint fieldCode, uint value)
+        public void WriteUInt32(StUInt32FieldCode fieldCode, uint value)
         {
-            WriteFieldId(StTypeCode.UInt32, fieldCode);
+            WriteFieldId(StTypeCode.UInt32, (uint)fieldCode);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), value);
             bufferWriter.Advance(4);
         }
@@ -211,9 +192,9 @@ namespace Ibasa.Ripple.St
         /// </summary>
         /// <param name="fieldCode"></param>
         /// <param name="value"></param>
-        public void WriteVl(uint fieldCode, ReadOnlySpan<byte> value)
+        public void WriteBlob(uint fieldCode, ReadOnlySpan<byte> value)
         {
-            WriteFieldId(StTypeCode.Vl, fieldCode);
+            WriteFieldId(StTypeCode.Blob, fieldCode);
             if (value == null)
             {
                 WriteLengthPrefix(0);
@@ -226,9 +207,9 @@ namespace Ibasa.Ripple.St
             }
         }
 
-        public void WriteAccount(AccountFieldCode fieldCode, AccountId value)
+        public void WriteAccount(StAccountIDFieldCode fieldCode, AccountId value)
         {
-            WriteFieldId(StTypeCode.Account, (uint)fieldCode);
+            WriteFieldId(StTypeCode.AccountID, (uint)fieldCode);
             WriteLengthPrefix(20);
             value.CopyTo(bufferWriter.GetSpan(20));
             bufferWriter.Advance(20);
@@ -241,7 +222,7 @@ namespace Ibasa.Ripple.St
             bufferWriter.Advance(32);
         }
 
-        public void WriteStartArray(ArrayFieldCode fieldCode)
+        public void WriteStartArray(StArrayFieldCode fieldCode)
         {
             WriteFieldId(StTypeCode.Array, (uint)fieldCode);
         }
@@ -251,7 +232,7 @@ namespace Ibasa.Ripple.St
             WriteFieldId(StTypeCode.Array, 1);
         }
 
-        public void WriteStartObject(ObjectFieldCode fieldCode)
+        public void WriteStartObject(StObjectFieldCode fieldCode)
         {
             WriteFieldId(StTypeCode.Object, (uint)fieldCode);
         }
@@ -261,65 +242,6 @@ namespace Ibasa.Ripple.St
             WriteFieldId(StTypeCode.Object, 1);
         }
     }
-
-    public enum StTypeCode
-    {
-        // special types
-        Unknown = -2,
-        Done = -1,
-        NotPresent = 0,
-
-        // // types (common)
-        UInt16 = 1,
-        UInt32 = 2,
-        UInt64 = 3,
-        Hash128 = 4,
-        Hash256 = 5,
-        Amount = 6,
-        Vl = 7,
-        Account = 8,
-        // 9-13 are reserved
-        Object = 14,
-        Array = 15,
-
-        // types (uncommon)
-        UInt8 = 16,
-        Hash160 = 17,
-        Pathset = 18,
-        Vector256 = 19,
-
-        // high level types
-        // cannot be serialized inside other types
-        Transaction = 10001,
-        Ledgerentry = 10002,
-        Validation = 10003,
-        Metadata = 10004,
-    }
-
-    public enum StLedgerEntryTypes
-    {
-        Any = -3,
-        Child = -2,
-        Invalid = -1,
-        AccountRoot = 97,
-        DirectoryNode = 100,
-        RippleState = 114,
-        Ticket = 84,
-        SignerList = 83,
-        Offer = 111,
-        LedgerHashes = 104,
-        Amendments = 102,
-        FeeSettings = 115,
-        Escrow = 117,
-        PayChannel = 120,
-        DepositPreauth = 112,
-        Check = 67,
-        Nickname = 110,
-        Contract = 99,
-        GeneratorMap = 103,
-        NegativeUNL = 78
-    }
-
 
     public ref struct StReader
     {
@@ -332,12 +254,11 @@ namespace Ibasa.Ripple.St
             this.ConsumedBytes = 0;
         }
 
-        public bool TryReadFieldId(out StTypeCode typeCode, out uint fieldCode)
+        public bool TryReadFieldId(out StFieldId field)
         {
             if (data.Length <= ConsumedBytes)
             {
-                typeCode = StTypeCode.NotPresent;
-                fieldCode = 0;
+                field = new StFieldId(StTypeCode.NotPresent, 0);
                 return false;
             }
 
@@ -347,13 +268,13 @@ namespace Ibasa.Ripple.St
                 // low 4 bits == 0 && high 4 bits == 0
                 if(data.Length <= ConsumedBytes + 2)
                 {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
+                    field = new StFieldId(StTypeCode.NotPresent, 0);
                     return false;
                 }
 
-                typeCode = (StTypeCode)data[ConsumedBytes + 1];
-                fieldCode = data[ConsumedBytes + 2];
+                field = new StFieldId(
+                    (StTypeCode)data[ConsumedBytes + 1],
+                    data[ConsumedBytes + 2]);
                 ConsumedBytes += 3;
                 return true;
             }
@@ -362,13 +283,13 @@ namespace Ibasa.Ripple.St
                 // low 4 bits <> 0 && high 4 bits == 0
                 if (data.Length <= ConsumedBytes + 1)
                 {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
+                    field = new StFieldId(StTypeCode.NotPresent, 0);
                     return false;
                 }
 
-                fieldCode = byte1;
-                typeCode = (StTypeCode)data[ConsumedBytes + 1];
+                field = new StFieldId(
+                    (StTypeCode)data[ConsumedBytes + 1],
+                    byte1);
                 ConsumedBytes += 2;
                 return true;
             }
@@ -377,24 +298,34 @@ namespace Ibasa.Ripple.St
                 // low 4 bits == 0 && high 4 bits <> 0
                 if (data.Length <= ConsumedBytes + 1)
                 {
-                    typeCode = StTypeCode.NotPresent;
-                    fieldCode = 0;
+                    field = new StFieldId(StTypeCode.NotPresent, 0);
                     return false;
                 }
 
-                typeCode = (StTypeCode)byte1;
-                fieldCode = data[ConsumedBytes + 1];
+                field = new StFieldId(
+                    (StTypeCode)byte1,
+                    data[ConsumedBytes + 1]);
                 ConsumedBytes += 2;
                 return true;
             }
             else
             {
                 // low 4 bits <> 0 && high 4 bits <> 0
-                typeCode = (StTypeCode)(byte1 >> 4);
-                fieldCode = (uint)byte1 & 0x0F;
+                field = new StFieldId(
+                    (StTypeCode)(byte1 >> 4),
+                    (uint)byte1 & 0x0F);
                 ConsumedBytes += 1;
                 return true;
             }
+        }
+
+        public StFieldId ReadFieldId()
+        {
+            if(TryReadFieldId(out var fieldId))
+            {
+                return fieldId;
+            }
+            throw new Exception();
         }
 
         bool TryReadLengthPrefix(out int length)
@@ -571,7 +502,7 @@ namespace Ibasa.Ripple.St
             return value;
         }
 
-        public bool TryReadVl(out byte[] value)
+        public bool TryReadBlob(out byte[] value)
         {
             if(!TryReadLengthPrefix(out var length))
             {
@@ -590,9 +521,9 @@ namespace Ibasa.Ripple.St
             return true;
         }
 
-        public byte[] ReadVl()
+        public byte[] ReadBlob()
         {
-            if (!TryReadVl(out var value))
+            if (!TryReadBlob(out var value))
             {
                 throw new Exception();
             }

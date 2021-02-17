@@ -907,7 +907,7 @@ namespace Ibasa.Ripple.Tests
             // Cancel that check with account two
             var checkCancel = new CheckCancel();
             checkCancel.Account = accountTwo.Address;
-            checkCancel.CheckID = Check.ID(accountOne.Address, ccrr.Sequence);
+            checkCancel.CheckID = Check.CalculateId(accountOne.Address, ccrr.Sequence);
             var (_, checkCancelResponse) = await SubmitTransaction(accountTwo.Secret, checkCancel);
             var ccanr = Assert.IsType<CheckCancel>(checkCancelResponse.Transaction);
             Assert.Equal(checkCancel.Account, ccanr.Account);
@@ -930,7 +930,7 @@ namespace Ibasa.Ripple.Tests
             // Try to claim the check
             var checkCash = new CheckCash();
             checkCash.Account = accountTwo.Address;
-            checkCash.CheckID = Check.ID(accountOne.Address, ccrr.Sequence);
+            checkCash.CheckID = Check.CalculateId(accountOne.Address, ccrr.Sequence);
             checkCash.Amount = new Amount(750);
             var (_, checkCashResponse) = await SubmitTransaction(accountTwo.Secret, checkCash);
             var ccashr = Assert.IsType<CheckCash>(checkCashResponse.Transaction);

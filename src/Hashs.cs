@@ -16,10 +16,16 @@ namespace Ibasa.Ripple
             b = long.Parse(hex.Substring(16, 16), System.Globalization.NumberStyles.HexNumber);
         }
 
-        public Hash128(Span<byte> bytes)
+        public Hash128(ReadOnlySpan<byte> bytes)
         {
             a = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(0, 8));
             b = System.Buffers.Binary.BinaryPrimitives.ReadInt64BigEndian(bytes.Slice(8, 8));
+        }
+
+        public void CopyTo(Span<byte> destination)
+        {
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(0, 8), a);
+            System.Buffers.Binary.BinaryPrimitives.WriteInt64BigEndian(destination.Slice(8, 8), b);
         }
 
         public override string ToString()

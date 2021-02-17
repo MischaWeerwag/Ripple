@@ -12,7 +12,8 @@ namespace Ibasa.Ripple.Tests
             var data = new byte[Base16.GetDecodedFromUtf8Length(utf8.Length)];
             Assert.Equal(System.Buffers.OperationStatus.Done, Base16.DecodeFromUtf8(utf8, data, out var _, out var _));
 
-            var header = new LedgerHeader(data);
+            var reader = new St.StReader(data);
+            var header = new LedgerHeader(reader);
             Assert.Equal(5990310u, header.Sequence);
             Assert.Equal(99999972797353657ul, header.TotalCoins);
             Assert.Equal(new Hash256("31635D1A225FF646885BFA8A33A2A3424BFE3290E493C6C6CEB9A51D84D5457B"), header.ParentHash);

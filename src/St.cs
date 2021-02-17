@@ -296,6 +296,30 @@ namespace Ibasa.Ripple.St
         Metadata = 10004,
     }
 
+    public enum StLedgerEntryTypes
+    {
+        Any = -3,
+        Child = -2,
+        Invalid = -1,
+        AccountRoot = 97,
+        DirectoryNode = 100,
+        RippleState = 114,
+        Ticket = 84,
+        SignerList = 83,
+        Offer = 111,
+        LedgerHashes = 104,
+        Amendments = 102,
+        FeeSettings = 115,
+        Escrow = 117,
+        PayChannel = 120,
+        DepositPreauth = 112,
+        Check = 67,
+        Nickname = 110,
+        Contract = 99,
+        GeneratorMap = 103,
+        NegativeUNL = 78
+    }
+
 
     public ref struct StReader
     {
@@ -320,6 +344,7 @@ namespace Ibasa.Ripple.St
             var byte1 = data[ConsumedBytes];
             if(byte1 == 0)
             {
+                // low 4 bits == 0 && high 4 bits == 0
                 if(data.Length <= ConsumedBytes + 2)
                 {
                     typeCode = StTypeCode.NotPresent;
@@ -334,6 +359,7 @@ namespace Ibasa.Ripple.St
             }
             else if (byte1 < 16)
             {
+                // low 4 bits <> 0 && high 4 bits == 0
                 if (data.Length <= ConsumedBytes + 1)
                 {
                     typeCode = StTypeCode.NotPresent;
@@ -346,8 +372,9 @@ namespace Ibasa.Ripple.St
                 ConsumedBytes += 2;
                 return true;
             }
-            else if (byte1 < 241)
+            else if ((byte1 & 0x0F) == 0 && (byte1 & 0xF0) != 0)
             {
+                // low 4 bits == 0 && high 4 bits <> 0
                 if (data.Length <= ConsumedBytes + 1)
                 {
                     typeCode = StTypeCode.NotPresent;
@@ -362,8 +389,9 @@ namespace Ibasa.Ripple.St
             }
             else
             {
+                // low 4 bits <> 0 && high 4 bits <> 0
                 typeCode = (StTypeCode)(byte1 >> 4);
-                fieldCode = (uint)byte1 & 0xFF;
+                fieldCode = (uint)byte1 & 0x0F;
                 ConsumedBytes += 1;
                 return true;
             }
@@ -621,9 +649,31 @@ namespace Ibasa.Ripple.St
             return true;
         }
 
+        public bool TryReadHash128(out Hash128 value)
+        {
+            if (data.Length < ConsumedBytes + 16)
+            {
+                value = default;
+                return false;
+            }
+
+            value = new Hash128(data.Slice(ConsumedBytes, 16));
+            ConsumedBytes += 16;
+            return true;
+        }
+
         public Hash256 ReadHash256()
         {
             if (!TryReadHash256(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
+        }
+
+        public Hash128 ReadHash128()
+        {
+            if (!TryReadHash128(out var value))
             {
                 throw new Exception();
             }

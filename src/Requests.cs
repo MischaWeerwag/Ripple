@@ -176,7 +176,10 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("ledger_index", out var ledger_index))
             {
                 LedgerIndex = ledger_index.GetUInt32();
-                Ledger = new LedgerHeader(ledger.GetProperty("ledger_data").GetBytesFromBase16());
+
+                var stBytes = ledger.GetProperty("ledger_data").GetBytesFromBase16();
+                var stReader = new St.StReader(stBytes);
+                Ledger = new LedgerHeader(stReader);
             }
             else
             {
@@ -260,7 +263,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Array of JSON objects containing data from the ledger's state tree, as defined below.
         /// </summary>
-        public ReadOnlyCollection<ValueTuple<string, Hash256>> State { get; private set; }
+        public ReadOnlyCollection<ValueTuple<LedgerObject, Hash256>> State { get; private set; }
 
         internal LedgerDataResponse(JsonElement json)
         {
@@ -284,11 +287,14 @@ namespace Ibasa.Ripple
             }
 
             var stateJson = json.GetProperty("state");
-            var state = new ValueTuple<string, Hash256>[stateJson.GetArrayLength()];
+            var state = new ValueTuple<LedgerObject, Hash256>[stateJson.GetArrayLength()];
             for(int i = 0; i < state.Length; ++i)
             {
                 var obj = stateJson[i];
-                state[i] = ValueTuple.Create(obj.GetProperty("data").GetString(), new Hash256(obj.GetProperty("index").GetString()));
+                var stBytes = obj.GetProperty("data").GetBytesFromBase16();
+                var stReader = new St.StReader(stBytes);
+                var ledgerObject = LedgerObject.FromSt(stReader);
+                state[i] = ValueTuple.Create(ledgerObject, new Hash256(obj.GetProperty("index").GetString()));
             }
             State = Array.AsReadOnly(state);
         }

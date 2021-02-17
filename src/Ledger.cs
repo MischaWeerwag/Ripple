@@ -5,7 +5,7 @@ using Ibasa.Ripple.St;
 
 namespace Ibasa.Ripple
 {
-    public interface ILedgerObject
+    public abstract class LedgerObject
     {
         /// <summary>
         /// Each object in a ledger's state data has a unique ID. 
@@ -15,16 +15,54 @@ namespace Ibasa.Ripple
         /// To calculate the hash, rippled uses SHA-512 and then truncates the result to the first 256 bits.
         /// This algorithm, informally called SHA-512Half, provides an output that has comparable security to SHA-256, but runs faster on 64-bit processors.
         /// 
-        /// Generally, a ledger object's ID is returned as the index field in JSON, at the same level as the object's contents.In transaction metadata, the ledger object's ID in JSON is LedgerIndex.
+        /// Generally, a ledger object's ID is returned as the index field in JSON, at the same level as the object's contents.
+        /// In transaction metadata, the ledger object's ID in JSON is LedgerIndex.
         /// </summary>
-        Hash256 ID { get; }
+        public abstract Hash256 ID { get; }
+
+        internal static Hash256 CalculateId(ushort addressSpace, ReadOnlySpan<byte> data)
+        {
+            Span<byte> buffer = stackalloc byte[2 + data.Length];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer, addressSpace);
+            data.CopyTo(buffer.Slice(2));
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashBuffer = stackalloc byte[64];
+                sha512.TryComputeHash(buffer, hashBuffer, out var bytesWritten);
+                return new Hash256(hashBuffer);
+            }
+        }
+
+
+        internal static LedgerObject FromSt(StReader reader)
+        {
+            reader.TryReadFieldId(out var typeCode, out var fieldCode);
+            if(typeCode != StTypeCode.UInt16 || fieldCode != 1)
+            {
+                throw new ArgumentException(
+                    string.Format("Expected LedgerEntryType field, got ({0}, {1}", typeCode, fieldCode),
+                    "reader");
+            }
+            var type = (StLedgerEntryTypes)reader.ReadUInt16();
+
+            switch(type)
+            {
+                case StLedgerEntryTypes.AccountRoot:
+                    return new AccountRoot(reader);                
+            }
+
+            return null;
+
+
+            //throw new Exception("Not yet implemented");
+        }
     }
 
     /// <summary>
     /// A Check object describes a check, similar to a paper personal check, which can be cashed by its destination to get money from its sender.
     /// (The potential payment has already been approved by its sender, but no money moves until it is cashed. Unlike an Escrow, the money for a Check is not set aside, so cashing the Check could fail due to lack of funds.)
     /// </summary>
-    public sealed class Check
+    public sealed class Check 
     {
         public static Hash256 ID(AccountId account, uint sequence)
         {
@@ -32,16 +70,10 @@ namespace Ibasa.Ripple
             //The Check space key(0x0043)
             //The AccountID of the sender of the CheckCreate transaction that created the Check object
             //The Sequence number of the CheckCreate transaction that created the Check object
-            Span<byte> buffer = stackalloc byte[2 + 20 + 4];
-            System.Buffers.Binary.BinaryPrimitives.WriteInt16BigEndian(buffer, 0x0043);
-            account.CopyTo(buffer.Slice(2));
-            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(22), sequence);
-            using (var sha512 = System.Security.Cryptography.SHA512.Create())
-            {
-                Span<byte> hashBuffer = stackalloc byte[64];
-                sha512.TryComputeHash(buffer, hashBuffer, out var bytesWritten);
-                return new Hash256(hashBuffer);
-            }
+            Span<byte> buffer = stackalloc byte[20 + 4];
+            account.CopyTo(buffer);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer.Slice(20), sequence);
+            return LedgerObject.CalculateId(0x0043, buffer);
         }
     }
 
@@ -127,23 +159,57 @@ namespace Ibasa.Ripple
         }
     }
 
-
-    public sealed class AccountRoot
+    [Flags]
+    public enum AccountRootFlags : uint
     {
-        //LedgerEntryType String  UInt16 The value 0x0061, mapped to the string AccountRoot, indicates that this is an AccountRoot object.
-        //Flags Number  UInt32 A bit-map of boolean flags enabled for this account.
-        //PreviousTxnID String  Hash256 The identifying hash of the transaction that most recently modified this object.
-        //PreviousTxnLgrSeq Number  UInt32 The index of the ledger that contains the transaction that most recently modified this object.
-        //AccountTxnID String Hash256 (Optional) The identifying hash of the transaction most recently sent by this account.This field must be enabled to use the AccountTxnID transaction field.To enable it, send an AccountSet transaction with the asfAccountTxnID flag enabled.
-        //
-        //EmailHash String  Hash128 (Optional) The md5 hash of an email address. Clients can use this to look up an avatar through services such as Gravatar.
-        //MessageKey String  VariableLength  (Optional) A public key that may be used to send encrypted messages to this account.In JSON, uses hexadecimal.No more than 33 bytes.
-        //RegularKey String  AccountID(Optional) The address of a key pair that can be used to sign transactions for this account instead of the master key.Use a SetRegularKey transaction to change this value.
-        //TickSize Number  UInt8   (Optional) How many significant digits to use for exchange rates of Offers involving currencies issued by this address.Valid values are 3 to 15, inclusive. (Requires the TickSize amendment.)
-        //TransferRate Number  UInt32(Optional) A transfer fee to charge other users for sending currency issued by this account to each other.
-        //WalletLocator   String Hash256 (Optional) DEPRECATED. Do not use.
-        //WalletSize Number  UInt32  (Optional) DEPRECATED. Do not use.
+        None = 0x0,
 
+        /// <summary>
+        /// Enable rippling on this addresses's trust lines by default.
+        /// Required for issuing addresses; discouraged for others.
+        /// </summary>
+        DefaultRipple = 0x00800000,
+        /// <summary>
+        /// This account can only receive funds from transactions it sends, and from preauthorized accounts.
+        /// (It has DepositAuth enabled.)
+        /// </summary>
+        DepositAuth = 0x01000000,
+        /// <summary>
+        /// Disallows use of the master key to sign transactions for this account.
+        /// </summary>
+        DisableMaster = 0x00100000,
+        /// <summary>
+        /// Client applications should not send XRP to this account. Not enforced by rippled.
+        /// </summary>
+        DisallowXRP = 0x00080000,
+        /// <summary>
+        /// All assets issued by this address are frozen.
+        /// </summary>
+        GlobalFreeze = 0x00400000,
+        /// <summary>
+        /// This address cannot freeze trust lines connected to it. 
+        /// Once enabled, cannot be disabled.
+        /// </summary>
+        NoFreeze = 0x00200000,
+        /// <summary>
+        /// The account has used its free SetRegularKey transaction.
+        /// </summary>
+        PasswordSpent = 0x00010000,
+        /// <summary>
+        /// This account must individually approve other users for those users to hold this account's issued currencies.
+        /// </summary>
+        RequireAuth = 0x00040000,
+        /// <summary>
+        /// Requires incoming payments to specify a Destination Tag.
+        /// </summary>
+        RequireDestTag = 0x00020000,
+    }
+
+    /// <summary>
+    /// The AccountRoot object type describes a single account, its settings, and XRP balance.
+    /// </summary>
+    public sealed class AccountRoot : LedgerObject
+    {
         /// <summary>
         /// The identifying address of this account, such as rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn.
         /// </summary>
@@ -155,9 +221,37 @@ namespace Ibasa.Ripple
         public XrpAmount Balance { get; private set; }
 
         /// <summary>
+        /// A bit-map of boolean flags enabled for this account.
+        /// </summary>
+        public AccountRootFlags Flags { get; private set; }
+
+        /// <summary>
         /// The number of objects this account owns in the ledger, which contributes to its owner reserve.
         /// </summary>
         public uint OwnerCount { get; private set; }
+
+        /// <summary>
+        /// The identifying hash of the transaction that most recently modified this object.
+        /// </summary>
+        public Hash256 PreviousTxnID { get; private set; }
+
+        /// <summary>
+        /// The index of the ledger that contains the transaction that most recently modified this object.
+        /// </summary>
+        public uint PreviousTxnLgrSeq { get; private set; }
+
+        /// <summary>
+        /// The sequence number of the next valid transaction for this account. 
+        /// (Each account starts with Sequence = 1 and increases each time a transaction is made.)
+        /// </summary>
+        public uint Sequence { get; private set; }
+
+        /// <summary>
+        /// (Optional) The identifying hash of the transaction most recently sent by this account.
+        /// This field must be enabled to use the AccountTxnID transaction field.
+        /// To enable it, send an AccountSet transaction with the asfAccountTxnID flag enabled.
+        /// </summary>
+        public Hash256? AccountTxnID { get; private set; }
 
         /// <summary>
         /// (Optional) A domain associated with this account. In JSON, this is the hexadecimal for the ASCII representation of the domain.
@@ -165,10 +259,45 @@ namespace Ibasa.Ripple
         public byte[] Domain { get; private set; }
 
         /// <summary>
-        /// The sequence number of the next valid transaction for this account. 
-        /// (Each account starts with Sequence = 1 and increases each time a transaction is made.)
+        /// (Optional) The md5 hash of an email address.
+        /// Clients can use this to look up an avatar through services such as Gravatar.
         /// </summary>
-        public uint Sequence { get; private set; }
+        public Hash128? EmailHash { get; private set; }
+
+        /// <summary>
+        /// (Optional) A public key that may be used to send encrypted messages to this account.
+        /// In JSON, uses hexadecimal.
+        /// Must be exactly 33 bytes, with the first byte indicating the key type: 0x02 or 0x03 for secp256k1 keys, 0xED for Ed25519 keys.
+        /// </summary>
+        public byte[] MessageKey { get; private set; }
+
+        /// <summary>
+        /// (Optional) The address of a key pair that can be used to sign transactions for this account instead of the master key.
+        /// Use a SetRegularKey transaction to change this value.
+        /// </summary>
+        public AccountId? RegularKey { get; private set; }
+
+        /// <summary>
+        /// (Optional) How many significant digits to use for exchange rates of Offers involving currencies issued by this address.
+        /// Valid values are 3 to 15, inclusive.
+        /// (Added by the TickSize amendment.)
+        /// </summary>
+        public byte? TickSize { get; private set; }
+
+        /// <summary>
+        /// (Optional) A transfer fee to charge other users for sending currency issued by this account to each other.
+        /// </summary>
+        public uint? TransferRate { get; private set; }
+
+        public override Hash256 ID 
+        { 
+            get 
+            {
+                Span<byte> buffer = stackalloc byte[20];
+                Account.CopyTo(buffer);
+                return CalculateId(0x0061, buffer);
+            }
+        }
 
         internal AccountRoot(JsonElement json)
         {
@@ -184,24 +313,74 @@ namespace Ibasa.Ripple
             }
         }
 
-        //{id: 1,…}
-        //        id: 1
-        //    result: {account_data: {Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", Balance: "7584128441", Flags: 0,…},…}
-        //    account_data: {Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV", Balance: "7584128441", Flags: 0,…}
-        //    Account: "r3kmLJN5D28dHuH8vZNUZpMC43pEHpaocV"
-        //    Balance: "7584128441"
-        //    Flags: 0
-        //    LedgerEntryType: "AccountRoot"
-        //    OwnerCount: 7
-        //    PreviousTxnID: "309E32220F1ECEAC58262E34F19F5A7C9A22A98F882FD8C66C99A46F0B967485"
-        //    PreviousTxnLgrSeq: 52708421
-        //    Sequence: 345
-        //    index: "B33FDD5CF3445E1A7F2BE9B06336BEBD73A5E3EE885D3EF93F7E3E2992E46F1A"
-        //    ledger_hash: "C191678AE13A66BAFCAA5CA776839FAA04D283C429D1EFDE2F2AB643CFE0F2D4"
-        //    ledger_index: 53870749
-        //    validated: true
-        //    status: "success"
-        //    type: "response"
+        internal AccountRoot(StReader reader)
+        {
+            while(reader.TryReadFieldId(out var typeCode, out var fieldCode))
+            {
+                switch(typeCode, fieldCode)
+                {
+                    case (StTypeCode.Account, 1):
+                        Account = reader.ReadAccount();
+                        break;
+                    case (StTypeCode.Amount, 2):
+                        var amount  = reader.ReadAmount();
+                        var xrpAmount = amount.XrpAmount;
+                        if (xrpAmount.HasValue)
+                        {
+                            Balance = xrpAmount.Value;
+                        }
+                        else
+                        {
+                            throw new ArgumentException(
+                                string.Format("Got unexpected issued amount while reading Balance field AccountRoot", amount.IssuedAmount),
+                                "reader");
+
+                        }
+                        break;
+                    case (StTypeCode.UInt32, 2):
+                        Flags = (AccountRootFlags)reader.ReadUInt32();
+                        break;
+                    case (StTypeCode.UInt32, 13):
+                        OwnerCount = reader.ReadUInt32();
+                        break;
+                    case (StTypeCode.Hash256, 5):
+                        PreviousTxnID = reader.ReadHash256();
+                        break;
+                    case (StTypeCode.UInt32, 5):
+                        PreviousTxnLgrSeq = reader.ReadUInt32();
+                        break;
+                    case (StTypeCode.UInt32, 4):
+                        Sequence = reader.ReadUInt32();
+                        break;
+                    case (StTypeCode.Hash256, 9):
+                        AccountTxnID = reader.ReadHash256();
+                        break;
+                    case (StTypeCode.Vl, 7):
+                        Domain = reader.ReadVl();
+                        break;
+                    case (StTypeCode.Hash128, 1):
+                        EmailHash = reader.ReadHash128();
+                        break;
+                    case (StTypeCode.Vl, 2):
+                        MessageKey = reader.ReadVl();
+                        break;
+                    case (StTypeCode.Account, 8):
+                        RegularKey = reader.ReadAccount();
+                        break;
+                    case (StTypeCode.UInt8, 16):
+                        TickSize = reader.ReadUInt8();
+                        break;
+                    case (StTypeCode.UInt32, 11):
+                        TransferRate = reader.ReadUInt32();
+                        break;
+                    
+                    default:
+                        throw new ArgumentException(
+                            string.Format("Got unexpected field ({0}, {1}) while reading AccountRoot", typeCode, fieldCode),
+                            "reader");
+                }
+            }
+        }
     }
 
     public sealed class LedgerHeader
@@ -254,9 +433,8 @@ namespace Ibasa.Ripple
         /// </summary>
         public int CloseFlags { get; private set; }
 
-        public LedgerHeader(ReadOnlySpan<byte> data)
+        public LedgerHeader(StReader reader)
         {
-            var reader = new StReader(data);
             Sequence = reader.ReadUInt32();
             TotalCoins = reader.ReadUInt64();
             ParentHash = reader.ReadHash256();

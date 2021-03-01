@@ -18,7 +18,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(StFieldId.UInt16_LedgerEntryType, reader.ReadFieldId());
             Assert.Equal(StLedgerEntryType.AccountRoot, (StLedgerEntryType)reader.ReadUInt16());
 
-            var accountRoot = new AccountRoot(reader);
+            var accountRoot = new AccountRoot(ref reader);
             Assert.Equal(new AccountId("rKKzk9ghA2iuy3imqMXUHJqdRPMtNDGf4c"), accountRoot.Account);
             Assert.Equal(XrpAmount.FromDrops(893730848), accountRoot.Balance);
             Assert.Equal(AccountRootFlags.None, accountRoot.Flags);
@@ -27,6 +27,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(6487716u, accountRoot.PreviousTxnLgrSeq);
             Assert.Equal(1u, accountRoot.Sequence);
             Assert.Equal(new Hash256("00001A2969BE1FC85F1D7A55282FA2E6D95C71D2E4B9C0FDD3D9994F3C00FF8F"), accountRoot.ID);
+            Assert.Equal(data.Length, reader.ConsumedBytes);
         }
     }
 }

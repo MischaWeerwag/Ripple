@@ -303,7 +303,7 @@ namespace Ibasa.Ripple.St
                 }
 
                 field = new StFieldId(
-                    (StTypeCode)byte1,
+                    (StTypeCode)(byte1 >> 4),
                     data[ConsumedBytes + 1]);
                 ConsumedBytes += 2;
                 return true;
@@ -343,7 +343,7 @@ namespace Ibasa.Ripple.St
                 length = byte1;
                 return true;
             } 
-            else if(byte1 <= 241)
+            else if(byte1 <= 240)
             {
                 if (data.Length <= ConsumedBytes + 1)
                 {
@@ -353,7 +353,7 @@ namespace Ibasa.Ripple.St
 
                 var byte2 = data[ConsumedBytes + 1];
                 ConsumedBytes += 2;
-                length = 192 + ((byte1 - 193) * 256) + byte2;
+                length = 193 + ((byte1 - 193) * 256) + byte2;
                 return true;
             }
             else
@@ -365,11 +365,20 @@ namespace Ibasa.Ripple.St
                 }
 
                 var byte2 = data[ConsumedBytes + 1];
-                var byte3 = data[ConsumedBytes + 3];
+                var byte3 = data[ConsumedBytes + 2];
                 ConsumedBytes += 3;
                 length = 12481 + ((byte1 - 241) * 65536) + (byte2 * 256) + byte3;
                 return true;
             }
+        }
+
+        public int ReadLengthPrefix()
+        {
+            if (!TryReadLengthPrefix(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
         }
 
         public bool TryReadUInt8(out byte value)
@@ -502,6 +511,36 @@ namespace Ibasa.Ripple.St
             return value;
         }
 
+        public IssuedAmount ReadIssuedAmount()
+        {
+            var amount = ReadAmount();
+            var issuedAmount = amount.IssuedAmount;
+            if (issuedAmount.HasValue)
+            {
+                return issuedAmount.Value;
+            }
+            else
+            {
+                throw new RippleException(
+                    string.Format("Got unexpected xrp amount: {0}", amount.XrpAmount));
+            }
+        }
+
+        public XrpAmount ReadXrpAmount()
+        {
+            var amount = ReadAmount();
+            var xrpAmount = amount.XrpAmount;
+            if (xrpAmount.HasValue)
+            {
+                return xrpAmount.Value;
+            }
+            else
+            {
+                throw new RippleException(
+                    string.Format("Got unexpected issued amount: {0}", amount.IssuedAmount));
+            }
+        }
+
         public bool TryReadBlob(out byte[] value)
         {
             if(!TryReadLengthPrefix(out var length))
@@ -567,6 +606,68 @@ namespace Ibasa.Ripple.St
             return value;
         }
 
+        public bool TryReadCurrencyCode(out CurrencyCode value)
+        {
+            if (data.Length < ConsumedBytes + 20)
+            {
+                value = default;
+                return false;
+            }
+
+            value = new CurrencyCode(data.Slice(ConsumedBytes, 20));
+            ConsumedBytes += 20;
+            return true;
+        }
+
+        public CurrencyCode ReadCurrencyCode()
+        {
+            if (!TryReadCurrencyCode(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
+        }
+
+        public bool TryReadVector256(out Hash256[] value)
+        {
+            var currentOffset = ConsumedBytes;
+            if (!TryReadLengthPrefix(out var length))
+            {
+                value = default;
+                return false;
+            }
+
+            if (length % 32 != 0)
+            {
+                ConsumedBytes = currentOffset;
+                value = default;
+                return false;
+            }
+
+            if (data.Length < ConsumedBytes + length)
+            {
+                value = default;
+                return false;
+            }
+
+            value = new Hash256[length / 32];
+            for (int i = 0; i < value.Length; ++i)
+            {
+                value[i] = new Hash256(data.Slice(ConsumedBytes, 32));
+                ConsumedBytes += 32;
+            }
+            return true;
+        }
+
+        public Hash256[] ReadVector256()
+        {
+            if (!TryReadVector256(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
+        }
+
         public bool TryReadHash256(out Hash256 value)
         {
             if (data.Length < ConsumedBytes + 32)
@@ -580,6 +681,37 @@ namespace Ibasa.Ripple.St
             return true;
         }
 
+        public Hash256 ReadHash256()
+        {
+            if (!TryReadHash256(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
+        }
+
+        public bool TryReadHash160(out Hash160 value)
+        {
+            if (data.Length < ConsumedBytes + 20)
+            {
+                value = default;
+                return false;
+            }
+
+            value = new Hash160(data.Slice(ConsumedBytes, 20));
+            ConsumedBytes += 20;
+            return true;
+        }
+
+        public Hash160 ReadHash160()
+        {
+            if (!TryReadHash160(out var value))
+            {
+                throw new Exception();
+            }
+            return value;
+        }
+
         public bool TryReadHash128(out Hash128 value)
         {
             if (data.Length < ConsumedBytes + 16)
@@ -591,15 +723,6 @@ namespace Ibasa.Ripple.St
             value = new Hash128(data.Slice(ConsumedBytes, 16));
             ConsumedBytes += 16;
             return true;
-        }
-
-        public Hash256 ReadHash256()
-        {
-            if (!TryReadHash256(out var value))
-            {
-                throw new Exception();
-            }
-            return value;
         }
 
         public Hash128 ReadHash128()

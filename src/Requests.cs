@@ -291,12 +291,79 @@ namespace Ibasa.Ripple
             for(int i = 0; i < state.Length; ++i)
             {
                 var obj = stateJson[i];
-                var stBytes = obj.GetProperty("data").GetBytesFromBase16();
-                var stReader = new St.StReader(stBytes);
-                var ledgerObject = LedgerObject.FromSt(stReader);
+                LedgerObject ledgerObject;
+                if (obj.TryGetProperty("data", out var dataProperty))
+                {
+                    var stBytes = dataProperty.GetBytesFromBase16();
+                    var stReader = new St.StReader(stBytes);
+                    ledgerObject = LedgerObject.ReadSt(ref stReader);
+                }
+                else
+                {
+                    ledgerObject = LedgerObject.ReadJson(obj);
+                }
                 state[i] = ValueTuple.Create(ledgerObject, new Hash256(obj.GetProperty("index").GetString()));
             }
             State = Array.AsReadOnly(state);
+        }
+    }
+
+    public sealed class LedgerEntryRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// The object ID of a single object to retrieve from the ledger.
+        /// </summary>
+        public Hash256 Index { get; set; }
+    }
+
+    public sealed class LedgerEntryResponse
+    {
+        /// <summary>
+        /// Unique identifying hash of this ledger version.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of this ledger version.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// Object containing the data of this ledger object, according to the ledger format.
+        /// </summary>
+        public LedgerObject Node { get; private set; }
+
+        internal LedgerEntryResponse(JsonElement json)
+        {
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+
+            if (json.TryGetProperty("node_binary", out var stJson))
+            {
+                var stBytes = stJson.GetBytesFromBase16();
+                var stReader = new St.StReader(stBytes);
+                Node = LedgerObject.ReadSt(ref stReader);
+            } 
+            else
+            {
+                Node = LedgerObject.ReadJson(json.GetProperty("node"));
+            }
         }
     }
 
@@ -1103,7 +1170,7 @@ namespace Ibasa.Ripple
             {
                 LedgerIndex = element.GetUInt32();
             }
-            Transaction = Transaction.FromJson(json);
+            Transaction = Transaction.ReadJson(json);
         }
     }
 
@@ -1227,7 +1294,7 @@ namespace Ibasa.Ripple
                 var transactions = new Transaction[json_array.GetArrayLength()];
                 foreach (var transaction in json_array.EnumerateArray())
                 {
-                    transactions[index++] = Transaction.FromJson(transaction);
+                    transactions[index++] = Transaction.ReadJson(transaction);
                 }
                 Transactions = Array.AsReadOnly(transactions);
             }

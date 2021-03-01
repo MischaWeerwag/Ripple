@@ -186,6 +186,26 @@ namespace Ibasa.Ripple
         }
 
         /// <summary>
+        /// The ledger_entry method returns a single ledger object from the XRP Ledger in its raw format.
+        /// See ledger format for information on the different types of objects you can retrieve.
+        /// </summary>
+        public async Task<LedgerEntryResponse> LedgerEntry(LedgerEntryRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "ledger_entry");
+            LedgerSpecification.Write(jsonWriter, request.Ledger);
+            jsonWriter.WriteBoolean("binary", true);
+            jsonWriter.WriteString("index", request.Index.ToString());
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new LedgerEntryResponse(response);
+        }
+
+        /// <summary>
         /// The fee command reports the current state of the open-ledger requirements for the transaction cost.
         /// </summary>
         public async Task<FeeResponse> Fee(CancellationToken cancellationToken = default)

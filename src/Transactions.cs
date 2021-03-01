@@ -63,13 +63,12 @@ namespace Ibasa.Ripple
         //Memos Array of Objects    Array   (Optional) Additional arbitrary information used to identify this transaction.
         //SourceTag Unsigned Integer UInt32  (Optional) Arbitrary integer used to identify the reason for this payment, or a sender on whose behalf this transaction is made.Conventionally, a refund should specify the initial payment's SourceTag as the refund payment's DestinationTag.
 
-
         public Transaction()
         {
 
         }
 
-        public virtual void ReadJson(JsonElement json)
+        internal Transaction(JsonElement json)
         {
             Account = new AccountId(json.GetProperty("Account").GetString());
 
@@ -222,54 +221,51 @@ namespace Ibasa.Ripple
             return bufferWriter.WrittenMemory.Slice(4);
         }
 
-        internal static Transaction FromJson(JsonElement json)
+        public static Transaction ReadJson(JsonElement json)
         {
             var transactionType = json.GetProperty("TransactionType").GetString();
             Transaction transaction;
             if (transactionType == "AccountSet")
             {
-                transaction = new AccountSet();
+                return new AccountSet(json);
             }
             else if (transactionType == "Payment")
             {
-                transaction = new Payment();
+                return new Payment(json);
             }
             else if (transactionType == "TrustSet")
             {
-                transaction = new TrustSet();
+                return new TrustSet(json);
             }
             else if (transactionType == "SetRegularKey")
             {
-                transaction = new SetRegularKey();
+                return new SetRegularKey(json);
             }
             else if (transactionType == "AccountDelete")
             {
-                transaction = new AccountDelete();
+                return new AccountDelete(json);
             }
             else if (transactionType == "SignerListSet")
             {
-                transaction = new SignerListSet();
+                return new SignerListSet(json);
             }
             else if (transactionType == "CheckCreate")
             {
-                transaction = new CheckCreate();
+                return new CheckCreate(json);
             }
             else if (transactionType == "CheckCancel")
             {
-                transaction = new CheckCancel();
+                return new CheckCancel(json);
             }
             else if (transactionType == "CheckCash")
             {
-                transaction = new CheckCash();
+                return new CheckCash(json);
             }
             else
             {
                 throw new NotImplementedException(
                     string.Format("Transaction type '{0}' not implemented", transactionType));
             }
-
-            transaction.ReadJson(json);
-            return transaction;
         }
     }
 
@@ -290,11 +286,11 @@ namespace Ibasa.Ripple
 
         public SetRegularKey()
         {
+
         }
 
-        public override void ReadJson(JsonElement json) 
+        internal SetRegularKey(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             if (json.TryGetProperty("RegularKey", out var element))
             {
                 RegularKey = new AccountId(element.GetString());
@@ -369,7 +365,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) The domain that owns this account, the ASCII for the domain in lowercase.
         /// </summary>
-        public byte[] Domain { get; set; }
+        public ReadOnlyMemory<byte>? Domain { get; set; }
 
         /// <summary>
         /// (Optional) Unique identifier of a flag to disable for this account.
@@ -391,10 +387,8 @@ namespace Ibasa.Ripple
 
         }
 
-        public override void ReadJson(JsonElement json)
+        internal AccountSet(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
-
             JsonElement element;
             if (json.TryGetProperty("Domain", out element))
             {
@@ -428,7 +422,7 @@ namespace Ibasa.Ripple
             }
             writer.WriteAmount(8, Fee);
             WriteSigner(writer, forSigning);
-            if (Domain != null) { writer.WriteBlob(7, Domain); }
+            if (Domain.HasValue) { writer.WriteBlob(7, Domain.Value.Span); }
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
         }
@@ -474,13 +468,11 @@ namespace Ibasa.Ripple
         {
         }
 
-        public override void ReadJson(JsonElement json)
+        internal Payment(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
-
             if (json.TryGetProperty("Amount", out var element))
             {
-                Amount = new Amount(element);
+                Amount = Amount.ReadJson(element);
             }
         }
 
@@ -561,9 +553,8 @@ namespace Ibasa.Ripple
         {
         }
 
-        public override void ReadJson(JsonElement json)
+        internal TrustSet(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             JsonElement element;
 
             if (json.TryGetProperty("Flags", out element))
@@ -622,10 +613,8 @@ namespace Ibasa.Ripple
         {
         }
 
-        public override void ReadJson(JsonElement json)
-        {
-            base.ReadJson(json);
-            
+        internal AccountDelete(JsonElement json) : base(json)
+        {            
             Destination = new AccountId(json.GetProperty("Destination").GetString());
 
             if (json.TryGetProperty("DestinationTag", out var element))
@@ -647,61 +636,6 @@ namespace Ibasa.Ripple
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
             WriteSigners(writer, forSigning);
-        }
-    }
-
-    /// <summary>
-    /// Each member of the SignerEntries field is an object that describes that signer in the list.
-    /// </summary>
-    public struct SignerEntry : IEquatable<SignerEntry>
-    {
-        /// <summary>
-        /// An XRP Ledger address whose signature contributes to the multi-signature.
-        /// It does not need to be a funded address in the ledger.
-        /// </summary>
-        public AccountId Account { get; private set; }
-
-        /// <summary>
-        /// The weight of a signature from this signer.
-        /// A multi-signature is only valid if the sum weight of the signatures provided meets or exceeds the signer list's SignerQuorum value.
-        /// </summary>
-        public UInt16 SignerWeight { get; private set; }
-
-        internal SignerEntry(JsonElement json)
-        {
-            var entry = json.GetProperty("SignerEntry");
-            Account = new AccountId(entry.GetProperty("Account").GetString());
-            SignerWeight = entry.GetProperty("SignerWeight").GetUInt16();
-        }
-
-        public SignerEntry(AccountId account, UInt16 signerWeight)
-        {
-            Account = account;
-            SignerWeight = signerWeight;
-        }
-
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(Account, SignerWeight);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if(obj is SignerEntry)
-            {
-                return Equals((SignerEntry)obj);
-            }
-            return false;
-        }
-
-        public bool Equals(SignerEntry other)
-        {
-            return Account == other.Account && SignerWeight == other.SignerWeight;
-        }
-
-        public override string ToString()
-        {
-            return JsonSerializer.Serialize<SignerEntry>(this);
         }
     }
 
@@ -730,9 +664,8 @@ namespace Ibasa.Ripple
         {
         }
 
-        public override void ReadJson(JsonElement json)
+        internal SignerListSet(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             JsonElement element;
 
             if (json.TryGetProperty("SignerQuorum", out element))
@@ -815,9 +748,8 @@ namespace Ibasa.Ripple
 
         }
 
-        public override void ReadJson(JsonElement json)
+        internal CheckCreate(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             JsonElement element;
 
             Destination = new AccountId(json.GetProperty("Destination").GetString());
@@ -878,9 +810,8 @@ namespace Ibasa.Ripple
 
         }
 
-        public override void ReadJson(JsonElement json)
+        internal CheckCancel(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             CheckID = new Hash256(json.GetProperty("CheckID").GetString());
         }
 
@@ -929,9 +860,8 @@ namespace Ibasa.Ripple
 
         }
 
-        public override void ReadJson(JsonElement json)
+        internal CheckCash(JsonElement json) : base(json)
         {
-            base.ReadJson(json);
             CheckID = new Hash256(json.GetProperty("CheckID").GetString());
 
             JsonElement element;

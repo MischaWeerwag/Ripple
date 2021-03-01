@@ -33,6 +33,12 @@ namespace Ibasa.Ripple
         [DebuggerBrowsable(DebuggerBrowsableState.Never)]
         private uint _data4;
 
+        /// <summary>
+        /// The issuer listed in the balance fields is rrrrrrrrrrrrrrrrrrrrBZbvji, which is referred to as ACCOUNT_ONE and is the encoding that corresponds to the numerical value 1.
+        /// This convention is used because the addresses on the trustline are already specified in the HighLimit and LowLimit objects, so specifying them here would be redundant.
+        /// </summary>
+        public static AccountId AccountOne => new AccountId("rrrrrrrrrrrrrrrrrrrrBZbvji");
+
         private static Span<byte> UnsafeAsSpan(ref AccountId account)
         {
             return System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateSpan(ref account._data0, 5));

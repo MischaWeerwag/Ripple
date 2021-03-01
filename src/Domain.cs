@@ -36,6 +36,11 @@ namespace Ibasa.Ripple
             if (code.Length == 3)
             {
                 // Standard Currency Code
+                if (code == "XRP")
+                {
+                    // Short circuit XRP to all zeros
+                    return;
+                }
 
                 for (var i = 0; i < 3; ++i)
                 {
@@ -62,20 +67,15 @@ namespace Ibasa.Ripple
 
                     if (hi < 48 || (hi > 57 && hi < 65) || (hi > 90 && hi < 97) || hi > 122 || lo < 48 || (lo > 57 && lo < 65) || (lo > 90 && lo < 97) || lo > 122)
                     {
-                        throw new ArgumentException("code is not a valid hex code", "code");
+                        throw new ArgumentException(string.Format("'{0}' is not a valid hex code", code), "code");
                     }
 
                     bytes[i] = (byte)(((hi - (hi < 58 ? 48 : (hi < 97 ? 55 : 87))) << 4) | (lo - (lo < 58 ? 48 : (lo < 97 ? 55 : 87))));
                 }
-
-                if (bytes[0] == 0x0)
-                {
-                    throw new ArgumentException("hex code first byte can not be zero", "code");
-                }
             }
             else
             {
-                throw new ArgumentException("code must be either be a 3 character standard currency code, or a 40 character nonstandard hex code", "code");
+                throw new ArgumentException(string.Format("'{0}' is not valid, must be either be a 3 character standard currency code, or a 40 character nonstandard hex code", code), "code");
             }
         }
 
@@ -84,35 +84,63 @@ namespace Ibasa.Ripple
             bytes.CopyTo(UnsafeAsSpan(ref this));
         }
 
-        public bool IsStandard
-        {
-            get
-            {
-                return UnsafeAsSpan(ref this)[0] == 0;
-            }
-        }
-
         public void CopyTo(Span<byte> destination)
         {
             UnsafeAsSpan(ref this).CopyTo(destination);
         }
 
+        /// <summary>
+        /// Returns true if this is a standard 3 character currency code (that isn't XRP).
+        /// </summary>
+        public bool IsStandard
+        {
+            get
+            {
+                var bytes = UnsafeAsSpan(ref this);
+                if (bytes[0] == 0x0)
+                {
+                    bool allZero = true;
+                    bool standard = true;
+                    for (int i = 1; i < bytes.Length; ++i)
+                    {
+                        if (bytes[i] != 0)
+                        {
+                            allZero = false;
+                            if (i < 12 || 14 < i)
+                            {
+                                standard = false;
+                            }
+                        }
+                    }
+
+                    if (allZero)
+                    {
+                        return false; // Is XRP, that's not standard
+                    }
+                    return standard;
+                }
+
+                return false;
+            }
+        }
+
         public override string ToString()
         {
             var bytes = UnsafeAsSpan(ref this);
-            if (bytes[0] == 0x0)
-            {
-                // Standard Currency Code
-                return System.Text.Encoding.ASCII.GetString(bytes.Slice(12, 3));
+            if (IsStandard)
+            { 
+                var slice = bytes.Slice(12, 3);
+                return System.Text.Encoding.ASCII.GetString(slice);                
             }
-            else
+            else if (this == XRP)
             {
-                // Nonstandard Currency Code
-                Span<byte> utf8 = stackalloc byte[Base16.GetEncodedToUtf8Length(bytes.Length)];
-                var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var _);
-                return System.Text.Encoding.UTF8.GetString(utf8);
+                return "XRP";
             }
 
+            // Nonstandard Currency Code
+            Span<byte> utf8 = stackalloc byte[Base16.GetEncodedToUtf8Length(bytes.Length)];
+            var _ = Base16.EncodeToUtf8(bytes, utf8, out var _, out var _);
+            return System.Text.Encoding.UTF8.GetString(utf8);
         }
 
         public bool Equals(CurrencyCode other)
@@ -217,24 +245,6 @@ namespace Ibasa.Ripple
             this.issuer = default;
         }
 
-        internal Amount(JsonElement element)
-        {
-            if (element.ValueKind == JsonValueKind.String)
-            {
-                // Just plain xrp
-                this.value = UInt64.Parse(element.GetString()) | 0x4000_0000_0000_0000;
-                // These fields are only used for IssuedAmount but struct constructor has to set all fields.
-                this.currencyCode = default;
-                this.issuer = default;
-            }
-            else
-            {
-                this.value = Currency.ToUInt64Bits(Currency.Parse(element.GetProperty("value").GetString()));
-                this.currencyCode = new CurrencyCode(element.GetProperty("currency").GetString());
-                this.issuer = new AccountId(element.GetProperty("issuer").GetString());
-            }
-        }
-
         public Amount(AccountId issuer, CurrencyCode currencyCode, Currency value)
         {
             if (currencyCode == CurrencyCode.XRP)
@@ -250,14 +260,11 @@ namespace Ibasa.Ripple
         {
             if (json.ValueKind == JsonValueKind.Object)
             {
-                return new Amount(
-                    new AccountId(json.GetProperty("issuer").GetString()),
-                    new CurrencyCode(json.GetProperty("currency").GetString()),
-                    Currency.Parse(json.GetProperty("value").GetString()));
+                return Ripple.IssuedAmount.ReadJson(json);
             }
             else
             {
-                return new Amount(ulong.Parse(json.GetString()));
+                return Ripple.XrpAmount.ReadJson(json);
             }
         }
 
@@ -323,6 +330,11 @@ namespace Ibasa.Ripple
             return new Amount(value.Drops);
         }
 
+        public static XrpAmount ReadJson(JsonElement json)
+        {
+            return new XrpAmount(ulong.Parse(json.GetString()));
+        }
+
         public static XrpAmount Parse(string s)
         {
             return new XrpAmount(ulong.Parse(s));
@@ -360,7 +372,7 @@ namespace Ibasa.Ripple
             return new Amount(value.Issuer, value.CurrencyCode, value.Value);
         }
 
-        internal static IssuedAmount ReadJson(JsonElement json)
+        public static IssuedAmount ReadJson(JsonElement json)
         {
             return new IssuedAmount(
                 new AccountId(json.GetProperty("issuer").GetString()),

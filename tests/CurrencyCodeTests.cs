@@ -9,15 +9,18 @@ namespace Ibasa.Ripple.Tests
         public void TestDefault()
         {
             var code = new CurrencyCode();
-            Assert.True(code.IsStandard);
-            Assert.Equal("\0\0\0", code.ToString());
+            Assert.False(code.IsStandard);
+            Assert.Equal("XRP", code.ToString());
         }
 
         [Theory]
         [InlineData("8000000000000000000000000000000000000000")]
         [InlineData("8ED765AEBBD6767603C2C9375B2679AEC76E6A81")]
+        [InlineData("00000000B6C5046EA00A0307874EEC2312F1B9BD")]
+        [InlineData("00D765AEBBD6767603C2C9375B2679AEC76E6A81")]
         [InlineData("GBP")]
         [InlineData("USD")]
+        [InlineData("XRP")]
         public void TestRoundTrip(string input)
         {
             var code = new CurrencyCode(input);
@@ -25,12 +28,33 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Theory]
-        [InlineData("0000000000000000000000000000000000000000")]
-        [InlineData("00D765AEBBD6767603C2C9375B2679AEC76E6A81")]
-        public void TestZeroHexFails(string input)
+        [InlineData("8000000000000000000000000000000000000000", false)]
+        [InlineData("8ED765AEBBD6767603C2C9375B2679AEC76E6A81", false)]
+        [InlineData("00000000B6C5046EA00A0307874EEC2312F1B9BD", false)]
+        [InlineData("00D765AEBBD6767603C2C9375B2679AEC76E6A81", false)]
+        [InlineData("GBP", true)]
+        [InlineData("USD", true)]
+        [InlineData("XRP", false)]
+        public void TestIsStandard(string input, bool expected)
         {
-            var exc = Assert.Throws<ArgumentException>(() => new CurrencyCode(input));
-            Assert.Equal("hex code first byte can not be zero (Parameter 'code')", exc.Message);
+            var code = new CurrencyCode(input);
+            Assert.Equal(expected, code.IsStandard);
+        }
+
+        [Fact]
+        public void TestXrpHexCode()
+        {
+            var code = new CurrencyCode("0000000000000000000000000000000000000000");
+            Assert.Equal(CurrencyCode.XRP, code);
+            Assert.Equal("XRP", code.ToString());
+        }
+
+        [Fact]
+        public void TestXrpStandardCode()
+        {
+            var code = new CurrencyCode("XRP");
+            Assert.Equal(CurrencyCode.XRP, code);
+            Assert.Equal("XRP", code.ToString());
         }
 
         [Theory]

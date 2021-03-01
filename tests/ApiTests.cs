@@ -248,6 +248,14 @@ namespace Ibasa.Ripple.Tests
             return results.First();
         }
 
+        private void AssertMemoryEqual(ReadOnlyMemory<byte>? expected, ReadOnlyMemory<byte>? actual)
+        {
+            Assert.Equal(expected.HasValue, actual.HasValue);
+            if (!expected.HasValue) return;
+
+            Assert.Equal(expected.Value.ToArray(), actual.Value.ToArray());
+        }
+
         public ApiTests(ApiTestsSetup<T> setup)
         {
             Setup = setup;
@@ -404,7 +412,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(transaction.Account, acr.Account);
             Assert.Equal(transaction.Sequence, acr.Sequence);
             Assert.Equal(transaction.Fee, acr.Fee);
-            Assert.Equal(transaction.Domain, acr.Domain);
+            AssertMemoryEqual(transaction.Domain, acr.Domain);
 
             var infoRequest = new AccountInfoRequest()
             {
@@ -413,7 +421,7 @@ namespace Ibasa.Ripple.Tests
             };
             var infoResponse = await Api.AccountInfo(infoRequest);
             Assert.Equal(account, infoResponse.AccountData.Account);
-            Assert.Equal(transaction.Domain, infoResponse.AccountData.Domain);
+            AssertMemoryEqual(transaction.Domain, infoResponse.AccountData.Domain);
         }
 
         [Fact]
@@ -1049,13 +1057,108 @@ namespace Ibasa.Ripple.Tests
 
                 foreach(var obj in response.State)
                 {
-//                    Assert.NotNull(obj.Item1);
-   //                 Assert.Equal(obj.Item1.ID, obj.Item2);
+                    Assert.NotNull(obj.Item1);
+                    if (obj.Item1 is AccountRoot)
+                    {
+                        var accountRoot = (AccountRoot)obj.Item1;
+                        Assert.Equal(accountRoot.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is Amendments)
+                    {
+                        Assert.Equal(Amendments.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is Check)
+                    {
+                        var check = (Check)obj.Item1;
+                        Assert.Equal(check.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is DepositPreauth)
+                    {
+                        var depositPreauth = (DepositPreauth)obj.Item1;
+                        Assert.Equal(depositPreauth.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is DirectoryNode)
+                    {
+                        var directoryNode = (DirectoryNode)obj.Item1;
+                        // TODO
+                        // Assert.Equal(directoryNode.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is Escrow)
+                    {
+                        var escrow = (Escrow)obj.Item1;
+                        // TODO
+                        // Assert.Equal(escrow.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is FeeSettings)
+                    {
+                        Assert.Equal(FeeSettings.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is LedgerHashes)
+                    {
+                        // TODO
+                        // Assert.Equal(LedgerHashes.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is NegativeUNL)
+                    {
+                        Assert.Equal(NegativeUNL.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is Offer)
+                    {
+                        var offer = (Offer)obj.Item1;
+                        Assert.Equal(offer.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is PayChannel)
+                    {
+                        var payChannel = (PayChannel)obj.Item1;
+                        // TODO
+                        // Assert.Equal(payChannel.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is RippleState)
+                    {
+                        var rippleState = (RippleState)obj.Item1;
+                        Assert.Equal(rippleState.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is SignerList)
+                    {
+                        var signerList = (SignerList)obj.Item1;
+                        // TODO
+                        // Assert.Equal(signerList.ID, obj.Item2);
+                    }
+                    else if (obj.Item1 is Ticket)
+                    {
+                        var ticket = (Ticket)obj.Item1;
+                        Assert.Equal(ticket.ID, obj.Item2);
+                    }
                 }
 
                 request.Ledger = new LedgerSpecification(response.LedgerIndex);
                 request.Marker = response.Marker;
             } while (request.Marker.HasValue);
+        }
+
+        [Fact]
+        public async Task TestLedgerEntry()
+        {
+            var request = new LedgerEntryRequest
+            {
+                Ledger = LedgerSpecification.Validated
+            };
+
+            request.Index = FeeSettings.ID;
+            var response = await Api.LedgerEntry(request);
+            Assert.NotNull(response.LedgerHash);
+            if (response.Node is FeeSettings)
+            {
+                var feeSettings = (FeeSettings)response.Node;
+                Assert.NotEqual(0ul, feeSettings.BaseFee);
+                Assert.NotEqual(0u, feeSettings.ReferenceFeeUnits);
+                Assert.NotEqual(0u, feeSettings.ReserveBase);
+                Assert.NotEqual(0u, feeSettings.ReserveIncrement);
+            }
+            else
+            {
+                throw new Exception("Expected FeeSettings");
+            }
         }
     }
 }

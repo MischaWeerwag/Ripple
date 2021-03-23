@@ -297,6 +297,14 @@ namespace Ibasa.Ripple
     {
         public readonly ulong Drops;
 
+        public decimal XRP
+        {
+            get
+            {
+                return ((decimal)Drops) / 1000000;
+            }
+        }
+
         private XrpAmount(ulong drops)
         {
             if (drops > 100000000000000000)
@@ -342,7 +350,7 @@ namespace Ibasa.Ripple
 
         public override string ToString()
         {
-            return string.Format("{0} XRP", (decimal)Drops / 1000000);
+            return string.Format("{0} XRP", XRP);
         }
     }
 

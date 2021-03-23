@@ -4,6 +4,8 @@ namespace Ibasa.Ripple
 {
     public abstract class KeyPair
     {
+        public abstract byte[] GetPrivateKey();
+
         public abstract byte[] GetCanonicalPublicKey();
 
         public abstract byte[] Sign(ReadOnlySpan<byte> data);
@@ -16,12 +18,13 @@ namespace Ibasa.Ripple
         private Org.BouncyCastle.Asn1.X9.X9ECParameters k1Params;
         private Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer;
 
-        public Secp256k1KeyPair(Org.BouncyCastle.Math.BigInteger privateKey, Org.BouncyCastle.Math.EC.ECPoint publicKey)
+        public Secp256k1KeyPair(Org.BouncyCastle.Math.BigInteger privateKey)
         {
             this.privateKey = privateKey;
-            this.publicKey = publicKey;
 
-            k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            this.k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            this.publicKey = k1Params.G.Multiply(privateKey);
+
             signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
                 new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(
                     new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
@@ -29,6 +32,11 @@ namespace Ibasa.Ripple
                 this.privateKey,
                 new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(k1Params.Curve, k1Params.G, k1Params.N, k1Params.H));
             signer.Init(true, parameters);
+        }
+
+        public override byte[] GetPrivateKey()
+        {
+            return privateKey.ToByteArray();
         }
 
         public override byte[] GetCanonicalPublicKey()
@@ -75,6 +83,13 @@ namespace Ibasa.Ripple
             this.publicKey = this.privateKey.GeneratePublicKey();
             signer = new Org.BouncyCastle.Crypto.Signers.Ed25519Signer();
             signer.Init(true, this.privateKey);
+        }
+
+        public override byte[] GetPrivateKey()
+        {
+            var key = new byte[32];
+            privateKey.Encode(key, 0);
+            return key;
         }
 
         public override byte[] GetCanonicalPublicKey()

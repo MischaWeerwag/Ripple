@@ -122,8 +122,7 @@ namespace Ibasa.Ripple
                     }
                 }
 
-                var rootPublicKeyPoint = k1Params.G.Multiply(secpRootSecret);
-                rootKeyPair = new Secp256k1KeyPair(secpRootSecret, rootPublicKeyPoint);
+                rootKeyPair = new Secp256k1KeyPair(secpRootSecret);
 
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
@@ -145,9 +144,7 @@ namespace Ibasa.Ripple
                 }
 
                 var masterPrivateKey = secpRootSecret.Add(secpIntermediateSecret).Mod(k1Params.N);
-                var intermediatePublicKeyPoint = k1Params.G.Multiply(secpIntermediateSecret);
-                var masterPublicKey = rootPublicKeyPoint.Add(intermediatePublicKeyPoint);
-                keyPair = new Secp256k1KeyPair(masterPrivateKey, masterPublicKey);
+                keyPair = new Secp256k1KeyPair(masterPrivateKey);
             }
         }
 

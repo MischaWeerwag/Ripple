@@ -1042,7 +1042,7 @@ namespace Ibasa.Ripple.Tests
             CheckAmounts(results[account3.Address]);
         }
 
-        [Fact]
+        [Fact(Skip = "This is a long test, it scans the whole ripple ledger")]
         public async Task TestLedgerData()
         {
             var request = new LedgerDataRequest
@@ -1143,9 +1143,10 @@ namespace Ibasa.Ripple.Tests
             {
                 Ledger = LedgerSpecification.Validated
             };
+            LedgerEntryResponse response;
 
             request.Index = FeeSettings.ID;
-            var response = await Api.LedgerEntry(request);
+            response = await Api.LedgerEntry(request);
             Assert.NotNull(response.LedgerHash);
             if (response.Node is FeeSettings)
             {
@@ -1158,6 +1159,19 @@ namespace Ibasa.Ripple.Tests
             else
             {
                 throw new Exception("Expected FeeSettings");
+            }
+
+            request.Index = Amendments.ID;
+            response = await Api.LedgerEntry(request);
+            Assert.NotNull(response.LedgerHash);
+            if (response.Node is Amendments)
+            {
+                var amendments = (Amendments)response.Node;
+                Assert.Equal(0u, amendments.Flags);
+            }
+            else
+            {
+                throw new Exception("Expected Amendments");
             }
         }
     }

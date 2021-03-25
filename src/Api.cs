@@ -449,5 +449,25 @@ namespace Ibasa.Ripple
             var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
             return new GatewayBalancesResponse(response);
         }
+
+        /// <summary>
+        /// The deposit_authorized command indicates whether one account is authorized to send payments directly to another.
+        /// See Deposit Authorization for information on how to require authorization to deliver money to your account.
+        /// </summary>
+        public async Task<DepositAuthorizedResponse> DepositAuthorized(DepositAuthorizedRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "deposit_authorized");
+            LedgerSpecification.Write(jsonWriter, request.Ledger);
+            jsonWriter.WriteString("source_account", request.SourceAccount.ToString());
+            jsonWriter.WriteString("destination_account", request.DestinationAccount.ToString());
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new DepositAuthorizedResponse(response);
+        }
     }
 }

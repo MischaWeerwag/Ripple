@@ -1501,4 +1501,77 @@ namespace Ibasa.Ripple
             }
         }
     }
+
+    public sealed class DepositAuthorizedRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// The sender of a possible payment.
+        /// </summary>
+        public AccountId SourceAccount { get; set; }
+
+        /// <summary>
+        /// The recipient of a possible payment.
+        /// </summary>
+        public AccountId DestinationAccount { get; set; }
+    }
+
+    public sealed class DepositAuthorizedResponse
+    {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
+        /// <summary>
+        /// Whether the specified source account is authorized to send payments directly to the destination account.
+        /// If true, either the destination account does not require Deposit Authorization or the source account is preauthorized.
+        /// </summary>
+        public bool DepositAuthorized { get; private set; }
+
+        /// <summary>
+        /// The source account specified in the request.
+        /// </summary>
+        public AccountId SourceAccount { get; set; }
+
+        /// <summary>
+        /// The destination account specified in the request.
+        /// </summary>
+        public AccountId DestinationAccount { get; set; }
+
+        internal DepositAuthorizedResponse(JsonElement json)
+        {
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            SourceAccount = new AccountId(json.GetProperty("source_account").GetString());
+            DestinationAccount = new AccountId(json.GetProperty("destination_account").GetString());
+            DepositAuthorized = json.GetProperty("deposit_authorized").GetBoolean();
+        }
+    }
 }

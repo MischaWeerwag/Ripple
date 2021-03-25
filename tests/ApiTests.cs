@@ -1174,5 +1174,22 @@ namespace Ibasa.Ripple.Tests
                 throw new Exception("Expected Amendments");
             }
         }
+
+        [Fact]
+        public async Task TestDepositAuthorized()
+        {
+            var request = new DepositAuthorizedRequest
+            {
+                Ledger = LedgerSpecification.Validated,
+                SourceAccount = Setup.TestAccountOne.Address,
+                DestinationAccount = Setup.TestAccountTwo.Address,
+            };
+
+            var response = await Api.DepositAuthorized(request);
+            Assert.NotNull(response.LedgerHash);
+            Assert.Equal(request.SourceAccount, response.SourceAccount);
+            Assert.Equal(request.DestinationAccount, response.DestinationAccount);
+            Assert.True(response.DepositAuthorized);
+        }
     }
 }

@@ -1574,4 +1574,98 @@ namespace Ibasa.Ripple
             DepositAuthorized = json.GetProperty("deposit_authorized").GetBoolean();
         }
     }
-}
+
+    public sealed class BookOffersRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// (Optional) If provided, the server does not provide more than this many offers in the results.
+        /// The total number of results returned may be fewer than the limit, because the server omits unfunded offers.
+        /// </summary>
+        public uint? Limit { get; set; }
+
+        /// <summary>
+        /// The Address of an account to use as a perspective.
+        /// Unfunded offers placed by this account are always included in the response.
+        /// (You can use this to look up your own orders to cancel them.)
+        /// </summary>
+        public AccountId? Taker { get; set; }
+
+        /// <summary>
+        /// Specification of which currency the account taking the offer would receive.
+        /// </summary>
+        public CurrencyCode TakerGets { get; set; }
+
+        /// <summary>
+        /// Specification of which currency the account taking the offer would pay.
+        /// </summary>
+        public CurrencyCode TakerPays { get; set; }
+    }
+
+    public sealed class BookOffer
+    {
+        public Offer Offer { get; private set; }
+        //owner_funds String  Amount of the TakerGets currency the side placing the offer has available to be traded. (XRP is represented as drops; any other currency is represented as a decimal value.) If a trader has multiple offers in the same book, only the highest-ranked offer includes this field.
+        //taker_gets_funded String (XRP) or Object (non-XRP)	(Only included in partially-funded offers) The maximum amount of currency that the taker can get, given the funding status of the offer.
+        //taker_pays_funded   String (XRP) or Object (non-XRP)    (Only included in partially-funded offers) The maximum amount of currency that the taker would pay, given the funding status of the offer.
+        //quality String The exchange rate, as the ratio taker_pays divided by taker_gets. For fairness, offers that have the same quality are automatically taken first-in, first-out. (In other words, if multiple people offer to exchange currency at the same rate, the oldest offer is taken first.)
+    
+        internal BookOffer(JsonElement json)
+        {
+            Offer = new Offer(json);
+        }
+    }
+
+
+    public sealed class BookOffersResponse
+    {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
+        /// <summary>
+        /// Array of offer objects, each of which has the fields of an Offer object
+        /// </summary>
+        public ReadOnlyCollection<BookOffer> Offers { get; private set; }
+
+        internal BookOffersResponse(JsonElement json)
+        {
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            var offersJson = json.GetProperty("offers");
+            var offers = new BookOffer[offersJson.GetArrayLength()];
+            for (int i = 0; i < offers.Length; ++i)
+            {
+                offers[i] = new BookOffer(offersJson[i]);
+            }
+            Offers = Array.AsReadOnly(offers);
+        }
+    }
+}	

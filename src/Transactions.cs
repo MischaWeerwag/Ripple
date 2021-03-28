@@ -261,6 +261,10 @@ namespace Ibasa.Ripple
             {
                 return new CheckCash(json);
             }
+            else if (transactionType == "OfferCreate")
+            {
+                return new OfferCreate(json);
+            }
             else
             {
                 throw new NotImplementedException(
@@ -303,7 +307,7 @@ namespace Ibasa.Ripple
             writer.WriteTransactionType(StTransactionType.SetRegularKey);
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             if (RegularKey.HasValue) { writer.WriteAccount(StAccountIDFieldCode.RegularKey, RegularKey.Value); }
@@ -314,6 +318,8 @@ namespace Ibasa.Ripple
     [Flags]
     public enum AccountSetFlags : uint
     {
+        None = 0,
+
         /// <summary>
         /// Require a destination tag to send transactions to this account.
         /// </summary>
@@ -420,7 +426,7 @@ namespace Ibasa.Ripple
             {
                 writer.WriteUInt32(StUInt32FieldCode.ClearFlag, (uint)ClearFlag.Value);
             }
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             if (Domain.HasValue) { writer.WriteBlob(7, Domain.Value.Span); }
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
@@ -484,10 +490,10 @@ namespace Ibasa.Ripple
             if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
-            writer.WriteAmount(1, Amount);
-            writer.WriteAmount(8, Fee);
-            if (SendMax.HasValue) { writer.WriteAmount(9, SendMax.Value); }
-            if (DeliverMin.HasValue) { writer.WriteAmount(10, DeliverMin.Value); }
+            writer.WriteAmount(StAmountFieldCode.Amount, Amount);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            if (SendMax.HasValue) { writer.WriteAmount(StAmountFieldCode.SendMax, SendMax.Value); }
+            if (DeliverMin.HasValue) { writer.WriteAmount(StAmountFieldCode.DeliverMin, DeliverMin.Value); }
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
@@ -501,6 +507,8 @@ namespace Ibasa.Ripple
     [Flags]
     public enum TrustFlags : uint
     {
+        None = 0,
+
         /// <summary>
         /// Authorize the other party to hold currency issued by this account.
         /// (No effect unless using the asfRequireAuth AccountSet flag.)
@@ -584,8 +592,8 @@ namespace Ibasa.Ripple
             if (QualityIn.HasValue) { writer.WriteUInt32(StUInt32FieldCode.QualityIn, QualityIn.Value); }
             if (QualityOut.HasValue) { writer.WriteUInt32(StUInt32FieldCode.QualityOut, QualityOut.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
-            writer.WriteAmount(3, LimitAmount);
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.LimitAmount, LimitAmount);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
@@ -631,7 +639,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
@@ -691,7 +699,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteUInt32(StUInt32FieldCode.SignerQuorum, SignerQuorum);
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
@@ -784,8 +792,8 @@ namespace Ibasa.Ripple
             if (DestinationTag.HasValue) { writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value); }
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             if (InvoiceID.HasValue) { writer.WriteHash256(17, InvoiceID.Value); }
-            writer.WriteAmount(8, Fee);
-            writer.WriteAmount(9, SendMax);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteAmount(StAmountFieldCode.SendMax, SendMax);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
@@ -823,7 +831,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (LastLedgerSequence.HasValue) { writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value); }
             writer.WriteHash256(24, CheckID);
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);
@@ -885,13 +893,131 @@ namespace Ibasa.Ripple
             writer.WriteHash256(24, CheckID);
             if (Amount.HasValue)
             {
-                writer.WriteAmount(1, Amount.Value);
+                writer.WriteAmount(StAmountFieldCode.Amount, Amount.Value);
             }
-            writer.WriteAmount(8, Fee);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             if (DeliverMin.HasValue)
             {
-                writer.WriteAmount(10, DeliverMin.Value);
+                writer.WriteAmount(StAmountFieldCode.DeliverMin, DeliverMin.Value);
             }
+            WriteSigner(writer, forSigning);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            WriteSigners(writer, forSigning);
+        }
+    }
+
+    [Flags]
+    public enum OfferCreateFlags
+    {
+        None = 0,
+
+        /// <summary>
+        /// If enabled, the offer does not consume offers that exactly match it, and instead becomes an Offer object in the ledger.
+        /// It still consumes offers that cross it.
+        /// </summary>
+        Passive = 0x00010000,
+
+        /// <summary>
+        /// Treat the offer as an Immediate or Cancel order.
+        /// If enabled, the offer never becomes a ledger object: it only tries to match existing offers in the ledger.
+        /// If the offer cannot match any offers immediately, it executes "successfully" without trading any currency.
+        /// In this case, the transaction has the result code tesSUCCESS, but creates no Offer objects in the ledger.
+        /// </summary>
+        ImmediateOrCancel = 0x00020000,
+
+        /// <summary>
+        /// Treat the offer as a Fill or Kill order.
+        /// Only try to match existing offers in the ledger, and only do so if the entire TakerPays quantity can be obtained.
+        /// If the fix1578 amendment is enabled and the offer cannot be executed when placed, the transaction has the result code tecKILLED;
+        /// otherwise, the transaction uses the result code tesSUCCESS even when it was killed without trading any currency.
+        /// </summary>
+        FillOrKill = 0x00040000,
+
+        /// <summary>
+        /// Exchange the entire TakerGets amount, even if it means obtaining more than the TakerPays amount in exchange.
+        /// </summary>
+        Sell = 0x00080000,
+    }
+
+    /// <summary>
+    /// An OfferCreate transaction is effectively a limit order.
+    /// It defines an intent to exchange currencies, and creates an Offer object if not completely fulfilled when placed.
+    /// Offers can be partially fulfilled.
+    /// </summary>
+    public sealed class OfferCreate : Transaction
+    {
+        /// <summary>
+        /// (Optional) Set of bit-flags for this transaction.
+        /// </summary>
+        public OfferCreateFlags Flags { get; set; }
+
+        /// <summary>
+        /// Time after which the offer is no longer active, in seconds since the Ripple Epoch.
+        /// </summary>
+        public DateTimeOffset? Expiration { get; set; }
+
+        /// <summary>
+        /// An offer to delete first, specified in the same way as OfferCancel.
+        /// </summary>
+        public uint? OfferSequence { get; set; }
+
+        /// <summary>
+        /// The amount and type of currency being provided by the offer creator.
+        /// </summary>
+        public Amount TakerGets { get; set; }
+
+        /// <summary>
+        /// The amount and type of currency being requested by the offer creator.
+        /// </summary>
+        public Amount TakerPays { get; set; }
+
+        public OfferCreate()
+        {
+
+        }
+
+        internal OfferCreate(JsonElement json) : base(json)
+        {
+            JsonElement element;
+
+            Account = new AccountId(json.GetProperty("Account").GetString());
+            Flags = (OfferCreateFlags)json.GetProperty("Flags").GetUInt32();
+            TakerGets = Amount.ReadJson(json.GetProperty("TakerGets"));
+            TakerPays = Amount.ReadJson(json.GetProperty("TakerPays"));
+            if (json.TryGetProperty("Expiration", out element))
+            {
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
+            }
+            if (json.TryGetProperty("OfferSequence", out element))
+            {
+                OfferSequence = element.GetUInt32();
+            }
+        }
+
+        public override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.OfferCreate);
+            writer.WriteUInt32(StUInt32FieldCode.Flags, (uint)Flags);
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+
+            if (Expiration.HasValue)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Epoch.FromDateTimeOffset(Expiration.Value));
+            }
+            if (OfferSequence.HasValue)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.OfferSequence, OfferSequence.Value);
+            }
+            if (LastLedgerSequence.HasValue)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+
+            writer.WriteAmount(StAmountFieldCode.TakerPays, TakerPays);
+            writer.WriteAmount(StAmountFieldCode.TakerGets, TakerGets);
+
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
             WriteSigner(writer, forSigning);
             writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             WriteSigners(writer, forSigning);

@@ -1191,5 +1191,56 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(request.DestinationAccount, response.DestinationAccount);
             Assert.True(response.DepositAuthorized);
         }
+
+        [Fact]
+        public async Task TestUsdOffer()
+        {
+            var accountOne = Setup.TestAccountOne.Address;
+            var accountTwo = Setup.TestAccountTwo.Address;
+            var secretOne = Setup.TestAccountOne.Secret;
+            var secretTwo = Setup.TestAccountTwo.Secret;
+
+            // Set up a trust line
+            var trustSet = new TrustSet();
+            trustSet.Account = accountTwo;
+            trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(1000m));
+
+            // Submit and wait for the trust line
+            var (_, _) = await SubmitTransaction(secretTwo, trustSet);
+
+            // Offer 100USD for 10XRP from accountOne
+            var offer = new OfferCreate();
+            offer.Account = accountOne;
+            offer.TakerPays = XrpAmount.FromXrp(10.0m);
+            offer.TakerGets = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(100m));
+
+            var (_, transactionResponse) = await SubmitTransaction(secretOne, offer);
+            var or = Assert.IsType<OfferCreate>(transactionResponse.Transaction);
+            Assert.Equal(offer.Account, or.Account);
+            Assert.Equal(offer.TakerPays, or.TakerPays);
+            Assert.Equal(offer.TakerGets, or.TakerGets);
+
+            // Offer 5XRP for 50USD from accountTwo
+            var counterOffer = new OfferCreate();
+            counterOffer.Account = accountTwo;
+            counterOffer.TakerPays = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(50m));
+            counterOffer.TakerGets = XrpAmount.FromXrp(5.0m);
+
+            var (_, counterTransactionResponse) = await SubmitTransaction(secretTwo, counterOffer);
+            var cor = Assert.IsType<OfferCreate>(counterTransactionResponse.Transaction);
+            Assert.Equal(counterOffer.Account, cor.Account);
+            Assert.Equal(counterOffer.TakerPays, cor.TakerPays);
+            Assert.Equal(counterOffer.TakerGets, cor.TakerGets);
+
+            var ledgerEntryRequest = new LedgerEntryRequest();
+            ledgerEntryRequest.Ledger = LedgerSpecification.Current;
+            ledgerEntryRequest.Index = Offer.CalculateId(accountOne, or.Sequence);
+            var ledgerEntryResponse = await Api.LedgerEntry(ledgerEntryRequest);
+            var offerData = Assert.IsType<Offer>(ledgerEntryResponse.Node);
+
+            Assert.Equal(accountOne, offerData.Account);
+            Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);
+            Assert.Equal(new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
+        }
     }
 }

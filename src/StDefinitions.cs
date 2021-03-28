@@ -125,8 +125,8 @@ namespace Ibasa.Ripple.St
         SendMax = 9,
         TakerGets = 5,
         TakerPays = 4,
-        taker_gets_funded = 258,
-        taker_pays_funded = 259,
+        TakerGetsFunded = 258,
+        TakerPaysFunded = 259,
     }
 
     public enum StArrayFieldCode

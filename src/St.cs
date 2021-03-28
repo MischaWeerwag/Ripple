@@ -158,16 +158,16 @@ namespace Ibasa.Ripple.St
             bufferWriter.Advance(4);
         }
 
-        public void WriteAmount(uint fieldCode, XrpAmount value)
+        public void WriteAmount(StAmountFieldCode fieldCode, XrpAmount value)
         {
-            WriteFieldId(StTypeCode.Amount, fieldCode);
+            WriteFieldId(StTypeCode.Amount, (uint)fieldCode);
             System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), value.Drops | 0x4000000000000000);
             bufferWriter.Advance(8);
         }
 
-        public void WriteAmount(uint fieldCode, Amount value)
+        public void WriteAmount(StAmountFieldCode fieldCode, Amount value)
         {
-            WriteFieldId(StTypeCode.Amount, fieldCode);
+            WriteFieldId(StTypeCode.Amount, (uint)fieldCode);
             var xrp = value.XrpAmount;
             var issued = value.IssuedAmount;
             if (xrp.HasValue)

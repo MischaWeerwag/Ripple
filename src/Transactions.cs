@@ -233,9 +233,64 @@ namespace Ibasa.Ripple
 
         }
 
+        private protected Transaction(JsonElement json)
+        {
+            JsonElement element;
+
+            Account = new AccountId(json.GetProperty("Account").GetString());
+            Fee = XrpAmount.ReadJson(json.GetProperty("Fee"));
+            Sequence = json.GetProperty("Sequence").GetUInt32();
+            if (json.TryGetProperty("AccountTxnID", out element))
+            {
+                AccountTxnID = new Hash256(element.GetString());
+            }
+            if (json.TryGetProperty("Flags", out element))
+            {
+                Flags = element.GetUInt32();
+            }
+            if (json.TryGetProperty("LastLedgerSequence", out element))
+            {
+                LastLedgerSequence = element.GetUInt32();
+            }
+            if (json.TryGetProperty("Memos", out element))
+            {
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
+            }
+            if (json.TryGetProperty("Signers", out element))
+            {
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
+            }
+            if (json.TryGetProperty("SourceTag", out element))
+            {
+                SourceTag = element.GetUInt32();
+            }
+            if (json.TryGetProperty("SigningPubKey", out element))
+            {
+                SigningPubKey = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("TicketSequence", out element))
+            {
+                TicketSequence = element.GetUInt32();
+            }
+            if (json.TryGetProperty("TxnSignature", out element))
+            {
+                TxnSignature = element.GetBytesFromBase16();
+            }
+        }
+
         private ReadOnlyMemory<byte> Serialize(bool forSigning)
         {
-            var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+            var bufferWriter = new ArrayBufferWriter<byte>();
             Serialize(bufferWriter, forSigning);
             return bufferWriter.WrittenMemory;
         }

@@ -2789,7 +2789,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal AccountSet(JsonElement json)
+        internal AccountSet(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "AccountSet")
             {
@@ -2824,52 +2824,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("TickSize", out element))
             {
                 TickSize = element.GetByte();
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -3164,7 +3118,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal AccountDelete(JsonElement json)
+        internal AccountDelete(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "AccountDelete")
             {
@@ -3176,52 +3130,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("DestinationTag", out element))
             {
                 DestinationTag = element.GetUInt32();
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -3449,61 +3357,14 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal CheckCancel(JsonElement json)
+        internal CheckCancel(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCancel")
             {
                 throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"CheckCancel\"", "json");
             }
-            JsonElement element;
 
             CheckID = new Hash256(json.GetProperty("CheckID").GetString());
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
-            }
         }
 
         internal CheckCancel(ref StReader reader)
@@ -3728,7 +3589,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal CheckCash(JsonElement json)
+        internal CheckCash(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCash")
             {
@@ -3744,52 +3605,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("DeliverMin", out element))
             {
                 DeliverMin = Ripple.Amount.ReadJson(element);
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -4049,7 +3864,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal CheckCreate(JsonElement json)
+        internal CheckCreate(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCreate")
             {
@@ -4070,52 +3885,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("InvoiceID", out element))
             {
                 InvoiceID = new Hash256(element.GetString());
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -4377,61 +4146,14 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal OfferCancel(JsonElement json)
+        internal OfferCancel(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "OfferCancel")
             {
                 throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"OfferCancel\"", "json");
             }
-            JsonElement element;
 
             OfferSequence = json.GetProperty("OfferSequence").GetUInt32();
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
-            }
         }
 
         internal OfferCancel(ref StReader reader)
@@ -4661,7 +4383,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal OfferCreate(JsonElement json)
+        internal OfferCreate(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "OfferCreate")
             {
@@ -4678,52 +4400,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("OfferSequence", out element))
             {
                 OfferSequence = element.GetUInt32();
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -5003,7 +4679,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal Payment(JsonElement json)
+        internal Payment(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "Payment")
             {
@@ -5032,52 +4708,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("DeliverMin", out element))
             {
                 DeliverMin = Ripple.Amount.ReadJson(element);
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -5363,7 +4993,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal SetRegularKey(JsonElement json)
+        internal SetRegularKey(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "SetRegularKey")
             {
@@ -5374,52 +5004,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("RegularKey", out element))
             {
                 RegularKey = new AccountId(element.GetString());
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 
@@ -5642,7 +5226,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal SignerListSet(JsonElement json)
+        internal SignerListSet(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "SignerListSet")
             {
@@ -5658,52 +5242,6 @@ namespace Ibasa.Ripple
                 SignerEntriesArray[i] = new SignerEntry(element[i]);
             }
             SignerEntries = Array.AsReadOnly(SignerEntriesArray);
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
-            }
         }
 
         internal SignerListSet(ref StReader reader)
@@ -5957,7 +5495,7 @@ namespace Ibasa.Ripple
         {
         }
 
-        internal TrustSet(JsonElement json)
+        internal TrustSet(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "TrustSet")
             {
@@ -5973,52 +5511,6 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("QualityOut", out element))
             {
                 QualityOut = element.GetUInt32();
-            }
-            Account = new AccountId(json.GetProperty("Account").GetString());
-            Fee = Ripple.XrpAmount.ReadJson(json.GetProperty("Fee"));
-            Sequence = json.GetProperty("Sequence").GetUInt32();
-            if (json.TryGetProperty("AccountTxnID", out element))
-            {
-                AccountTxnID = new Hash256(element.GetString());
-            }
-            if (json.TryGetProperty("Flags", out element))
-            {
-                base.Flags = element.GetUInt32();
-            }
-            if (json.TryGetProperty("LastLedgerSequence", out element))
-            {
-                LastLedgerSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("Memos", out element))
-            {
-                var MemosArray = new Memo[element.GetArrayLength()];
-                for (int i = 0; i < MemosArray.Length; ++i)
-                {
-                    MemosArray[i] = new Memo(element[i]);
-                }
-                Memos = Array.AsReadOnly(MemosArray);
-            }
-            if (json.TryGetProperty("Signers", out element))
-            {
-                var SignersArray = new Signer[element.GetArrayLength()];
-                for (int i = 0; i < SignersArray.Length; ++i)
-                {
-                    SignersArray[i] = new Signer(element[i]);
-                }
-                Signers = Array.AsReadOnly(SignersArray);
-            }
-            if (json.TryGetProperty("SourceTag", out element))
-            {
-                SourceTag = element.GetUInt32();
-            }
-            SigningPubKey = json.GetProperty("SigningPubKey").GetBytesFromBase16();
-            if (json.TryGetProperty("TicketSequence", out element))
-            {
-                TicketSequence = element.GetUInt32();
-            }
-            if (json.TryGetProperty("TxnSignature", out element))
-            {
-                TxnSignature = element.GetBytesFromBase16();
             }
         }
 

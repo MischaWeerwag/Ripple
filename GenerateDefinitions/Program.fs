@@ -812,16 +812,17 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
 
         // JSON Constructor
         let typeField = if ledgerType.IsTransaction then "TransactionType" else "LedgerEntryType"
-        writer.WriteLine("        internal {0}(JsonElement json)", ledgerType.Name)
+        let baseCtor =  if ledgerType.IsTransaction then ": base(json)" else ""
+        writer.WriteLine("        internal {0}(JsonElement json){1}", ledgerType.Name, baseCtor)
         writer.WriteLine("        {")
         writer.WriteLine("            if (json.GetProperty(\"{0}\").GetString() != \"{1}\")", typeField, ledgerType.Name)
         writer.WriteLine("            {")
         writer.WriteLine("                throw new ArgumentException(\"Expected property \\\"LedgerEntryType\\\" to be \\\"{0}\\\"\", \"json\");", ledgerType.Name);
         writer.WriteLine("            }")
-        if allFields |> Seq.exists (fun field -> field.Optional || field.Type.StartsWith "Array<" || field.Type = "Vector256") then
+        if ledgerType.Fields |> Seq.exists (fun field -> field.Optional || field.Type.StartsWith "Array<" || field.Type = "Vector256") then
             writer.WriteLine("            JsonElement element;")
         writer.WriteLine()
-        for field in allFields do
+        for field in ledgerType.Fields do
             let fieldName = getFieldName field
 
             let writeArray (spacer : string) inner =
@@ -852,7 +853,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         writer.WriteLine("        }")
         writer.WriteLine()
 
-        // StReader Constructor
+        // StReader Constructor (can't easily use a base constructor for Transactions here)
         writer.WriteLine("        internal {0}(ref StReader reader)", ledgerType.Name)
         writer.WriteLine("        {")        
         writer.WriteLine("            StFieldId fieldId = reader.ReadFieldId();")

@@ -120,38 +120,213 @@ let emitFields (writer : TextWriter) (document : JsonDocument) =
     writer.WriteLine("    }")
     writer.WriteLine()
 
-type LedgerField = { Name : string; Type : string; Optional : bool; Doc : string } 
-type LedgerType = { Name : string; Doc : string; Fields : LedgerField list }
+type LedgerField = { 
+    Name : string
+    OriginalType : string
+    Type : string
+    Optional : bool
+    Doc : string
+    Nth : int
+    IsSigningField : bool
+}
+    
+type LedgerType = { IsTransaction: bool; Name : string; Doc : string; Fields : LedgerField list }
 
 let knownTypes = Map.ofList [
     // Directory nodes have AccountIds as hexstrings
-    "Hash160_AccountId", (true, "AccountId", "new AccountId({0}.GetBytesFromBase16())", "ToAccountId(reader.ReadHash160())")
-    "AccountID", (true, "AccountId", "new AccountId({0}.GetString())", "reader.ReadAccount()")
-    "Amount", (true, "Amount", "Amount.ReadJson({0})", "reader.ReadAmount()")
-    "XrpAmount", (true, "XrpAmount", "XrpAmount.ReadJson({0})", "reader.ReadXrpAmount()")
-    "IssuedAmount", (true, "IssuedAmount", "IssuedAmount.ReadJson({0})", "reader.ReadIssuedAmount()")
-    "UInt64", (true, "ulong", "ulong.Parse({0}.GetString(), System.Globalization.NumberStyles.AllowHexSpecifier)", "reader.ReadUInt64()")
-    "UInt32", (true, "uint", "{0}.GetUInt32()", "reader.ReadUInt32()")
-    "UInt16", (true, "ushort", "{0}.GetUInt16()", "reader.ReadUInt16()")
-    "UInt8", (true, "byte", "{0}.GetByte()", "reader.ReadUInt8()")
-    "Hash256", (true, "Hash256", "new Hash256({0}.GetString())", "reader.ReadHash256()")
-    "Hash160_CurrencyCode", (true, "CurrencyCode", "new CurrencyCode({0}.GetBytesFromBase16())", "ToCurrencyCode(reader.ReadHash160())")
-    "CurrencyCode", (true, "CurrencyCode", "new CurrencyCode({0}.GetString())", "reader.ReadCurrencyCode()")
-    "Hash128", (true, "Hash128", "new Hash128({0}.GetString())", "reader.ReadHash128()")
-    "Blob", (true, "ReadOnlyMemory<byte>", "{0}.GetBytesFromBase16()", "reader.ReadBlob()")
-    "Array<SignerEntry>", (false, "ReadOnlyCollection<SignerEntry>", "new SignerEntry({0})", "new SignerEntry(ref reader)")
-    "Array<DisabledValidator>", (false, "ReadOnlyCollection<DisabledValidator>", "new DisabledValidator({0})", "new DisabledValidator(ref reader)")
-    "Vector256", (false, "ReadOnlyCollection<Hash256>", "new Hash256({0}.GetString())", "reader.ReadVector256()")
-    "Array<Majority>", (false, "ReadOnlyCollection<Majority>", "new Majority({0})", "new Majority(ref reader)")
-    "AccountRootFlags", (true, "AccountRootFlags", "(AccountRootFlags){0}.GetUInt32()", "(AccountRootFlags)reader.ReadUInt32()")
-    "RippleStateFlags", (true, "RippleStateFlags", "(RippleStateFlags){0}.GetUInt32()", "(RippleStateFlags)reader.ReadUInt32()")
-    "SignerListFlags", (true, "SignerListFlags", "(SignerListFlags){0}.GetUInt32()", "(SignerListFlags)reader.ReadUInt32()")
-    "OfferFlags", (true, "OfferFlags", "(OfferFlags){0}.GetUInt32()", "(OfferFlags)reader.ReadUInt32()")
-    "DateTimeOffset", (true, "DateTimeOffset", "Epoch.ToDateTimeOffset({0}.GetUInt32())", "Epoch.ToDateTimeOffset(reader.ReadUInt32())")
+    "Hash160_AccountId", (
+        true, 
+        "AccountId", 
+        "new AccountId({0}.GetBytesFromBase16())", 
+        "ToAccountId(reader.ReadHash160())",
+        null
+    )
+    "AccountID", (
+        true, 
+        "AccountId", 
+        "new AccountId({0}.GetString())", 
+        "reader.ReadAccount()",
+        "writer.WriteAccount({0}, {1})"
+    )
+    "Amount", (
+        true, 
+        "Amount", 
+        "Ripple.Amount.ReadJson({0})", 
+        "reader.ReadAmount()",
+        "writer.WriteAmount({0}, {1})"
+    )
+    "XrpAmount", (
+        true, 
+        "XrpAmount", 
+        "Ripple.XrpAmount.ReadJson({0})", 
+        "reader.ReadXrpAmount()",
+        "writer.WriteAmount({0}, {1})"
+    )
+    "IssuedAmount", (
+        true, 
+        "IssuedAmount", 
+        "Ripple.IssuedAmount.ReadJson({0})", 
+        "reader.ReadIssuedAmount()",
+        "writer.WriteAmount({0}, {1})"
+        )
+    "UInt64", (
+        true, 
+        "ulong",
+        "ulong.Parse({0}.GetString(), System.Globalization.NumberStyles.AllowHexSpecifier)", 
+        "reader.ReadUInt64()",
+        "writer.WriteUInt64({0}, {1})"
+        )
+    "UInt32", (
+        true, 
+        "uint", 
+        "{0}.GetUInt32()", 
+        "reader.ReadUInt32()",
+        "writer.WriteUInt32({0}, {1})"
+        )
+    "UInt16", (
+        true, 
+        "ushort",
+        "{0}.GetUInt16()",
+        "reader.ReadUInt16()",
+        "writer.WriteUInt16({0}, {1})"
+        )
+    "UInt8", (
+        true, 
+        "byte",
+        "{0}.GetByte()", 
+        "reader.ReadUInt8()",
+        "writer.WriteUInt8({0}, {1})"
+        )
+    "Hash256", (
+        true, 
+        "Hash256",
+        "new Hash256({0}.GetString())",
+        "reader.ReadHash256()",
+        "writer.WriteHash256({0}, {1})"
+        )
+    "Hash160_CurrencyCode", (
+        true,
+        "CurrencyCode", 
+        "new CurrencyCode({0}.GetBytesFromBase16())", 
+        "ToCurrencyCode(reader.ReadHash160())",
+        null
+        )
+    "CurrencyCode", (
+        true,
+        "CurrencyCode",
+        "new CurrencyCode({0}.GetString())",
+        "reader.ReadCurrencyCode()",
+        "writer.WriteCurrencyCode({0}, {1})"
+        )
+    "Hash128", (
+        true, 
+        "Hash128", 
+        "new Hash128({0}.GetString())", 
+        "reader.ReadHash128()",
+        "writer.WriteHash128({0}, {1})"
+        )
+    "Blob", (
+        true, 
+        "ReadOnlyMemory<byte>",
+        "{0}.GetBytesFromBase16()",
+        "reader.ReadBlob()",
+        "writer.WriteBlob({0}, {1}.Span)"
+        )
+    "Array<SignerEntry>", (
+        false,
+        "ReadOnlyCollection<SignerEntry>",
+        "new SignerEntry({0})", 
+        "new SignerEntry(ref reader)",
+        "{0}.WriteTo(ref writer)"
+        )
+    "Array<DisabledValidator>", (
+        false, 
+        "ReadOnlyCollection<DisabledValidator>",
+        "new DisabledValidator({0})", 
+        "new DisabledValidator(ref reader)",
+        null
+        )
+    "Vector256", (
+        false,
+        "ReadOnlyCollection<Hash256>",
+        "new Hash256({0}.GetString())",
+        "reader.ReadVector256()",
+        null
+        )
+    "Array<Majority>", (
+        false,
+        "ReadOnlyCollection<Majority>",
+        "new Majority({0})",
+        "new Majority(ref reader)",
+        null
+        )
+    "AccountRootFlags", (
+        true, 
+        "AccountRootFlags",
+        "(AccountRootFlags){0}.GetUInt32()",
+        "(AccountRootFlags)reader.ReadUInt32()",
+        null
+        )
+    "RippleStateFlags", (
+        true,
+        "RippleStateFlags",
+        "(RippleStateFlags){0}.GetUInt32()", 
+        "(RippleStateFlags)reader.ReadUInt32()",
+        null
+        )
+    "SignerListFlags", (
+        true,
+        "SignerListFlags",
+        "(SignerListFlags){0}.GetUInt32()", 
+        "(SignerListFlags)reader.ReadUInt32()",
+        null
+        )
+    "OfferFlags", (
+        true,
+        "OfferFlags", 
+        "(OfferFlags){0}.GetUInt32()", 
+        "(OfferFlags)reader.ReadUInt32()",
+        null
+        )
+    "DateTimeOffset", (
+        true,
+        "DateTimeOffset",
+        "Epoch.ToDateTimeOffset({0}.GetUInt32())", 
+        "Epoch.ToDateTimeOffset(reader.ReadUInt32())",
+        "writer.WriteUInt32({0}, Epoch.FromDateTimeOffset({1}))"
+        )
+    "AccountSetFlags", (
+        true, 
+        "AccountSetFlags",
+        "(AccountSetFlags){0}.GetUInt32()", 
+        "(AccountSetFlags)reader.ReadUInt32()",
+        "writer.WriteUInt32({0}, (uint){1})"
+        )
+    "Array<Memo>", (
+        false,
+        "ReadOnlyCollection<Memo>",
+        "new Memo({0})", 
+        "new Memo(ref reader)",
+        "{0}.WriteTo(ref writer)"
+        )
+    "Array<Signer>", (
+        false,
+        "ReadOnlyCollection<Signer>", 
+        "new Signer({0})",
+        "new Signer(ref reader)",
+        "{0}.WriteTo(ref writer)"
+        )
+    "PathSet", (
+        false,
+        "PathSet",
+        "new PathSet()",
+        "new PathSet()",
+        "writer.WritePathSet({0}, {1})"
+        )
 ]
 
 let getFieldType (ledgerField : LedgerField) : string =
-    let isValueType, netType, _, _ = knownTypes.[ledgerField.Type]
+    let isValueType, netType, _, _, _ = knownTypes.[ledgerField.Type]
     if not ledgerField.Optional then
         netType
     else
@@ -162,21 +337,29 @@ let getFieldType (ledgerField : LedgerField) : string =
             
 let getInnerType (ledgerField : LedgerField) : string Option =
     if ledgerField.Type.StartsWith("Array<") then
-        let _, collection, _, _ = knownTypes.[ledgerField.Type]
+        let _, collection, _, _, _ = knownTypes.[ledgerField.Type]
         let index = collection.IndexOf '<' + 1
         Some (collection.Substring(index, collection.Length - (index + 1)))
     elif ledgerField.Type = "Vector256" then
         Some "Hash256"
     else
         None
+
+let isValueType (ledgerField : LedgerField) : bool =
+    let isValueType, _, _, _, _= knownTypes.[ledgerField.Type]
+    isValueType
         
 let readJsonField (ledgerField : LedgerField) (json : string) : string =
-    let _, _, jsonReader, _ = knownTypes.[ledgerField.Type]
+    let _, _, jsonReader, _, _= knownTypes.[ledgerField.Type]
     String.Format(jsonReader, json)
             
 let readStField (ledgerField : LedgerField) : string =
-    let _, _, _, stReader = knownTypes.[ledgerField.Type]
+    let _, _, _, stReader, _ = knownTypes.[ledgerField.Type]
     stReader
+
+let writeStField (ledgerField : LedgerField) : string =
+    let _, _, _, _, stWriter = knownTypes.[ledgerField.Type]
+    stWriter
 
 /// Emit the LedgerObjects
 let emitLedger (writer : TextWriter) (document : JsonDocument) =
@@ -194,19 +377,36 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             let object = tuple.[1]
             let typ = object.GetProperty("type").GetString()
             let nth = object.GetProperty("nth").GetInt32()
+            let isSigningField = object.GetProperty("isSigningField").GetBoolean()
             // trim ST off the front of types, we're nesting this in St anyway
             let key = trimSt typ
-            name, (key, nth)
+            name, (key, nth, isSigningField)
         )
         |> Map.ofSeq
         
     let field name doc =
-        let fieldType, _ = fields.[name]
-        { Name = name; Doc = doc; Optional = false; Type = fieldType }
+        let fieldType, nth, isSigningField = fields.[name]
+        { 
+            Name = name
+            Doc = doc
+            Nth = nth
+            IsSigningField = isSigningField
+            OriginalType = fieldType
+            Type = fieldType 
+            Optional = false
+        }
 
     let fieldOpt name doc =
-        let fieldType, _ = fields.[name]
-        { Name = name; Doc = doc; Optional = true; Type = fieldType }
+        let fieldType, nth, isSigningField = fields.[name]
+        { 
+            Name = name
+            Doc = doc
+            Nth = nth
+            IsSigningField = isSigningField
+            OriginalType = fieldType
+            Type = fieldType 
+            Optional = true
+        }
 
     let withOverride (typeName : string) (field : LedgerField) = 
         { field with Type = typeName}
@@ -214,12 +414,13 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
     // For each ledger type we want to emit each field, then the Json constructor then the StReader constructor.
     // We'll write the Id calculation functions manually
     
-    let ownerNode = { Name = "OwnerNode"; Type = "UInt64"; Optional = false; Doc = "A hint indicating which page of the sender's owner directory links to this object, in case the directory consists of multiple pages. Note: The object does not contain a direct link to the owner directory containing it, since that value can be derived from the Account." }
-    let previousTxnID = { Name = "PreviousTxnID"; Type = "Hash256"; Optional = false; Doc = "The identifying hash of the transaction that most recently modified this object." }
-    let previousTxnLgrSeq = { Name = "PreviousTxnLgrSeq"; Type = "UInt32"; Optional = false; Doc = "The index of the ledger that contains the transaction that most recently modified this object." }
+    let ownerNode = field "OwnerNode" "A hint indicating which page of the sender's owner directory links to this object, in case the directory consists of multiple pages. Note: The object does not contain a direct link to the owner directory containing it, since that value can be derived from the Account."
+    let previousTxnID = field "PreviousTxnID" "The identifying hash of the transaction that most recently modified this object."
+    let previousTxnLgrSeq = field "PreviousTxnLgrSeq" "The index of the ledger that contains the transaction that most recently modified this object."
 
     let ledgerTypes = [
         {
+            IsTransaction = false
             Name = "AccountRoot"
             Doc = "The AccountRoot object type describes a single account, its settings, and XRP balance."
             Fields = [
@@ -240,6 +441,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "Amendments"
             Doc = "The Amendments object type contains a list of Amendments that are currently active. Each ledger version contains at most one Amendments object."
             Fields = [
@@ -249,6 +451,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "Check"
             Doc = "A Check object describes a check, similar to a paper personal check, which can be cashed by its destination to get money from its sender. (The potential payment has already been approved by its sender, but no money moves until it is cashed. Unlike an Escrow, the money for a Check is not set aside, so cashing the Check could fail due to lack of funds.)"
             Fields = [
@@ -268,6 +471,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "DepositPreauth"
             Doc = "A DepositPreauth object tracks a preauthorization from one account to another. DepositPreauth transactions create these objects."
             Fields = [
@@ -280,6 +484,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "DirectoryNode"
             Doc = "The DirectoryNode object type provides a list of links to other objects in the ledger's state tree. A single conceptual Directory takes the form of a doubly linked list, with one or more DirectoryNode objects each containing up to 32 IDs of other objects. The first object is called the root of the directory, and all objects other than the root object can be added or deleted as necessary."
             Fields = [
@@ -297,6 +502,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "Escrow"
             Doc = "The Escrow object type represents a held payment of XRP waiting to be executed or canceled. An EscrowCreate transaction creates an Escrow object in the ledger."
             Fields = [
@@ -316,6 +522,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "FeeSettings"
             Doc = "The FeeSettings object type contains the current base transaction cost and reserve amounts as determined by fee voting. Each ledger version contains at most one FeeSettings object."
             Fields = [
@@ -327,6 +534,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "LedgerHashes"
             Doc = "The LedgerHashes object type contains a history of prior ledgers that led up to this ledger version, in the form of their hashes. Objects of this ledger type are modified automatically in the process of closing a ledger."
             Fields = [            
@@ -336,6 +544,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "NegativeUNL"
             Doc = "The NegativeUNL object type contains the current status of the Negative UNL, a list of trusted validators currently believed to be offline."
             Fields = [
@@ -345,6 +554,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "Offer"
             Doc = "The Offer object type describes an offer to exchange currencies, more traditionally known as an order, in the XRP Ledger's distributed exchange. An OfferCreate transaction only creates an Offer object in the ledger when the offer cannot be fully executed immediately by consuming other offers already in the ledger."
             Fields = [
@@ -362,6 +572,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "PayChannel"
             Doc = "The PayChannel object type represents a payment channel. Payment channels enable small, rapid off-ledger payments of XRP that can be later reconciled with the consensus ledger. A payment channel holds a balance of XRP that can only be paid out to a specific destination address until the channel is closed. Any unspent XRP is returned to the channel's owner (the source address that created and funded it) when the channel closes."
             Fields = [
@@ -383,6 +594,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "RippleState"
             Doc = "The RippleState object type connects two accounts in a single currency. Conceptually, a RippleState object represents two trust lines between the accounts, one from each side. Each account can change the settings for its side of the RippleState object, but the balance is a single shared value. A trust line that is entirely in its default state is considered the same as a trust line that does not exist, so rippled deletes RippleState objects when their properties are entirely default."
             Fields = [
@@ -401,6 +613,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "SignerList"
             Doc = "The SignerList object type represents a list of parties that, as a group, are authorized to sign a transaction in place of an individual account. You can create, replace, or remove a signer list using a SignerListSet transaction."
             Fields = [
@@ -415,6 +628,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             ]
         }
         {
+            IsTransaction = false
             Name = "Ticket"
             Doc = "The Ticket object type represents a Ticket, which tracks an account sequence number that has been set aside for future use. You can create new tickets with a TicketCreate transaction. New in: rippled 1.7.0 "
             Fields = [
@@ -426,14 +640,149 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 previousTxnLgrSeq
             ]
         }
+        {
+            IsTransaction = true
+            Name = "AccountSet"
+            Doc = "An AccountSet transaction modifies the properties of an account in the XRP Ledger."
+            Fields = [
+                fieldOpt "ClearFlag" "Unique identifier of a flag to disable for this account." |> withOverride "AccountSetFlags"
+                fieldOpt "Domain" "The domain that owns this account, as a string of hex representing the ASCII for the domain in lowercase. Cannot be more than 256 bytes in length. "
+                fieldOpt "EmailHash" "Hash of an email address to be used for generating an avatar image. Conventionally, clients use Gravatar to display this image."
+                fieldOpt "MessageKey" "Public key for sending encrypted messages to this account. To set the key, it must be exactly 33 bytes, with the first byte indicating the key type: 0x02 or 0x03 for secp256k1 keys, 0xED for Ed25519 keys. To remove the key, use an empty value."
+                fieldOpt "SetFlag" "Integer flag to enable for this account." |> withOverride "AccountSetFlags"
+                fieldOpt "TransferRate" "The fee to charge when users transfer this account's issued currencies, represented as billionths of a unit. Cannot be more than 2000000000 or less than 1000000000, except for the special case 0 meaning no fee."
+                fieldOpt "TickSize" "Tick size to use for offers involving a currency issued by this address. The exchange rates of those offers is rounded to this many significant digits. Valid values are 3 to 15 inclusive, or 0 to disable. (Added by the TickSize amendment.)"
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "AccountDelete"
+            Doc = "An AccountDelete transaction deletes an account and any objects it owns in the XRP Ledger, if possible, sending the account's remaining XRP to a specified destination account. See Deletion of Accounts for the requirements to delete an account."
+            Fields = [
+                field "Destination" "The address of an account to receive any leftover XRP after deleting the sending account. Must be a funded account in the ledger, and must not be the sending account."
+                fieldOpt "DestinationTag" "Arbitrary destination tag that identifies a hosted recipient or other information for the recipient of the deleted account's leftover XRP."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "CheckCancel"
+            Doc = "Cancels an unredeemed Check, removing it from the ledger without sending any money. The source or the destination of the check can cancel a Check at any time using this transaction type. If the Check has expired, any address can cancel it."
+            Fields = [
+                field "CheckID" "The ID of the Check ledger object to cancel, as a 64-character hexadecimal string."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "CheckCash"
+            Doc = "Attempts to redeem a Check object in the ledger to receive up to the amount authorized by the corresponding CheckCreate transaction. Only the Destination address of a Check can cash it with a CheckCash transaction. Cashing a check this way is similar to executing a Payment initiated by the destination."
+            Fields = [
+                field "CheckID" "The ID of the Check ledger object to cash, as a 64-character hexadecimal string."
+                fieldOpt "Amount" "Redeem the Check for exactly this amount, if possible. The currency must match that of the SendMax of the corresponding CheckCreate transaction. You must provide either this field or DeliverMin."
+                fieldOpt "DeliverMin" "Redeem the Check for at least this amount and for as much as possible. The currency must match that of the SendMax of the corresponding CheckCreate transaction. You must provide either this field or Amount."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "CheckCreate"
+            Doc = "Create a Check object in the ledger, which is a deferred payment that can be cashed by its intended destination. The sender of this transaction is the sender of the Check."
+            Fields = [
+                field "Destination" "The unique address of the account that can cash the Check."
+                field "SendMax" "Maximum amount of source currency the Check is allowed to debit the sender, including transfer fees on non-XRP currencies. The Check can only credit the destination with the same currency (from the same issuer, for non-XRP currencies). For non-XRP amounts, the nested field names MUST be lower-case."
+                fieldOpt "DestinationTag" "Arbitrary tag that identifies the reason for the Check, or a hosted recipient to pay."
+                fieldOpt "Expiration" "Time after which the Check is no longer valid, in seconds since the Ripple Epoch."
+                fieldOpt "InvoiceID" "Arbitrary 256-bit hash representing a specific reason or identifier for this Check."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "OfferCancel"
+            Doc = "An OfferCancel transaction removes an Offer object from the XRP Ledger."
+            Fields = [
+                field "OfferSequence" "The sequence number (or Ticket  number) of a previous OfferCreate transaction. If specified, cancel any offer object in the ledger that was created by that transaction. It is not considered an error if the offer specified does not exist."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "OfferCreate"
+            Doc = "An OfferCreate transaction is effectively a limit order. It defines an intent to exchange currencies, and creates an Offer object if not completely fulfilled when placed. Offers can be partially fulfilled."
+            Fields = [
+                field "TakerGets" "The amount and type of currency being provided by the offer creator."
+                field "TakerPays" "The amount and type of currency being requested by the offer creator."
+                fieldOpt "Expiration" "Time after which the offer is no longer active, in seconds since the Ripple Epoch."
+                fieldOpt "OfferSequence" "An offer to delete first, specified in the same way as OfferCancel."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "Payment"
+            Doc = "A Payment transaction represents a transfer of value from one account to another. (Depending on the path taken, this can involve additional exchanges of value, which occur atomically.) This transaction type can be used for several types of payments."
+            Fields = [
+                field "Amount" "The amount of currency to deliver. For non-XRP amounts, the nested field names MUST be lower-case. If the tfPartialPayment flag is set, deliver up to this amount instead."    
+                field "Destination" "The unique address of the account receiving the payment."
+                fieldOpt "DestinationTag" "Arbitrary tag that identifies the reason for the payment to the destination, or a hosted recipient to pay."
+                fieldOpt "InvoiceID" "Arbitrary 256-bit hash representing a specific reason or identifier for this payment."
+                fieldOpt "Paths" "Array of payment paths to be used for this transaction. Must be omitted for XRP-to-XRP transactions."
+                fieldOpt "SendMax" "Highest amount of source currency this transaction is allowed to cost, including transfer fees, exchange rates, and slippage. Does not include the XRP destroyed as a cost for submitting the transaction. For non-XRP amounts, the nested field names MUST be lower-case. Must be supplied for cross-currency/cross-issue payments. Must be omitted for XRP-to-XRP payments."
+                fieldOpt "DeliverMin" "Minimum amount of destination currency this transaction should deliver. Only valid if this is a partial payment. For non-XRP amounts, the nested field names are lower-case."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "SetRegularKey"
+            Doc = "A SetRegularKey transaction assigns, changes, or removes the regular key pair associated with an account."
+            Fields = [
+                fieldOpt "RegularKey" "A base-58-encoded Address that indicates the regular key pair to be assigned to the account. If omitted, removes any existing regular key pair from the account. Must not match the master key pair for the address."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "SignerListSet"
+            Doc = "The SignerListSet transaction creates, replaces, or removes a list of signers that can be used to multi-sign a transaction. This transaction type was introduced by the MultiSign amendment. New in: rippled 0.31.0"
+            Fields = [
+                field "SignerQuorum" "A target number for the signer weights. A multi-signature from this list is valid only if the sum weights of the signatures provided is greater than or equal to this value. To delete a signer list, use the value 0."
+                field "SignerEntries" "(Omitted when deleting) Array of SignerEntry objects, indicating the addresses and weights of signers in this list. This signer list must have at least 1 member and no more than 8 members. No address may appear more than once in the list, nor may the Account submitting the transaction appear in the list."
+                |> withOverride "Array<SignerEntry>"
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "TrustSet"
+            Doc = "Create or modify a trust line linking two accounts."
+            Fields = [
+                field "LimitAmount" "Object defining the trust line to create or modify, in the format of a Currency Amount." |> withOverride "IssuedAmount"
+                fieldOpt "QualityIn" "Value incoming balances on this trust line at the ratio of this number per 1,000,000,000 units. A value of 0 is shorthand for treating balances at face value."
+                fieldOpt "QualityOut" "Value outgoing balances on this trust line at the ratio of this number per 1,000,000,000 units. A value of 0 is shorthand for treating balances at face value."
+
+            ]
+        }
+    ]
+
+    // We need these field definitions but we're not going to emit properties for them so doc doesn't need to be filled in
+    let transactionFields = [
+        field "Account" null
+        field "Fee" null |> withOverride "XrpAmount"
+        field "Sequence" null
+        fieldOpt "AccountTxnID" null
+        fieldOpt "Flags" null
+        fieldOpt "LastLedgerSequence" null 
+        fieldOpt "Memos" null |> withOverride "Array<Memo>"
+        fieldOpt "Signers" null |> withOverride "Array<Signer>"
+        fieldOpt "SourceTag" null
+        field "SigningPubKey" null
+        fieldOpt "TicketSequence" null
+        fieldOpt "TxnSignature" null
     ]
 
     for ledgerType in ledgerTypes do
+
+        let allFields = 
+            ledgerType.Fields @ (if ledgerType.IsTransaction then transactionFields else [])
+
         
         writer.WriteLine("    /// <summary>")
         writer.WriteLine("    /// {0}", ledgerType.Doc)
         writer.WriteLine("    /// </summary>")
-        writer.WriteLine("    public sealed partial class {0} : LedgerObject", ledgerType.Name)
+        writer.WriteLine("    public sealed partial class {0} : {1}", ledgerType.Name, if ledgerType.IsTransaction then "Transaction" else "LedgerObject")
         writer.WriteLine("    {")
         for field in ledgerType.Fields do
             // Need to override Ammendments because it can't be the same name as the type
@@ -443,29 +792,45 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             let opt = if field.Optional then "(Optional) " else ""
             writer.WriteLine("        /// {0}{1}", opt, field.Doc)
             writer.WriteLine("        /// </summary>")
-            writer.WriteLine("        public {0} {1} {{ get; private set; }}", getFieldType field, fieldName);
+            writer.WriteLine("        public {0} {1} {{ get; {2}set; }}", getFieldType field, fieldName, if ledgerType.IsTransaction then "" else "private ");
             writer.WriteLine()
 
+        // Transaction empty constructor
+        if ledgerType.IsTransaction then
+            writer.WriteLine("        public {0}()", ledgerType.Name)
+            writer.WriteLine("        {")
+            writer.WriteLine("        }")
+            writer.WriteLine()
+
+        let getFieldName (field : LedgerField) =
+            if field.Name = "Amendments" then 
+                "AmendmentIDs" 
+            elif transactionFields |> List.contains field && field.Name = "Flags" then
+                "base.Flags"
+            else 
+                field.Name
+
         // JSON Constructor
+        let typeField = if ledgerType.IsTransaction then "TransactionType" else "LedgerEntryType"
         writer.WriteLine("        internal {0}(JsonElement json)", ledgerType.Name)
         writer.WriteLine("        {")
-        writer.WriteLine("            if (json.GetProperty(\"LedgerEntryType\").GetString() != \"{0}\")", ledgerType.Name)
+        writer.WriteLine("            if (json.GetProperty(\"{0}\").GetString() != \"{1}\")", typeField, ledgerType.Name)
         writer.WriteLine("            {")
         writer.WriteLine("                throw new ArgumentException(\"Expected property \\\"LedgerEntryType\\\" to be \\\"{0}\\\"\", \"json\");", ledgerType.Name);
         writer.WriteLine("            }")
-        if ledgerType.Fields |> Seq.exists (fun field -> field.Optional || field.Type.StartsWith "Array<" || field.Type = "Vector256") then
+        if allFields |> Seq.exists (fun field -> field.Optional || field.Type.StartsWith "Array<" || field.Type = "Vector256") then
             writer.WriteLine("            JsonElement element;")
         writer.WriteLine()
-        for field in ledgerType.Fields do
-            let fieldName = if field.Name = "Amendments" then "AmendmentIDs" else field.Name
+        for field in allFields do
+            let fieldName = getFieldName field
 
             let writeArray inner =
-                writer.WriteLine("            var {0}Array = new {1}[element.GetArrayLength()];", fieldName, inner)
-                writer.WriteLine("            for (int i = 0; i < {0}Array.Length; ++i)", fieldName)
+                writer.WriteLine("            var {0}Array = new {1}[element.GetArrayLength()];", field.Name, inner)
+                writer.WriteLine("            for (int i = 0; i < {0}Array.Length; ++i)", field.Name)
                 writer.WriteLine("            {")
-                writer.WriteLine("                {0}Array[i] = {1};", fieldName, readJsonField field "element[i]")
+                writer.WriteLine("                {0}Array[i] = {1};", field.Name, readJsonField field "element[i]")
                 writer.WriteLine("            }")
-                writer.WriteLine("            {0} = Array.AsReadOnly({0}Array);", fieldName)
+                writer.WriteLine("            {0} = Array.AsReadOnly({1}Array);", fieldName, field.Name)
 
             if field.Optional then
                 writer.WriteLine("            if (json.TryGetProperty(\"{0}\", out element))", field.Name)
@@ -494,18 +859,16 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
 
         // Need to sort the fields based on type and field index
         let sortedFields = 
-            ledgerType.Fields
+            allFields
             |> List.sortBy (fun field -> 
-                let (fieldType, fieldNth) = fields.[field.Name]
-                let typeIndex = types.[fieldType]
-                typeIndex, fieldNth            
+                let typeIndex = types.[field.OriginalType]
+                typeIndex, field.Nth
             )
             |> List.toArray
 
         for i = 0 to sortedFields.Length - 1 do
             let field = sortedFields.[i]
-            let (originalType, _) = fields.[field.Name]
-            let fieldName = if field.Name = "Amendments" then "AmendmentIDs" else field.Name
+            let fieldName = getFieldName field
 
             // Read the first field id
             let readNextField (spacer : string) =
@@ -520,10 +883,10 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                         writer.WriteLine("{0}    return;", spacer)
                     writer.WriteLine("{0}}}", spacer)
 
-            let fieldId = sprintf "StFieldId.%s_%s" originalType field.Name
+            let fieldId = sprintf "StFieldId.%s_%s" field.OriginalType field.Name
 
             let writeArray (spacer : string) (inner : string) =
-                writer.WriteLine("{0}var {1}List = new System.Collections.Generic.List<{2}>();", spacer, fieldName, inner)
+                writer.WriteLine("{0}var {1}List = new System.Collections.Generic.List<{2}>();", spacer, field.Name, inner)
                 writer.WriteLine("{0}while (true)", spacer)
                 writer.WriteLine("{0}{{", spacer)
                 writer.WriteLine("{0}    fieldId = reader.ReadFieldId();", spacer)
@@ -538,9 +901,17 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 writer.WriteLine("{0}    }}", spacer)
 
 
-                writer.WriteLine("{0}    {1}List.Add({2});", spacer, fieldName, readStField field)
+                writer.WriteLine("{0}    {1}List.Add({2});", spacer, field.Name, readStField field)
                 writer.WriteLine("{0}}}", spacer)
-                writer.WriteLine("{0}{1} = {1}List.AsReadOnly();", spacer, fieldName)
+                writer.WriteLine("{0}{1} = {2}List.AsReadOnly();", spacer, fieldName, field.Name)
+
+            let writeField (spacer : string) =
+                match getInnerType field with
+                | Some inner ->
+                    writeArray spacer inner
+                | None ->
+                    writer.WriteLine("{0}{1} = {2};", spacer, fieldName, readStField field)
+                    readNextField spacer
 
             if field.Optional then
                 writer.WriteLine("            if (fieldId == {0})", fieldId)
@@ -551,12 +922,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                     readNextField "            "
 
                 else
-                    match getInnerType field with
-                    | Some inner ->
-                        writeArray "                " inner
-                    | None ->
-                        writer.WriteLine("                {0} = {1};", fieldName, readStField field)
-                        readNextField "                "
+                    writeField "                "
                 writer.WriteLine("            }")
                 
             else
@@ -568,16 +934,91 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                     writer.WriteLine("            {0} = Array.AsReadOnly({1});", fieldName, readStField field)
                     readNextField "            "
                 else
-                    match getInnerType field with
-                    | Some inner ->
-                        writeArray "            " inner
-                    | None ->
-                        writer.WriteLine("            {0} = {1};", fieldName, readStField field)
-                        readNextField "            "
+                    writeField "            "
 
 
         writer.WriteLine("        }")
         writer.WriteLine()
+
+        // Transaction serialise method
+        if ledgerType.IsTransaction then
+            writer.WriteLine("        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)")
+            writer.WriteLine("        {")
+
+            writer.WriteLine("            var writer = new StWriter(bufferWriter);")
+            writer.WriteLine(
+                "            writer.WriteTransactionType(StTransactionType.{0});", 
+                ledgerType.Name)
+
+            for i = 0 to sortedFields.Length - 1 do
+                let field = sortedFields.[i]
+                let fieldName = getFieldName field
+                let stWriter = writeStField field
+                let fieldCode = sprintf "St%sFieldCode.%s" field.OriginalType field.Name
+
+                if fieldCode = "StUInt32FieldCode.Flags" then
+                    // Special case flags for writing
+                    writer.WriteLine("            if (base.Flags != 0u)");
+                    writer.WriteLine("            {");
+                    writer.WriteLine(
+                        "                " + 
+                        "writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);")
+                    writer.WriteLine("            }");
+                else
+                    let writeField (spacer : string) =
+                        let writeArray (spacer : string) (fieldExpression : string) inner =  
+                            writer.WriteLine(
+                                "{0}writer.WriteStartArray({1});",
+                                spacer, fieldCode)
+                            writer.WriteLine(
+                                "{0}foreach(var entry in {1})",
+                                spacer, fieldExpression)
+                            writer.WriteLine("{0}{{", spacer)
+                            writer.WriteLine("{0}    {1};", 
+                                spacer, 
+                                String.Format(stWriter, "entry"))
+                            writer.WriteLine("{0}}}", spacer)
+                            writer.WriteLine("{0}writer.WriteEndArray();", spacer)
+
+                        let writeField (spacer : string) (fieldExpression : string) =
+                            match getInnerType field with
+                            | Some inner ->
+                                writeArray spacer fieldExpression inner
+                            | None ->
+                                writer.WriteLine(
+                                    "{0}{1};",
+                                    spacer,
+                                    String.Format(stWriter, fieldCode, fieldExpression))
+
+                        if field.Optional then
+                            writer.WriteLine(
+                                "{0}if ({1} != null)", spacer, fieldName)
+                            writer.WriteLine("{0}{{", spacer)
+
+                            let fieldExpression = 
+                                if isValueType field then
+                                    sprintf "%s.Value" fieldName
+                                else
+                                    fieldName
+
+                            writeField (spacer + "    ") fieldExpression
+
+                            writer.WriteLine("{0}}}", spacer)
+                        else 
+
+                            writeField spacer fieldName
+                            
+                    if (field.IsSigningField) then
+                        writeField "            "
+                    else
+                        writer.WriteLine("            if (!forSigning)")
+                        writer.WriteLine("            {")
+                        writeField "                "
+                        writer.WriteLine("            }")
+
+
+
+            writer.WriteLine("        }")
 
         writer.WriteLine("    }")
         writer.WriteLine()
@@ -613,7 +1054,7 @@ let main argv =
     
     writer.WriteLine("namespace Ibasa.Ripple")
     writer.WriteLine("{")
-
+    
     emitLedger writer definitions
     
     writer.WriteLine("}")

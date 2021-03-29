@@ -368,6 +368,14 @@ namespace Ibasa.Ripple
             }
         }
 
+        public void WriteTo(ref StWriter writer)
+        {
+            writer.WriteStartObject(StObjectFieldCode.SignerEntry);
+            writer.WriteUInt16(StUInt16FieldCode.SignerWeight, SignerWeight);
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteEndObject();
+        }
+
         public SignerEntry(AccountId account, UInt16 signerWeight)
         {
             Account = account;

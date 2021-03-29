@@ -340,7 +340,19 @@ namespace Ibasa.Ripple
 
         public static XrpAmount ReadJson(JsonElement json)
         {
-            return new XrpAmount(ulong.Parse(json.GetString()));
+            if (json.ValueKind == JsonValueKind.String)
+            {
+                return new XrpAmount(ulong.Parse(json.GetString()));
+            }
+            else if (json.ValueKind == JsonValueKind.Number)
+            {
+                return new XrpAmount(json.GetUInt64());
+            }
+            else
+            {
+                var message = String.Format("The requested operation requires an element of type 'String' or 'Number', but the target element has type '{0}'", json.ValueKind);
+                throw new ArgumentException(message, "json");
+            }
         }
 
         public static XrpAmount Parse(string s)

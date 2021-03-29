@@ -613,7 +613,7 @@ namespace Ibasa.Ripple.Tests
                 Assert.Equal(Setup.TestAccountOne.Address, trustSet.LimitAmount.Issuer);
                 Assert.Equal(new CurrencyCode("GBP"), trustSet.LimitAmount.CurrencyCode);
                 Assert.Equal(new Currency(1000m), trustSet.LimitAmount.Value);
-                Assert.Equal(TrustFlags.SetNoRipple, trustSet.Flags);
+                Assert.Equal(TrustSetFlags.SetNoRipple, trustSet.Flags);
             }
 
             // Trust lines setup, check that the gateway has one problem to set the default ripple flag
@@ -826,11 +826,11 @@ namespace Ibasa.Ripple.Tests
             var signerListSet = new SignerListSet();
             signerListSet.Account = testAccount.Address;
             signerListSet.SignerQuorum = 2;
-            signerListSet.SignerEntries = new[] {
+            signerListSet.SignerEntries = Array.AsReadOnly(new[] {
                 new SignerEntry(accounts[0].Address, 1),
                 new SignerEntry(accounts[1].Address, 1),
                 new SignerEntry(accounts[2].Address, 2),
-            };
+            });
 
             var (_, transactionResponse) = await SubmitTransaction(testAccount.Secret, signerListSet);
             var slsr = Assert.IsType<SignerListSet>(transactionResponse.Transaction);
@@ -1042,7 +1042,7 @@ namespace Ibasa.Ripple.Tests
             CheckAmounts(results[account3.Address]);
         }
 
-        [Fact(Skip = "This is a long test, it scans the whole ripple ledger")]
+        [Fact]
         public async Task TestLedgerData()
         {
             var request = new LedgerDataRequest
@@ -1195,26 +1195,24 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestUsdOffer()
         {
-            var accountOne = Setup.TestAccountOne.Address;
-            var accountTwo = Setup.TestAccountTwo.Address;
-            var secretOne = Setup.TestAccountOne.Secret;
-            var secretTwo = Setup.TestAccountTwo.Secret;
+            var accountOne = await TestAccount.Create();
+            var accountTwo = await TestAccount.Create();
 
             // Set up a trust line
             var trustSet = new TrustSet();
-            trustSet.Account = accountTwo;
-            trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(1000m));
+            trustSet.Account = accountTwo.Address;
+            trustSet.LimitAmount = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(1000m));
 
             // Submit and wait for the trust line
-            var (_, _) = await SubmitTransaction(secretTwo, trustSet);
+            var (_, _) = await SubmitTransaction(accountTwo.Secret, trustSet);
 
             // Offer 100USD for 10XRP from accountOne
             var offer = new OfferCreate();
-            offer.Account = accountOne;
+            offer.Account = accountOne.Address;
             offer.TakerPays = XrpAmount.FromXrp(10.0m);
-            offer.TakerGets = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(100m));
+            offer.TakerGets = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(100m));
 
-            var (_, transactionResponse) = await SubmitTransaction(secretOne, offer);
+            var (_, transactionResponse) = await SubmitTransaction(accountOne.Secret, offer);
             var or = Assert.IsType<OfferCreate>(transactionResponse.Transaction);
             Assert.Equal(offer.Account, or.Account);
             Assert.Equal(offer.TakerPays, or.TakerPays);
@@ -1222,11 +1220,11 @@ namespace Ibasa.Ripple.Tests
 
             // Offer 5XRP for 50USD from accountTwo
             var counterOffer = new OfferCreate();
-            counterOffer.Account = accountTwo;
-            counterOffer.TakerPays = new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(50m));
+            counterOffer.Account = accountTwo.Address;
+            counterOffer.TakerPays = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(50m));
             counterOffer.TakerGets = XrpAmount.FromXrp(5.0m);
 
-            var (_, counterTransactionResponse) = await SubmitTransaction(secretTwo, counterOffer);
+            var (_, counterTransactionResponse) = await SubmitTransaction(accountTwo.Secret, counterOffer);
             var cor = Assert.IsType<OfferCreate>(counterTransactionResponse.Transaction);
             Assert.Equal(counterOffer.Account, cor.Account);
             Assert.Equal(counterOffer.TakerPays, cor.TakerPays);
@@ -1234,13 +1232,13 @@ namespace Ibasa.Ripple.Tests
 
             var ledgerEntryRequest = new LedgerEntryRequest();
             ledgerEntryRequest.Ledger = LedgerSpecification.Current;
-            ledgerEntryRequest.Index = Offer.CalculateId(accountOne, or.Sequence);
+            ledgerEntryRequest.Index = Offer.CalculateId(accountOne.Address, or.Sequence);
             var ledgerEntryResponse = await Api.LedgerEntry(ledgerEntryRequest);
             var offerData = Assert.IsType<Offer>(ledgerEntryResponse.Node);
 
-            Assert.Equal(accountOne, offerData.Account);
+            Assert.Equal(accountOne.Address, offerData.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);
-            Assert.Equal(new IssuedAmount(accountOne, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
+            Assert.Equal(new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
         }
     }
 }

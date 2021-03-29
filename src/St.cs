@@ -192,9 +192,9 @@ namespace Ibasa.Ripple.St
         /// </summary>
         /// <param name="fieldCode"></param>
         /// <param name="value"></param>
-        public void WriteBlob(uint fieldCode, ReadOnlySpan<byte> value)
+        public void WriteBlob(StBlobFieldCode fieldCode, ReadOnlySpan<byte> value)
         {
-            WriteFieldId(StTypeCode.Blob, fieldCode);
+            WriteFieldId(StTypeCode.Blob, (uint)fieldCode);
             if (value == null)
             {
                 WriteLengthPrefix(0);
@@ -215,9 +215,16 @@ namespace Ibasa.Ripple.St
             bufferWriter.Advance(20);
         }
 
-        public void WriteHash256(uint fieldCode, Hash256 value)
+        public void WriteHash128(StHash128FieldCode fieldCode, Hash128 value)
         {
-            WriteFieldId(StTypeCode.Hash256, fieldCode);
+            WriteFieldId(StTypeCode.Hash128, (uint)fieldCode);
+            value.CopyTo(bufferWriter.GetSpan(16));
+            bufferWriter.Advance(16);
+        }
+
+        public void WriteHash256(StHash256FieldCode fieldCode, Hash256 value)
+        {
+            WriteFieldId(StTypeCode.Hash256, (uint)fieldCode);
             value.CopyTo(bufferWriter.GetSpan(32));
             bufferWriter.Advance(32);
         }
@@ -240,6 +247,11 @@ namespace Ibasa.Ripple.St
         public void WriteEndObject()
         {
             WriteFieldId(StTypeCode.Object, 1);
+        }
+
+        public void WritePathSet(StPathSetFieldCode fieldCode, PathSet value)
+        {
+            WriteFieldId(StTypeCode.PathSet, (uint)fieldCode);
         }
     }
 

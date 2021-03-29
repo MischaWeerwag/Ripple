@@ -824,20 +824,20 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         for field in allFields do
             let fieldName = getFieldName field
 
-            let writeArray inner =
-                writer.WriteLine("            var {0}Array = new {1}[element.GetArrayLength()];", field.Name, inner)
-                writer.WriteLine("            for (int i = 0; i < {0}Array.Length; ++i)", field.Name)
-                writer.WriteLine("            {")
-                writer.WriteLine("                {0}Array[i] = {1};", field.Name, readJsonField field "element[i]")
-                writer.WriteLine("            }")
-                writer.WriteLine("            {0} = Array.AsReadOnly({1}Array);", fieldName, field.Name)
+            let writeArray (spacer : string) inner =
+                writer.WriteLine("{0}var {1}Array = new {2}[element.GetArrayLength()];", spacer, field.Name, inner)
+                writer.WriteLine("{0}for (int i = 0; i < {1}Array.Length; ++i)", spacer, field.Name)
+                writer.WriteLine("{0}{{", spacer)
+                writer.WriteLine("{0}    {1}Array[i] = {2};", spacer, field.Name, readJsonField field "element[i]")
+                writer.WriteLine("{0}}}", spacer)
+                writer.WriteLine("{0}{1} = Array.AsReadOnly({2}Array);", spacer, fieldName, field.Name)
 
             if field.Optional then
                 writer.WriteLine("            if (json.TryGetProperty(\"{0}\", out element))", field.Name)
                 writer.WriteLine("            {")
                 match getInnerType field with
                 | Some inner ->
-                    writeArray inner
+                    writeArray "                " inner
                 | None ->
                     writer.WriteLine("                {0} = {1};", fieldName, readJsonField field "element")
                 writer.WriteLine("            }")
@@ -846,7 +846,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 match getInnerType field with
                 | Some inner ->
                     writer.WriteLine("            element = {0};", reader)
-                    writeArray inner
+                    writeArray "            " inner
                 | None ->
                     writer.WriteLine("            {0} = {1};", fieldName, readJsonField field reader)
         writer.WriteLine("        }")

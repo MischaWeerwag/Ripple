@@ -781,21 +781,21 @@ namespace Ibasa.Ripple
 
             if (json.TryGetProperty("Amendments", out element))
             {
-            var AmendmentsArray = new Hash256[element.GetArrayLength()];
-            for (int i = 0; i < AmendmentsArray.Length; ++i)
-            {
-                AmendmentsArray[i] = new Hash256(element[i].GetString());
-            }
-            AmendmentIDs = Array.AsReadOnly(AmendmentsArray);
+                var AmendmentsArray = new Hash256[element.GetArrayLength()];
+                for (int i = 0; i < AmendmentsArray.Length; ++i)
+                {
+                    AmendmentsArray[i] = new Hash256(element[i].GetString());
+                }
+                AmendmentIDs = Array.AsReadOnly(AmendmentsArray);
             }
             if (json.TryGetProperty("Majorities", out element))
             {
-            var MajoritiesArray = new Majority[element.GetArrayLength()];
-            for (int i = 0; i < MajoritiesArray.Length; ++i)
-            {
-                MajoritiesArray[i] = new Majority(element[i]);
-            }
-            Majorities = Array.AsReadOnly(MajoritiesArray);
+                var MajoritiesArray = new Majority[element.GetArrayLength()];
+                for (int i = 0; i < MajoritiesArray.Length; ++i)
+                {
+                    MajoritiesArray[i] = new Majority(element[i]);
+                }
+                Majorities = Array.AsReadOnly(MajoritiesArray);
             }
             Flags = json.GetProperty("Flags").GetUInt32();
         }
@@ -1793,12 +1793,12 @@ namespace Ibasa.Ripple
 
             if (json.TryGetProperty("DisabledValidators", out element))
             {
-            var DisabledValidatorsArray = new DisabledValidator[element.GetArrayLength()];
-            for (int i = 0; i < DisabledValidatorsArray.Length; ++i)
-            {
-                DisabledValidatorsArray[i] = new DisabledValidator(element[i]);
-            }
-            DisabledValidators = Array.AsReadOnly(DisabledValidatorsArray);
+                var DisabledValidatorsArray = new DisabledValidator[element.GetArrayLength()];
+                for (int i = 0; i < DisabledValidatorsArray.Length; ++i)
+                {
+                    DisabledValidatorsArray[i] = new DisabledValidator(element[i]);
+                }
+                DisabledValidators = Array.AsReadOnly(DisabledValidatorsArray);
             }
             if (json.TryGetProperty("ValidatorToDisable", out element))
             {
@@ -2842,21 +2842,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -3194,21 +3194,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -3475,21 +3475,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -3762,21 +3762,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -4088,21 +4088,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -4403,21 +4403,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -4696,21 +4696,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -5050,21 +5050,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -5392,21 +5392,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -5675,21 +5675,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {
@@ -5991,21 +5991,21 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Memos", out element))
             {
-            var MemosArray = new Memo[element.GetArrayLength()];
-            for (int i = 0; i < MemosArray.Length; ++i)
-            {
-                MemosArray[i] = new Memo(element[i]);
-            }
-            Memos = Array.AsReadOnly(MemosArray);
+                var MemosArray = new Memo[element.GetArrayLength()];
+                for (int i = 0; i < MemosArray.Length; ++i)
+                {
+                    MemosArray[i] = new Memo(element[i]);
+                }
+                Memos = Array.AsReadOnly(MemosArray);
             }
             if (json.TryGetProperty("Signers", out element))
             {
-            var SignersArray = new Signer[element.GetArrayLength()];
-            for (int i = 0; i < SignersArray.Length; ++i)
-            {
-                SignersArray[i] = new Signer(element[i]);
-            }
-            Signers = Array.AsReadOnly(SignersArray);
+                var SignersArray = new Signer[element.GetArrayLength()];
+                for (int i = 0; i < SignersArray.Length; ++i)
+                {
+                    SignersArray[i] = new Signer(element[i]);
+                }
+                Signers = Array.AsReadOnly(SignersArray);
             }
             if (json.TryGetProperty("SourceTag", out element))
             {

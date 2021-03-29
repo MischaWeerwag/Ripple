@@ -96,6 +96,11 @@ namespace Ibasa.Ripple.Tests
             return infoResponse;
         }
 
+        public Task<AccountInfoResponse[]> WaitForAccounts(params AccountId[] accounts)
+        {
+            return Task.WhenAll(accounts.Select(account => WaitForAccount(account)));
+        }
+
 
         public void Dispose()
         {
@@ -1195,24 +1200,23 @@ namespace Ibasa.Ripple.Tests
         [Fact]
         public async Task TestUsdOffer()
         {
-            var accountOne = await TestAccount.Create();
-            var accountTwo = await TestAccount.Create();
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
 
             // Set up a trust line
             var trustSet = new TrustSet();
-            trustSet.Account = accountTwo.Address;
-            trustSet.LimitAmount = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(1000m));
+            trustSet.Account = accounts[1].Address;
+            trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(1000m));
 
             // Submit and wait for the trust line
-            var (_, _) = await SubmitTransaction(accountTwo.Secret, trustSet);
+            var (_, _) = await SubmitTransaction(accounts[1].Secret, trustSet);
 
             // Offer 100USD for 10XRP from accountOne
             var offer = new OfferCreate();
-            offer.Account = accountOne.Address;
+            offer.Account = accounts[0].Address;
             offer.TakerPays = XrpAmount.FromXrp(10.0m);
-            offer.TakerGets = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(100m));
+            offer.TakerGets = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(100m));
 
-            var (_, transactionResponse) = await SubmitTransaction(accountOne.Secret, offer);
+            var (_, transactionResponse) = await SubmitTransaction(accounts[0].Secret, offer);
             var or = Assert.IsType<OfferCreate>(transactionResponse.Transaction);
             Assert.Equal(offer.Account, or.Account);
             Assert.Equal(offer.TakerPays, or.TakerPays);
@@ -1220,11 +1224,11 @@ namespace Ibasa.Ripple.Tests
 
             // Offer 5XRP for 50USD from accountTwo
             var counterOffer = new OfferCreate();
-            counterOffer.Account = accountTwo.Address;
-            counterOffer.TakerPays = new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(50m));
+            counterOffer.Account = accounts[1].Address;
+            counterOffer.TakerPays = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m));
             counterOffer.TakerGets = XrpAmount.FromXrp(5.0m);
 
-            var (_, counterTransactionResponse) = await SubmitTransaction(accountTwo.Secret, counterOffer);
+            var (_, counterTransactionResponse) = await SubmitTransaction(accounts[1].Secret, counterOffer);
             var cor = Assert.IsType<OfferCreate>(counterTransactionResponse.Transaction);
             Assert.Equal(counterOffer.Account, cor.Account);
             Assert.Equal(counterOffer.TakerPays, cor.TakerPays);
@@ -1232,13 +1236,13 @@ namespace Ibasa.Ripple.Tests
 
             var ledgerEntryRequest = new LedgerEntryRequest();
             ledgerEntryRequest.Ledger = LedgerSpecification.Current;
-            ledgerEntryRequest.Index = Offer.CalculateId(accountOne.Address, or.Sequence);
+            ledgerEntryRequest.Index = Offer.CalculateId(accounts[0].Address, or.Sequence);
             var ledgerEntryResponse = await Api.LedgerEntry(ledgerEntryRequest);
             var offerData = Assert.IsType<Offer>(ledgerEntryResponse.Node);
 
-            Assert.Equal(accountOne.Address, offerData.Account);
+            Assert.Equal(accounts[0].Address, offerData.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);
-            Assert.Equal(new IssuedAmount(accountOne.Address, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
         }
     }
 }

@@ -384,43 +384,43 @@ namespace Ibasa.Ripple
             var transactionType = json.GetProperty("TransactionType").GetString();
             if (transactionType == "AccountSet")
             {
-                return new AccountSet(json);
+                return new AccountSetTransaction(json);
             }
             else if (transactionType == "Payment")
             {
-                return new Payment(json);
+                return new PaymentTransaction(json);
             }
             else if (transactionType == "TrustSet")
             {
-                return new TrustSet(json);
+                return new TrustSetTransaction(json);
             }
             else if (transactionType == "SetRegularKey")
             {
-                return new SetRegularKey(json);
+                return new SetRegularKeyTransaction(json);
             }
             else if (transactionType == "AccountDelete")
             {
-                return new AccountDelete(json);
+                return new AccountDeleteTransaction(json);
             }
             else if (transactionType == "SignerListSet")
             {
-                return new SignerListSet(json);
+                return new SignerListSetTransaction(json);
             }
             else if (transactionType == "CheckCreate")
             {
-                return new CheckCreate(json);
+                return new CheckCreateTransaction(json);
             }
             else if (transactionType == "CheckCancel")
             {
-                return new CheckCancel(json);
+                return new CheckCancelTransaction(json);
             }
             else if (transactionType == "CheckCash")
             {
-                return new CheckCash(json);
+                return new CheckCashTransaction(json);
             }
             else if (transactionType == "OfferCreate")
             {
-                return new OfferCreate(json);
+                return new OfferCreateTransaction(json);
             }
             else
             {
@@ -513,7 +513,7 @@ namespace Ibasa.Ripple
         ClearFreeze = 0x00200000,
     }
 
-    public sealed partial class TrustSet
+    public sealed partial class TrustSetTransaction
     {
         public new TrustSetFlags Flags
         {
@@ -554,5 +554,14 @@ namespace Ibasa.Ripple
         /// Exchange the entire TakerGets amount, even if it means obtaining more than the TakerPays amount in exchange.
         /// </summary>
         Sell = 0x00080000,
+    }
+
+    public sealed partial class OfferCreateTransaction
+    {
+        public new OfferCreateFlags Flags
+        {
+            get { return (OfferCreateFlags)base.Flags; }
+            set { base.Flags = (uint)value; }
+        }
     }
 }

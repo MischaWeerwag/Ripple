@@ -54,33 +54,33 @@ namespace Ibasa.Ripple
             switch (type)
             {
                 case StLedgerEntryType.AccountRoot:
-                    return new AccountRoot(ref reader);
+                    return new AccountRootLedgerEntry(ref reader);
                 case StLedgerEntryType.DirectoryNode:
-                    return new DirectoryNode(ref reader);
+                    return new DirectoryNodeLedgerEntry(ref reader);
                 case StLedgerEntryType.RippleState:
-                    return new RippleState(ref reader);
+                    return new RippleStateLedgerEntry(ref reader);
                 case StLedgerEntryType.Ticket:
-                    return new Ticket(ref reader);
+                    return new TicketLedgerEntry(ref reader);
                 case StLedgerEntryType.SignerList:
-                    return new SignerList(ref reader);
+                    return new SignerListLedgerEntry(ref reader);
                 case StLedgerEntryType.Offer:
-                    return new Offer(ref reader);
+                    return new OfferLedgerEntry(ref reader);
                 case StLedgerEntryType.LedgerHashes:
-                    return new LedgerHashes(ref reader);
+                    return new LedgerHashesLedgerEntry(ref reader);
                 case StLedgerEntryType.Amendments:
-                    return new Amendments(ref reader);
+                    return new AmendmentsLedgerEntry(ref reader);
                 case StLedgerEntryType.FeeSettings:
-                    return new FeeSettings(ref reader);
+                    return new FeeSettingsLedgerEntry(ref reader);
                 case StLedgerEntryType.Escrow:
-                    return new Escrow(ref reader);
+                    return new EscrowLedgerEntry(ref reader);
                 case StLedgerEntryType.PayChannel:
-                    return new PayChannel(ref reader);
+                    return new PayChannelLedgerEntry(ref reader);
                 case StLedgerEntryType.DepositPreauth:
-                    return new DepositPreauth(ref reader);
+                    return new DepositPreauthLedgerEntry(ref reader);
                 case StLedgerEntryType.Check:
-                    return new Check(ref reader);
+                    return new CheckLedgerEntry(ref reader);
                 case StLedgerEntryType.NegativeUNL:
-                    return new NegativeUNL(ref reader);
+                    return new NegativeUNLLedgerEntry(ref reader);
             }
 
             throw new RippleException(string.Format("Unrecognized ledger entry type: {0}", type));
@@ -93,40 +93,40 @@ namespace Ibasa.Ripple
             switch (type)
             {
                 case "AccountRoot":
-                    return new AccountRoot(json);
+                    return new AccountRootLedgerEntry(json);
                 case "DirectoryNode":
-                    return new DirectoryNode(json);
+                    return new DirectoryNodeLedgerEntry(json);
                 case "RippleState":
-                    return new RippleState(json);
+                    return new RippleStateLedgerEntry(json);
                 case "Ticket":
-                    return new Ticket(json);
+                    return new TicketLedgerEntry(json);
                 case "SignerList":
-                    return new SignerList(json);
+                    return new SignerListLedgerEntry(json);
                 case "Offer":
-                    return new Offer(json);
+                    return new OfferLedgerEntry(json);
                 case "LedgerHashes":
-                    return new LedgerHashes(json);
+                    return new LedgerHashesLedgerEntry(json);
                 case "Amendments":
-                    return new Amendments(json);
+                    return new AmendmentsLedgerEntry(json);
                 case "FeeSettings":
-                    return new FeeSettings(json);
+                    return new FeeSettingsLedgerEntry(json);
                 case "Escrow":
-                    return new Escrow(json);
+                    return new EscrowLedgerEntry(json);
                 case "PayChannel":
-                    return new PayChannel(json);
+                    return new PayChannelLedgerEntry(json);
                 case "DepositPreauth":
-                    return new DepositPreauth(json);
+                    return new DepositPreauthLedgerEntry(json);
                 case "Check":
-                    return new Check(json);
+                    return new CheckLedgerEntry(json);
                 case "NegativeUNL":
-                    return new NegativeUNL(json);
+                    return new NegativeUNLLedgerEntry(json);
             }
 
             throw new RippleException(string.Format("Unrecognized ledger entry type: {0}", type));
         }
     }
 
-    public sealed partial class DirectoryNode : LedgerObject
+    public sealed partial class DirectoryNodeLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateOwnerId(AccountId account)
         {
@@ -169,7 +169,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class RippleState : LedgerObject
+    public sealed partial class RippleStateLedgerEntry : LedgerObject
     {
         public Hash256 ID => CalculateId(LowLimit.Issuer, HighLimit.Issuer, Balance.CurrencyCode);
 
@@ -184,7 +184,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class PayChannel : LedgerObject
+    public sealed partial class PayChannelLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId source, AccountId destination, uint sequence)
         {
@@ -198,7 +198,7 @@ namespace Ibasa.Ripple
     }
 
 
-    public sealed partial class Offer : LedgerObject
+    public sealed partial class OfferLedgerEntry : LedgerObject
     {
         public Hash256 ID => CalculateId(Account, Sequence);
 
@@ -212,7 +212,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class Escrow : LedgerObject
+    public sealed partial class EscrowLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId account, uint sequence)
         {
@@ -224,7 +224,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class LedgerHashes : LedgerObject
+    public sealed partial class LedgerHashesLedgerEntry : LedgerObject
     {
         //public Hash256 ID => CalculateId()
         public static Hash256 CalculateId(AccountId account, uint sequence)
@@ -240,22 +240,22 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class FeeSettings : LedgerObject
+    public sealed partial class FeeSettingsLedgerEntry : LedgerObject
     {
         public static Hash256 ID => new Hash256("4BC50C9B0D8515D3EAAE1E74B29A95804346C491EE1A95BF25E4AAB854A6A651");
     }
 
-    public sealed partial class NegativeUNL : LedgerObject
+    public sealed partial class NegativeUNLLedgerEntry : LedgerObject
     {
         public static Hash256 ID => new Hash256("2E8A59AA9D3B5B186B0B9E0F62E6C02587CA74A4D778938E957B6357D364B244");
     }
 
-    public sealed partial class Amendments : LedgerObject
+    public sealed partial class AmendmentsLedgerEntry : LedgerObject
     {
         public static Hash256 ID => new Hash256("7DB0788C020F02780A673DC74757F23823FA3014C1866E72CC4CD8B226CD6EF4");
     }
 
-    public sealed partial class DepositPreauth : LedgerObject
+    public sealed partial class DepositPreauthLedgerEntry : LedgerObject
     {
         public Hash256 ID => CalculateId(Account, Authorize);
 
@@ -269,7 +269,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class Check : LedgerObject
+    public sealed partial class CheckLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId account, uint sequence)
         {
@@ -283,7 +283,7 @@ namespace Ibasa.Ripple
         public Hash256 ID => CalculateId(Account, Sequence);
     }
 
-    public sealed partial class SignerList : LedgerObject
+    public sealed partial class SignerListLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId account, uint signerListID)
         {
@@ -295,7 +295,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed partial class Ticket : LedgerObject
+    public sealed partial class TicketLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId account, uint ticketSequence)
         {
@@ -310,7 +310,7 @@ namespace Ibasa.Ripple
     }
 
 
-    public sealed partial class AccountRoot : LedgerObject
+    public sealed partial class AccountRootLedgerEntry : LedgerObject
     {
         public static Hash256 CalculateId(AccountId account)
         {

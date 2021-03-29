@@ -512,7 +512,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The AccountRoot object type describes a single account, its settings, and XRP balance.
     /// </summary>
-    public sealed partial class AccountRoot : LedgerObject
+    public sealed partial class AccountRootLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The identifying address of this account, such as rf1BiGeXwwQoi8Z2ueFYTEXSwuJYfV2Jpn.
@@ -584,7 +584,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? TransferRate { get; private set; }
 
-        internal AccountRoot(JsonElement json)
+        internal AccountRootLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "AccountRoot")
             {
@@ -629,7 +629,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal AccountRoot(ref StReader reader)
+        internal AccountRootLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -754,7 +754,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The Amendments object type contains a list of Amendments that are currently active. Each ledger version contains at most one Amendments object.
     /// </summary>
-    public sealed partial class Amendments : LedgerObject
+    public sealed partial class AmendmentsLedgerEntry : LedgerObject
     {
         /// <summary>
         /// (Optional) Array of 256-bit amendment IDs for all currently-enabled amendments. If omitted, there are no enabled amendments.
@@ -771,7 +771,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint Flags { get; private set; }
 
-        internal Amendments(JsonElement json)
+        internal AmendmentsLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "Amendments")
             {
@@ -800,7 +800,7 @@ namespace Ibasa.Ripple
             Flags = json.GetProperty("Flags").GetUInt32();
         }
 
-        internal Amendments(ref StReader reader)
+        internal AmendmentsLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -845,7 +845,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// A Check object describes a check, similar to a paper personal check, which can be cashed by its destination to get money from its sender. (The potential payment has already been approved by its sender, but no money moves until it is cashed. Unlike an Escrow, the money for a Check is not set aside, so cashing the Check could fail due to lack of funds.)
     /// </summary>
-    public sealed partial class Check : LedgerObject
+    public sealed partial class CheckLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The sender of the Check. Cashing the Check debits this address's balance.
@@ -912,7 +912,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? SourceTag { get; private set; }
 
-        internal Check(JsonElement json)
+        internal CheckLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "Check")
             {
@@ -950,7 +950,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal Check(ref StReader reader)
+        internal CheckLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1068,7 +1068,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// A DepositPreauth object tracks a preauthorization from one account to another. DepositPreauth transactions create these objects.
     /// </summary>
-    public sealed partial class DepositPreauth : LedgerObject
+    public sealed partial class DepositPreauthLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The account that granted the preauthorization. (The destination of the preauthorized payments.)
@@ -1100,7 +1100,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint PreviousTxnLgrSeq { get; private set; }
 
-        internal DepositPreauth(JsonElement json)
+        internal DepositPreauthLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "DepositPreauth")
             {
@@ -1115,7 +1115,7 @@ namespace Ibasa.Ripple
             PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
         }
 
-        internal DepositPreauth(ref StReader reader)
+        internal DepositPreauthLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1175,7 +1175,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The DirectoryNode object type provides a list of links to other objects in the ledger's state tree. A single conceptual Directory takes the form of a doubly linked list, with one or more DirectoryNode objects each containing up to 32 IDs of other objects. The first object is called the root of the directory, and all objects other than the root object can be added or deleted as necessary.
     /// </summary>
-    public sealed partial class DirectoryNode : LedgerObject
+    public sealed partial class DirectoryNodeLedgerEntry : LedgerObject
     {
         /// <summary>
         /// A bit-map of boolean flags enabled for this directory. Currently, the protocol defines no flags for DirectoryNode objects.
@@ -1232,7 +1232,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public AccountId? TakerGetsIssuer { get; private set; }
 
-        internal DirectoryNode(JsonElement json)
+        internal DirectoryNodeLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "DirectoryNode")
             {
@@ -1283,7 +1283,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal DirectoryNode(ref StReader reader)
+        internal DirectoryNodeLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1380,7 +1380,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The Escrow object type represents a held payment of XRP waiting to be executed or canceled. An EscrowCreate transaction creates an Escrow object in the ledger.
     /// </summary>
-    public sealed partial class Escrow : LedgerObject
+    public sealed partial class EscrowLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The address of the owner (sender) of this held payment. This is the account that provided the XRP, and gets it back if the held payment is canceled.
@@ -1447,7 +1447,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint PreviousTxnLgrSeq { get; private set; }
 
-        internal Escrow(JsonElement json)
+        internal EscrowLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "Escrow")
             {
@@ -1488,7 +1488,7 @@ namespace Ibasa.Ripple
             PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
         }
 
-        internal Escrow(ref StReader reader)
+        internal EscrowLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1605,7 +1605,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The FeeSettings object type contains the current base transaction cost and reserve amounts as determined by fee voting. Each ledger version contains at most one FeeSettings object.
     /// </summary>
-    public sealed partial class FeeSettings : LedgerObject
+    public sealed partial class FeeSettingsLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The transaction cost of the "reference transaction" in drops of XRP as hexadecimal.
@@ -1632,7 +1632,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint Flags { get; private set; }
 
-        internal FeeSettings(JsonElement json)
+        internal FeeSettingsLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "FeeSettings")
             {
@@ -1646,7 +1646,7 @@ namespace Ibasa.Ripple
             Flags = json.GetProperty("Flags").GetUInt32();
         }
 
-        internal FeeSettings(ref StReader reader)
+        internal FeeSettingsLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1697,7 +1697,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The LedgerHashes object type contains a history of prior ledgers that led up to this ledger version, in the form of their hashes. Objects of this ledger type are modified automatically in the process of closing a ledger.
     /// </summary>
-    public sealed partial class LedgerHashes : LedgerObject
+    public sealed partial class LedgerHashesLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The Ledger Index of the last entry in this object's Hashes array.
@@ -1714,7 +1714,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint Flags { get; private set; }
 
-        internal LedgerHashes(JsonElement json)
+        internal LedgerHashesLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "LedgerHashes")
             {
@@ -1733,7 +1733,7 @@ namespace Ibasa.Ripple
             Flags = json.GetProperty("Flags").GetUInt32();
         }
 
-        internal LedgerHashes(ref StReader reader)
+        internal LedgerHashesLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -1766,7 +1766,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The NegativeUNL object type contains the current status of the Negative UNL, a list of trusted validators currently believed to be offline.
     /// </summary>
-    public sealed partial class NegativeUNL : LedgerObject
+    public sealed partial class NegativeUNLLedgerEntry : LedgerObject
     {
         /// <summary>
         /// (Optional) A list of DisabledValidator objects (see below), each representing a trusted validator that is currently disabled.
@@ -1783,7 +1783,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public ReadOnlyMemory<byte>? ValidatorToReEnable { get; private set; }
 
-        internal NegativeUNL(JsonElement json)
+        internal NegativeUNLLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "NegativeUNL")
             {
@@ -1810,7 +1810,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal NegativeUNL(ref StReader reader)
+        internal NegativeUNLLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.Blob_ValidatorToDisable)
@@ -1854,7 +1854,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The Offer object type describes an offer to exchange currencies, more traditionally known as an order, in the XRP Ledger's distributed exchange. An OfferCreate transaction only creates an Offer object in the ledger when the offer cannot be fully executed immediately by consuming other offers already in the ledger.
     /// </summary>
-    public sealed partial class Offer : LedgerObject
+    public sealed partial class OfferLedgerEntry : LedgerObject
     {
         /// <summary>
         /// A bit-map of boolean flags enabled for this offer.
@@ -1911,7 +1911,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint PreviousTxnLgrSeq { get; private set; }
 
-        internal Offer(JsonElement json)
+        internal OfferLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "Offer")
             {
@@ -1935,7 +1935,7 @@ namespace Ibasa.Ripple
             PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
         }
 
-        internal Offer(ref StReader reader)
+        internal OfferLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -2039,7 +2039,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The PayChannel object type represents a payment channel. Payment channels enable small, rapid off-ledger payments of XRP that can be later reconciled with the consensus ledger. A payment channel holds a balance of XRP that can only be paid out to a specific destination address until the channel is closed. Any unspent XRP is returned to the channel's owner (the source address that created and funded it) when the channel closes.
     /// </summary>
-    public sealed partial class PayChannel : LedgerObject
+    public sealed partial class PayChannelLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The source address that owns this payment channel. This comes from the sending address of the transaction that created the channel.
@@ -2116,7 +2116,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? DestinationTag { get; private set; }
 
-        internal PayChannel(JsonElement json)
+        internal PayChannelLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "PayChannel")
             {
@@ -2156,7 +2156,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal PayChannel(ref StReader reader)
+        internal PayChannelLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -2292,7 +2292,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The RippleState object type connects two accounts in a single currency. Conceptually, a RippleState object represents two trust lines between the accounts, one from each side. Each account can change the settings for its side of the RippleState object, but the balance is a single shared value. A trust line that is entirely in its default state is considered the same as a trust line that does not exist, so rippled deletes RippleState objects when their properties are entirely default.
     /// </summary>
-    public sealed partial class RippleState : LedgerObject
+    public sealed partial class RippleStateLedgerEntry : LedgerObject
     {
         /// <summary>
         /// A bit-map of boolean options enabled for this object.
@@ -2354,7 +2354,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? HighQualityOut { get; private set; }
 
-        internal RippleState(JsonElement json)
+        internal RippleStateLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "RippleState")
             {
@@ -2388,7 +2388,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal RippleState(ref StReader reader)
+        internal RippleStateLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -2498,7 +2498,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The SignerList object type represents a list of parties that, as a group, are authorized to sign a transaction in place of an individual account. You can create, replace, or remove a signer list using a SignerListSet transaction.
     /// </summary>
-    public sealed partial class SignerList : LedgerObject
+    public sealed partial class SignerListLedgerEntry : LedgerObject
     {
         /// <summary>
         /// A bit-map of Boolean flags enabled for this signer list. For more information, see SignerList Flags.
@@ -2535,7 +2535,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint SignerQuorum { get; private set; }
 
-        internal SignerList(JsonElement json)
+        internal SignerListLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "SignerList")
             {
@@ -2558,7 +2558,7 @@ namespace Ibasa.Ripple
             SignerQuorum = json.GetProperty("SignerQuorum").GetUInt32();
         }
 
-        internal SignerList(ref StReader reader)
+        internal SignerListLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -2641,7 +2641,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The Ticket object type represents a Ticket, which tracks an account sequence number that has been set aside for future use. You can create new tickets with a TicketCreate transaction. New in: rippled 1.7.0 
     /// </summary>
-    public sealed partial class Ticket : LedgerObject
+    public sealed partial class TicketLedgerEntry : LedgerObject
     {
         /// <summary>
         /// The account that owns this Ticket.
@@ -2673,7 +2673,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint PreviousTxnLgrSeq { get; private set; }
 
-        internal Ticket(JsonElement json)
+        internal TicketLedgerEntry(JsonElement json)
         {
             if (json.GetProperty("LedgerEntryType").GetString() != "Ticket")
             {
@@ -2688,7 +2688,7 @@ namespace Ibasa.Ripple
             PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
         }
 
-        internal Ticket(ref StReader reader)
+        internal TicketLedgerEntry(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId != StFieldId.UInt32_Flags)
@@ -2748,7 +2748,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// An AccountSet transaction modifies the properties of an account in the XRP Ledger.
     /// </summary>
-    public sealed partial class AccountSet : Transaction
+    public sealed partial class AccountSetTransaction : Transaction
     {
         /// <summary>
         /// (Optional) Unique identifier of a flag to disable for this account.
@@ -2785,11 +2785,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public byte? TickSize { get; set; }
 
-        public AccountSet()
+        public AccountSetTransaction()
         {
         }
 
-        internal AccountSet(JsonElement json): base(json)
+        internal AccountSetTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "AccountSet")
             {
@@ -2827,7 +2827,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal AccountSet(ref StReader reader)
+        internal AccountSetTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -3102,7 +3102,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// An AccountDelete transaction deletes an account and any objects it owns in the XRP Ledger, if possible, sending the account's remaining XRP to a specified destination account. See Deletion of Accounts for the requirements to delete an account.
     /// </summary>
-    public sealed partial class AccountDelete : Transaction
+    public sealed partial class AccountDeleteTransaction : Transaction
     {
         /// <summary>
         /// The address of an account to receive any leftover XRP after deleting the sending account. Must be a funded account in the ledger, and must not be the sending account.
@@ -3114,11 +3114,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? DestinationTag { get; set; }
 
-        public AccountDelete()
+        public AccountDeleteTransaction()
         {
         }
 
-        internal AccountDelete(JsonElement json): base(json)
+        internal AccountDeleteTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "AccountDelete")
             {
@@ -3133,7 +3133,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal AccountDelete(ref StReader reader)
+        internal AccountDeleteTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -3346,18 +3346,18 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Cancels an unredeemed Check, removing it from the ledger without sending any money. The source or the destination of the check can cancel a Check at any time using this transaction type. If the Check has expired, any address can cancel it.
     /// </summary>
-    public sealed partial class CheckCancel : Transaction
+    public sealed partial class CheckCancelTransaction : Transaction
     {
         /// <summary>
         /// The ID of the Check ledger object to cancel, as a 64-character hexadecimal string.
         /// </summary>
         public Hash256 CheckID { get; set; }
 
-        public CheckCancel()
+        public CheckCancelTransaction()
         {
         }
 
-        internal CheckCancel(JsonElement json): base(json)
+        internal CheckCancelTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCancel")
             {
@@ -3367,7 +3367,7 @@ namespace Ibasa.Ripple
             CheckID = new Hash256(json.GetProperty("CheckID").GetString());
         }
 
-        internal CheckCancel(ref StReader reader)
+        internal CheckCancelTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -3568,7 +3568,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Attempts to redeem a Check object in the ledger to receive up to the amount authorized by the corresponding CheckCreate transaction. Only the Destination address of a Check can cash it with a CheckCash transaction. Cashing a check this way is similar to executing a Payment initiated by the destination.
     /// </summary>
-    public sealed partial class CheckCash : Transaction
+    public sealed partial class CheckCashTransaction : Transaction
     {
         /// <summary>
         /// The ID of the Check ledger object to cash, as a 64-character hexadecimal string.
@@ -3585,11 +3585,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public Amount? DeliverMin { get; set; }
 
-        public CheckCash()
+        public CheckCashTransaction()
         {
         }
 
-        internal CheckCash(JsonElement json): base(json)
+        internal CheckCashTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCash")
             {
@@ -3608,7 +3608,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal CheckCash(ref StReader reader)
+        internal CheckCashTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -3833,7 +3833,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// Create a Check object in the ledger, which is a deferred payment that can be cashed by its intended destination. The sender of this transaction is the sender of the Check.
     /// </summary>
-    public sealed partial class CheckCreate : Transaction
+    public sealed partial class CheckCreateTransaction : Transaction
     {
         /// <summary>
         /// The unique address of the account that can cash the Check.
@@ -3860,11 +3860,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public Hash256? InvoiceID { get; set; }
 
-        public CheckCreate()
+        public CheckCreateTransaction()
         {
         }
 
-        internal CheckCreate(JsonElement json): base(json)
+        internal CheckCreateTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "CheckCreate")
             {
@@ -3888,7 +3888,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal CheckCreate(ref StReader reader)
+        internal CheckCreateTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -4133,20 +4133,1111 @@ namespace Ibasa.Ripple
     }
 
     /// <summary>
+    /// A DepositPreauth transaction gives another account pre-approval to deliver payments to the sender of this transaction. This is only useful if the sender of this transaction is using (or plans to use) Deposit Authorization.
+    /// </summary>
+    public sealed partial class DepositPreauthTransaction : Transaction
+    {
+        /// <summary>
+        /// (Optional) The XRP Ledger address of the sender to preauthorize.
+        /// </summary>
+        public AccountId? Authorize { get; set; }
+
+        /// <summary>
+        /// (Optional) The XRP Ledger address of a sender whose preauthorization should be revoked.
+        /// </summary>
+        public AccountId? Unauthorize { get; set; }
+
+        public DepositPreauthTransaction()
+        {
+        }
+
+        internal DepositPreauthTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "DepositPreauth")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"DepositPreauth\"", "json");
+            }
+            JsonElement element;
+
+            if (json.TryGetProperty("Authorize", out element))
+            {
+                Authorize = new AccountId(element.GetString());
+            }
+            if (json.TryGetProperty("Unauthorize", out element))
+            {
+                Unauthorize = new AccountId(element.GetString());
+            }
+        }
+
+        internal DepositPreauthTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.AccountID_Authorize)
+            {
+                Authorize = reader.ReadAccount();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    return;
+                }
+            }
+            if (fieldId == StFieldId.AccountID_Unauthorize)
+            {
+                Unauthorize = reader.ReadAccount();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    return;
+                }
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.DepositPreauth);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            if (Authorize != null)
+            {
+                writer.WriteAccount(StAccountIDFieldCode.Authorize, Authorize.Value);
+            }
+            if (Unauthorize != null)
+            {
+                writer.WriteAccount(StAccountIDFieldCode.Unauthorize, Unauthorize.Value);
+            }
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Return escrowed XRP to the sender.
+    /// </summary>
+    public sealed partial class EscrowCancelTransaction : Transaction
+    {
+        /// <summary>
+        /// Address of the source account that funded the escrow payment.
+        /// </summary>
+        public AccountId Owner { get; set; }
+
+        /// <summary>
+        /// Transaction sequence (or Ticket number) of EscrowCreate transaction that created the escrow to cancel.
+        /// </summary>
+        public uint OfferSequence { get; set; }
+
+        public EscrowCancelTransaction()
+        {
+        }
+
+        internal EscrowCancelTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "EscrowCancel")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"EscrowCancel\"", "json");
+            }
+
+            Owner = new AccountId(json.GetProperty("Owner").GetString());
+            OfferSequence = json.GetProperty("OfferSequence").GetUInt32();
+        }
+
+        internal EscrowCancelTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.UInt32_OfferSequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_OfferSequence, fieldId));
+            }
+            OfferSequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.AccountID_Owner)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Owner, fieldId));
+            }
+            Owner = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.EscrowCancel);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            writer.WriteUInt32(StUInt32FieldCode.OfferSequence, OfferSequence);
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Owner, Owner);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sequester XRP until the escrow process either finishes or is canceled.
+    /// </summary>
+    public sealed partial class EscrowCreateTransaction : Transaction
+    {
+        /// <summary>
+        /// Amount of XRP, in drops, to deduct from the sender's balance and escrow. Once escrowed, the XRP can either go to the Destination address (after the FinishAfter time) or returned to the sender (after the CancelAfter time).
+        /// </summary>
+        public XrpAmount Amount { get; set; }
+
+        /// <summary>
+        /// Address to receive escrowed XRP.
+        /// </summary>
+        public AccountId Destination { get; set; }
+
+        /// <summary>
+        /// (Optional) The time, in seconds since the Ripple Epoch, when this escrow expires. This value is immutable; the funds can only be returned the sender after this time.
+        /// </summary>
+        public uint? CancelAfter { get; set; }
+
+        /// <summary>
+        /// (Optional) The time, in seconds since the Ripple Epoch, when the escrowed XRP can be released to the recipient. This value is immutable; the funds cannot move until this time is reached.
+        /// </summary>
+        public uint? FinishAfter { get; set; }
+
+        /// <summary>
+        /// (Optional) Hex value representing a PREIMAGE-SHA-256 crypto-condition. The funds can only be delivered to the recipient if this condition is fulfilled.
+        /// </summary>
+        public ReadOnlyMemory<byte>? Condition { get; set; }
+
+        /// <summary>
+        /// (Optional) Arbitrary tag to further specify the destination for this escrowed payment, such as a hosted recipient at the destination address.
+        /// </summary>
+        public uint? DestinationTag { get; set; }
+
+        public EscrowCreateTransaction()
+        {
+        }
+
+        internal EscrowCreateTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "EscrowCreate")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"EscrowCreate\"", "json");
+            }
+            JsonElement element;
+
+            Amount = Ripple.XrpAmount.ReadJson(json.GetProperty("Amount"));
+            Destination = new AccountId(json.GetProperty("Destination").GetString());
+            if (json.TryGetProperty("CancelAfter", out element))
+            {
+                CancelAfter = element.GetUInt32();
+            }
+            if (json.TryGetProperty("FinishAfter", out element))
+            {
+                FinishAfter = element.GetUInt32();
+            }
+            if (json.TryGetProperty("Condition", out element))
+            {
+                Condition = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("DestinationTag", out element))
+            {
+                DestinationTag = element.GetUInt32();
+            }
+        }
+
+        internal EscrowCreateTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_DestinationTag)
+            {
+                DestinationTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_CancelAfter)
+            {
+                CancelAfter = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_FinishAfter)
+            {
+                FinishAfter = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Amount)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Amount, fieldId));
+            }
+            Amount = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Blob_Condition)
+            {
+                Condition = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.AccountID_Destination)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Destination, fieldId));
+            }
+            Destination = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.EscrowCreate);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (DestinationTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value);
+            }
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (CancelAfter != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, CancelAfter.Value);
+            }
+            if (FinishAfter != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.FinishAfter, FinishAfter.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Amount, Amount);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            if (Condition != null)
+            {
+                writer.WriteBlob(StBlobFieldCode.Condition, Condition.Value.Span);
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Deliver XRP from a held payment to the recipient.
+    /// </summary>
+    public sealed partial class EscrowFinishTransaction : Transaction
+    {
+        /// <summary>
+        /// Address of the source account that funded the held payment.
+        /// </summary>
+        public AccountId Owner { get; set; }
+
+        /// <summary>
+        /// Transaction sequence of EscrowCreate transaction that created the held payment to finish.
+        /// </summary>
+        public uint OfferSequence { get; set; }
+
+        /// <summary>
+        /// (Optional) Hex value matching the previously-supplied PREIMAGE-SHA-256 crypto-condition of the held payment.
+        /// </summary>
+        public ReadOnlyMemory<byte>? Condition { get; set; }
+
+        /// <summary>
+        /// (Optional) Hex value of the PREIMAGE-SHA-256 crypto-condition fulfillment matching the held payment's Condition.
+        /// </summary>
+        public ReadOnlyMemory<byte>? Fulfillment { get; set; }
+
+        public EscrowFinishTransaction()
+        {
+        }
+
+        internal EscrowFinishTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "EscrowFinish")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"EscrowFinish\"", "json");
+            }
+            JsonElement element;
+
+            Owner = new AccountId(json.GetProperty("Owner").GetString());
+            OfferSequence = json.GetProperty("OfferSequence").GetUInt32();
+            if (json.TryGetProperty("Condition", out element))
+            {
+                Condition = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("Fulfillment", out element))
+            {
+                Fulfillment = element.GetBytesFromBase16();
+            }
+        }
+
+        internal EscrowFinishTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.UInt32_OfferSequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_OfferSequence, fieldId));
+            }
+            OfferSequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Blob_Fulfillment)
+            {
+                Fulfillment = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Blob_Condition)
+            {
+                Condition = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.AccountID_Owner)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Owner, fieldId));
+            }
+            Owner = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.EscrowFinish);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            writer.WriteUInt32(StUInt32FieldCode.OfferSequence, OfferSequence);
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            if (Fulfillment != null)
+            {
+                writer.WriteBlob(StBlobFieldCode.Fulfillment, Fulfillment.Value.Span);
+            }
+            if (Condition != null)
+            {
+                writer.WriteBlob(StBlobFieldCode.Condition, Condition.Value.Span);
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Owner, Owner);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
     /// An OfferCancel transaction removes an Offer object from the XRP Ledger.
     /// </summary>
-    public sealed partial class OfferCancel : Transaction
+    public sealed partial class OfferCancelTransaction : Transaction
     {
         /// <summary>
         /// The sequence number (or Ticket  number) of a previous OfferCreate transaction. If specified, cancel any offer object in the ledger that was created by that transaction. It is not considered an error if the offer specified does not exist.
         /// </summary>
         public uint OfferSequence { get; set; }
 
-        public OfferCancel()
+        public OfferCancelTransaction()
         {
         }
 
-        internal OfferCancel(JsonElement json): base(json)
+        internal OfferCancelTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "OfferCancel")
             {
@@ -4156,7 +5247,7 @@ namespace Ibasa.Ripple
             OfferSequence = json.GetProperty("OfferSequence").GetUInt32();
         }
 
-        internal OfferCancel(ref StReader reader)
+        internal OfferCancelTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -4357,7 +5448,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// An OfferCreate transaction is effectively a limit order. It defines an intent to exchange currencies, and creates an Offer object if not completely fulfilled when placed. Offers can be partially fulfilled.
     /// </summary>
-    public sealed partial class OfferCreate : Transaction
+    public sealed partial class OfferCreateTransaction : Transaction
     {
         /// <summary>
         /// The amount and type of currency being provided by the offer creator.
@@ -4379,11 +5470,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? OfferSequence { get; set; }
 
-        public OfferCreate()
+        public OfferCreateTransaction()
         {
         }
 
-        internal OfferCreate(JsonElement json): base(json)
+        internal OfferCreateTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "OfferCreate")
             {
@@ -4403,7 +5494,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal OfferCreate(ref StReader reader)
+        internal OfferCreateTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -4638,7 +5729,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// A Payment transaction represents a transfer of value from one account to another. (Depending on the path taken, this can involve additional exchanges of value, which occur atomically.) This transaction type can be used for several types of payments.
     /// </summary>
-    public sealed partial class Payment : Transaction
+    public sealed partial class PaymentTransaction : Transaction
     {
         /// <summary>
         /// The amount of currency to deliver. For non-XRP amounts, the nested field names MUST be lower-case. If the tfPartialPayment flag is set, deliver up to this amount instead.
@@ -4675,11 +5766,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public Amount? DeliverMin { get; set; }
 
-        public Payment()
+        public PaymentTransaction()
         {
         }
 
-        internal Payment(JsonElement json): base(json)
+        internal PaymentTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "Payment")
             {
@@ -4711,7 +5802,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal Payment(ref StReader reader)
+        internal PaymentTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -4980,20 +6071,903 @@ namespace Ibasa.Ripple
     }
 
     /// <summary>
+    /// Claim XRP from a payment channel, adjust the payment channel's expiration, or both.
+    /// </summary>
+    public sealed partial class PaymentChannelClaimTransaction : Transaction
+    {
+        /// <summary>
+        /// The unique ID of the channel, as a 64-character hexadecimal string.
+        /// </summary>
+        public Hash256 Channel { get; set; }
+
+        /// <summary>
+        /// (Optional) Total amount of XRP, in drops, delivered by this channel after processing this claim. Required to deliver XRP. Must be more than the total amount delivered by the channel so far, but not greater than the Amount of the signed claim. Must be provided except when closing the channel.
+        /// </summary>
+        public XrpAmount? Balance { get; set; }
+
+        /// <summary>
+        /// (Optional) The amount of XRP, in drops, authorized by the Signature. This must match the amount in the signed message. This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed.
+        /// </summary>
+        public XrpAmount? Amount { get; set; }
+
+        /// <summary>
+        /// (Optional) The signature of this claim, as hexadecimal. The signed message contains the channel ID and the amount of the claim. Required unless the sender of the transaction is the source address of the channel.
+        /// </summary>
+        public ReadOnlyMemory<byte>? Signature { get; set; }
+
+        /// <summary>
+        /// (Optional) The public key used for the signature, as hexadecimal. This must match the PublicKey stored in the ledger for the channel. Required unless the sender of the transaction is the source address of the channel and the Signature field is omitted. (The transaction includes the public key so that rippled can check the validity of the signature before trying to apply the transaction to the ledger.)
+        /// </summary>
+        public ReadOnlyMemory<byte>? PublicKey { get; set; }
+
+        public PaymentChannelClaimTransaction()
+        {
+        }
+
+        internal PaymentChannelClaimTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "PaymentChannelClaim")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"PaymentChannelClaim\"", "json");
+            }
+            JsonElement element;
+
+            Channel = new Hash256(json.GetProperty("Channel").GetString());
+            if (json.TryGetProperty("Balance", out element))
+            {
+                Balance = Ripple.XrpAmount.ReadJson(element);
+            }
+            if (json.TryGetProperty("Amount", out element))
+            {
+                Amount = Ripple.XrpAmount.ReadJson(element);
+            }
+            if (json.TryGetProperty("Signature", out element))
+            {
+                Signature = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("PublicKey", out element))
+            {
+                PublicKey = element.GetBytesFromBase16();
+            }
+        }
+
+        internal PaymentChannelClaimTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Hash256_Channel)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Hash256_Channel, fieldId));
+            }
+            Channel = reader.ReadHash256();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Amount_Amount)
+            {
+                Amount = reader.ReadXrpAmount();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Amount_Balance)
+            {
+                Balance = reader.ReadXrpAmount();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_PublicKey)
+            {
+                PublicKey = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Blob_Signature)
+            {
+                Signature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.PaymentChannelClaim);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteHash256(StHash256FieldCode.Channel, Channel);
+            if (Amount != null)
+            {
+                writer.WriteAmount(StAmountFieldCode.Amount, Amount.Value);
+            }
+            if (Balance != null)
+            {
+                writer.WriteAmount(StAmountFieldCode.Balance, Balance.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            if (PublicKey != null)
+            {
+                writer.WriteBlob(StBlobFieldCode.PublicKey, PublicKey.Value.Span);
+            }
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            if (!forSigning)
+            {
+                if (Signature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.Signature, Signature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Create a unidirectional channel and fund it with XRP. The address sending this transaction becomes the "source address" of the payment channel.
+    /// </summary>
+    public sealed partial class PaymentChannelCreateTransaction : Transaction
+    {
+        /// <summary>
+        /// Amount of XRP, in drops, to deduct from the sender's balance and set aside in this channel. While the channel is open, the XRP can only go to the Destination address. When the channel closes, any unclaimed XRP is returned to the source address's balance.
+        /// </summary>
+        public XrpAmount Amount { get; set; }
+
+        /// <summary>
+        /// Address to receive XRP claims against this channel. This is also known as the "destination address" for the channel. Cannot be the same as the sender (Account).
+        /// </summary>
+        public AccountId Destination { get; set; }
+
+        /// <summary>
+        /// Amount of time the source address must wait before closing the channel if it has unclaimed XRP.
+        /// </summary>
+        public uint SettleDelay { get; set; }
+
+        /// <summary>
+        /// The public key of the key pair the source will use to sign claims against this channel, in hexadecimal. This can be any secp256k1 or Ed25519 public key.
+        /// </summary>
+        public ReadOnlyMemory<byte> PublicKey { get; set; }
+
+        /// <summary>
+        /// (Optional) The time, in seconds since the Ripple Epoch, when this channel expires. Any transaction that would modify the channel after this time closes the channel without otherwise affecting it. This value is immutable; the channel can be closed earlier than this time but cannot remain open after this time.
+        /// </summary>
+        public uint? CancelAfter { get; set; }
+
+        /// <summary>
+        /// (Optional) Arbitrary tag to further specify the destination for this payment channel, such as a hosted recipient at the destination address.
+        /// </summary>
+        public uint? DestinationTag { get; set; }
+
+        public PaymentChannelCreateTransaction()
+        {
+        }
+
+        internal PaymentChannelCreateTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "PaymentChannelCreate")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"PaymentChannelCreate\"", "json");
+            }
+            JsonElement element;
+
+            Amount = Ripple.XrpAmount.ReadJson(json.GetProperty("Amount"));
+            Destination = new AccountId(json.GetProperty("Destination").GetString());
+            SettleDelay = json.GetProperty("SettleDelay").GetUInt32();
+            PublicKey = json.GetProperty("PublicKey").GetBytesFromBase16();
+            if (json.TryGetProperty("CancelAfter", out element))
+            {
+                CancelAfter = element.GetUInt32();
+            }
+            if (json.TryGetProperty("DestinationTag", out element))
+            {
+                DestinationTag = element.GetUInt32();
+            }
+        }
+
+        internal PaymentChannelCreateTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_DestinationTag)
+            {
+                DestinationTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_CancelAfter)
+            {
+                CancelAfter = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_SettleDelay)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_SettleDelay, fieldId));
+            }
+            SettleDelay = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Amount)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Amount, fieldId));
+            }
+            Amount = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_PublicKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_PublicKey, fieldId));
+            }
+            PublicKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.AccountID_Destination)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Destination, fieldId));
+            }
+            Destination = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.PaymentChannelCreate);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (DestinationTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.DestinationTag, DestinationTag.Value);
+            }
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (CancelAfter != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, CancelAfter.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.SettleDelay, SettleDelay);
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Amount, Amount);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.PublicKey, PublicKey.Span);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            writer.WriteAccount(StAccountIDFieldCode.Destination, Destination);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add additional XRP to an open payment channel, and optionally update the expiration time of the channel. Only the source address of the channel can use this transaction.
+    /// </summary>
+    public sealed partial class PaymentChannelFundTransaction : Transaction
+    {
+        /// <summary>
+        /// The unique ID of the channel, as a 64-character hexadecimal string.
+        /// </summary>
+        public Hash256 Channel { get; set; }
+
+        /// <summary>
+        /// Amount of XRP, in drops to add to the channel. Must be a positive amount of XRP.
+        /// </summary>
+        public XrpAmount Amount { get; set; }
+
+        /// <summary>
+        /// (Optional) New Expiration time to set for the channel, in seconds since the Ripple Epoch. This must be later than either the current time plus the SettleDelay of the channel, or the existing Expiration of the channel. After the Expiration time, any transaction that would access the channel closes the channel without taking its normal action. Any unspent XRP is returned to the source address when the channel closes. (Expiration is separate from the channel's immutable CancelAfter time.) For more information, see the PayChannel ledger object type.
+        /// </summary>
+        public uint? Expiration { get; set; }
+
+        public PaymentChannelFundTransaction()
+        {
+        }
+
+        internal PaymentChannelFundTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "PaymentChannelFund")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"PaymentChannelFund\"", "json");
+            }
+            JsonElement element;
+
+            Channel = new Hash256(json.GetProperty("Channel").GetString());
+            Amount = Ripple.XrpAmount.ReadJson(json.GetProperty("Amount"));
+            if (json.TryGetProperty("Expiration", out element))
+            {
+                Expiration = element.GetUInt32();
+            }
+        }
+
+        internal PaymentChannelFundTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_Expiration)
+            {
+                Expiration = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Hash256_Channel)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Hash256_Channel, fieldId));
+            }
+            Channel = reader.ReadHash256();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Amount_Amount)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Amount, fieldId));
+            }
+            Amount = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.PaymentChannelFund);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (Expiration != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Expiration.Value);
+            }
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteHash256(StHash256FieldCode.Channel, Channel);
+            writer.WriteAmount(StAmountFieldCode.Amount, Amount);
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
     /// A SetRegularKey transaction assigns, changes, or removes the regular key pair associated with an account.
     /// </summary>
-    public sealed partial class SetRegularKey : Transaction
+    public sealed partial class SetRegularKeyTransaction : Transaction
     {
         /// <summary>
         /// (Optional) A base-58-encoded Address that indicates the regular key pair to be assigned to the account. If omitted, removes any existing regular key pair from the account. Must not match the master key pair for the address.
         /// </summary>
         public AccountId? RegularKey { get; set; }
 
-        public SetRegularKey()
+        public SetRegularKeyTransaction()
         {
         }
 
-        internal SetRegularKey(JsonElement json): base(json)
+        internal SetRegularKeyTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "SetRegularKey")
             {
@@ -5007,7 +6981,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal SetRegularKey(ref StReader reader)
+        internal SetRegularKeyTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -5210,7 +7184,7 @@ namespace Ibasa.Ripple
     /// <summary>
     /// The SignerListSet transaction creates, replaces, or removes a list of signers that can be used to multi-sign a transaction. This transaction type was introduced by the MultiSign amendment. New in: rippled 0.31.0
     /// </summary>
-    public sealed partial class SignerListSet : Transaction
+    public sealed partial class SignerListSetTransaction : Transaction
     {
         /// <summary>
         /// A target number for the signer weights. A multi-signature from this list is valid only if the sum weights of the signatures provided is greater than or equal to this value. To delete a signer list, use the value 0.
@@ -5222,11 +7196,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public ReadOnlyCollection<SignerEntry> SignerEntries { get; set; }
 
-        public SignerListSet()
+        public SignerListSetTransaction()
         {
         }
 
-        internal SignerListSet(JsonElement json): base(json)
+        internal SignerListSetTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "SignerListSet")
             {
@@ -5244,7 +7218,7 @@ namespace Ibasa.Ripple
             SignerEntries = Array.AsReadOnly(SignerEntriesArray);
         }
 
-        internal SignerListSet(ref StReader reader)
+        internal SignerListSetTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)
@@ -5472,9 +7446,231 @@ namespace Ibasa.Ripple
     }
 
     /// <summary>
+    /// A TicketCreate transaction sets aside one or more sequence numbers as Tickets.
+    /// </summary>
+    public sealed partial class TicketCreateTransaction : Transaction
+    {
+        /// <summary>
+        /// How many Tickets to create. This must be a positive number and cannot cause the account to own more than 250 Tickets after executing this transaction.
+        /// </summary>
+        public uint TicketCount { get; set; }
+
+        public TicketCreateTransaction()
+        {
+        }
+
+        internal TicketCreateTransaction(JsonElement json): base(json)
+        {
+            if (json.GetProperty("TransactionType").GetString() != "TicketCreate")
+            {
+                throw new ArgumentException("Expected property \"LedgerEntryType\" to be \"TicketCreate\"", "json");
+            }
+
+            TicketCount = json.GetProperty("TicketCount").GetUInt32();
+        }
+
+        internal TicketCreateTransaction(ref StReader reader)
+        {
+            StFieldId fieldId = reader.ReadFieldId();
+            if (fieldId == StFieldId.UInt32_Flags)
+            {
+                base.Flags = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.UInt32_SourceTag)
+            {
+                SourceTag = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_Sequence)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_Sequence, fieldId));
+            }
+            Sequence = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_LastLedgerSequence)
+            {
+                LastLedgerSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.UInt32_TicketCount)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_TicketCount, fieldId));
+            }
+            TicketCount = reader.ReadUInt32();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.UInt32_TicketSequence)
+            {
+                TicketSequence = reader.ReadUInt32();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId == StFieldId.Hash256_AccountTxnID)
+            {
+                AccountTxnID = reader.ReadHash256();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.Amount_Fee)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Amount_Fee, fieldId));
+            }
+            Fee = reader.ReadXrpAmount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId != StFieldId.Blob_SigningPubKey)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Blob_SigningPubKey, fieldId));
+            }
+            SigningPubKey = reader.ReadBlob();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                throw new Exception("End of st data reached but non-optional fields still not set");
+            }
+            if (fieldId == StFieldId.Blob_TxnSignature)
+            {
+                TxnSignature = reader.ReadBlob();
+                if (!reader.TryReadFieldId(out fieldId))
+                {
+                    throw new Exception("End of st data reached but non-optional fields still not set");
+                }
+            }
+            if (fieldId != StFieldId.AccountID_Account)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.AccountID_Account, fieldId));
+            }
+            Account = reader.ReadAccount();
+            if (!reader.TryReadFieldId(out fieldId))
+            {
+                return;
+            }
+            if (fieldId == StFieldId.Array_Signers)
+            {
+                var SignersList = new System.Collections.Generic.List<Signer>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        if (!reader.TryReadFieldId(out fieldId))
+                        {
+                            return;
+                        }
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Signer)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Signer, fieldId));
+                    }
+                    SignersList.Add(new Signer(ref reader));
+                }
+                Signers = SignersList.AsReadOnly();
+            }
+            if (fieldId == StFieldId.Array_Memos)
+            {
+                var MemosList = new System.Collections.Generic.List<Memo>();
+                while (true)
+                {
+                    fieldId = reader.ReadFieldId();
+                    if (fieldId == StFieldId.Array_ArrayEndMarker)
+                    {
+                        break;
+                    }
+                    if (fieldId != StFieldId.Object_Memo)
+                    {
+                        throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_Memo, fieldId));
+                    }
+                    MemosList.Add(new Memo(ref reader));
+                }
+                Memos = MemosList.AsReadOnly();
+            }
+        }
+
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            var writer = new StWriter(bufferWriter);
+            writer.WriteTransactionType(StTransactionType.TicketCreate);
+            if (base.Flags != 0u)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.Flags, base.Flags);
+            }
+            if (SourceTag != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.SourceTag, SourceTag.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
+            if (LastLedgerSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.LastLedgerSequence, LastLedgerSequence.Value);
+            }
+            writer.WriteUInt32(StUInt32FieldCode.TicketCount, TicketCount);
+            if (TicketSequence != null)
+            {
+                writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
+            }
+            if (AccountTxnID != null)
+            {
+                writer.WriteHash256(StHash256FieldCode.AccountTxnID, AccountTxnID.Value);
+            }
+            writer.WriteAmount(StAmountFieldCode.Fee, Fee);
+            writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
+            if (!forSigning)
+            {
+                if (TxnSignature != null)
+                {
+                    writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Value.Span);
+                }
+            }
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
+            if (!forSigning)
+            {
+                if (Signers != null)
+                {
+                    writer.WriteStartArray(StArrayFieldCode.Signers);
+                    foreach(var entry in Signers)
+                    {
+                        entry.WriteTo(ref writer);
+                    }
+                    writer.WriteEndArray();
+                }
+            }
+            if (Memos != null)
+            {
+                writer.WriteStartArray(StArrayFieldCode.Memos);
+                foreach(var entry in Memos)
+                {
+                    entry.WriteTo(ref writer);
+                }
+                writer.WriteEndArray();
+            }
+        }
+    }
+
+    /// <summary>
     /// Create or modify a trust line linking two accounts.
     /// </summary>
-    public sealed partial class TrustSet : Transaction
+    public sealed partial class TrustSetTransaction : Transaction
     {
         /// <summary>
         /// Object defining the trust line to create or modify, in the format of a Currency Amount.
@@ -5491,11 +7687,11 @@ namespace Ibasa.Ripple
         /// </summary>
         public uint? QualityOut { get; set; }
 
-        public TrustSet()
+        public TrustSetTransaction()
         {
         }
 
-        internal TrustSet(JsonElement json): base(json)
+        internal TrustSetTransaction(JsonElement json): base(json)
         {
             if (json.GetProperty("TransactionType").GetString() != "TrustSet")
             {
@@ -5514,7 +7710,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        internal TrustSet(ref StReader reader)
+        internal TrustSetTransaction(ref StReader reader)
         {
             StFieldId fieldId = reader.ReadFieldId();
             if (fieldId == StFieldId.UInt32_Flags)

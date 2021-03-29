@@ -53,12 +53,12 @@ namespace Ibasa.Ripple
         /// Omitted unless the request specified signer_lists and at least one SignerList is associated with the account.
         /// New in: rippled 0.31.0 
         /// </summary>
-        public SignerList SignerList { get; private set; }
+        public SignerListLedgerEntry SignerList { get; private set; }
 
         /// <summary>
         /// The AccountRoot ledger object with this account's information, as stored in the ledger.
         /// </summary>
-        public AccountRoot AccountData { get; private set; }
+        public AccountRootLedgerEntry AccountData { get; private set; }
 
         //queue_data Object(Omitted unless queue specified as true and querying the current open ledger.) Information about queued transactions sent by this account.This information describes the state of the local rippled server, which may be different from other servers in the peer-to-peer XRP Ledger network.Some fields may be omitted because the values are calculated "lazily" by the queuing mechanism.
 
@@ -81,12 +81,12 @@ namespace Ibasa.Ripple
             Validated = json.GetProperty("validated").GetBoolean();
 
             var accountData = json.GetProperty("account_data");
-            AccountData = new AccountRoot(accountData);
+            AccountData = new AccountRootLedgerEntry(accountData);
 
             // signer_lists is embeded in account_data (contrary to what the xrp documentation would suggest https://github.com/ripple/xrpl-dev-portal/issues/938 )
             if (accountData.TryGetProperty("signer_lists", out element))
             {
-                SignerList = new SignerList(element[0]);
+                SignerList = new SignerListLedgerEntry(element[0]);
             }
         }
     }
@@ -1608,7 +1608,7 @@ namespace Ibasa.Ripple
 
     public sealed class BookOffer
     {
-        public Offer Offer { get; private set; }
+        public OfferLedgerEntry Offer { get; private set; }
         //owner_funds String  Amount of the TakerGets currency the side placing the offer has available to be traded. (XRP is represented as drops; any other currency is represented as a decimal value.) If a trader has multiple offers in the same book, only the highest-ranked offer includes this field.
         //taker_gets_funded String (XRP) or Object (non-XRP)	(Only included in partially-funded offers) The maximum amount of currency that the taker can get, given the funding status of the offer.
         //taker_pays_funded   String (XRP) or Object (non-XRP)    (Only included in partially-funded offers) The maximum amount of currency that the taker would pay, given the funding status of the offer.
@@ -1616,7 +1616,7 @@ namespace Ibasa.Ripple
     
         internal BookOffer(JsonElement json)
         {
-            Offer = new Offer(json);
+            Offer = new OfferLedgerEntry(json);
         }
     }
 

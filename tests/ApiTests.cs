@@ -408,12 +408,12 @@ namespace Ibasa.Ripple.Tests
             var account = Setup.TestAccountOne.Address;
             var secret = Setup.TestAccountOne.Secret;
 
-            var transaction = new AccountSet();
+            var transaction = new AccountSetTransaction();
             transaction.Account = account;
             transaction.Domain = System.Text.Encoding.ASCII.GetBytes("example.com");
 
             var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
-            var acr = Assert.IsType<AccountSet>(transactionResponse.Transaction);
+            var acr = Assert.IsType<AccountSetTransaction>(transactionResponse.Transaction);
             Assert.Equal(transaction.Account, acr.Account);
             Assert.Equal(transaction.Sequence, acr.Sequence);
             Assert.Equal(transaction.Fee, acr.Fee);
@@ -438,23 +438,23 @@ namespace Ibasa.Ripple.Tests
             var seed = new Seed("ssKXuaAGcAXaKBf7d532v8KeypdoS");
             seed.KeyPair(out var _, out var keyPair);
 
-            var transaction = new SetRegularKey();
+            var transaction = new SetRegularKeyTransaction();
             transaction.Account = account;
             transaction.RegularKey = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
 
             var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
-            var srkr = Assert.IsType<SetRegularKey>(transactionResponse.Transaction);
+            var srkr = Assert.IsType<SetRegularKeyTransaction>(transactionResponse.Transaction);
             Assert.Equal(transaction.RegularKey, srkr.RegularKey);
 
             // Check we can do a noop AccountSet
-            var accountSetTransaction = new AccountSet();
+            var accountSetTransaction = new AccountSetTransaction();
             accountSetTransaction.Account = account;
             accountSetTransaction.Sequence = transaction.Sequence + 1;
             accountSetTransaction.Fee = transaction.Fee;
 
             // Submit with our ed25519 keypair
             var (_, accountSetTransactionResponse) = await SubmitTransaction(seed, accountSetTransaction);
-            var acr = Assert.IsType<AccountSet>(accountSetTransactionResponse.Transaction);
+            var acr = Assert.IsType<AccountSetTransaction>(accountSetTransactionResponse.Transaction);
 
             var infoRequest = new AccountInfoRequest()
             {
@@ -482,14 +482,14 @@ namespace Ibasa.Ripple.Tests
                 startingDrops = response.AccountData.Balance.Drops;
             }
 
-            var transaction = new Payment();
+            var transaction = new PaymentTransaction();
             transaction.Account = accountOne;
             transaction.Destination = accountTwo;
             transaction.DestinationTag = 1;
             transaction.Amount = new Amount(100);
 
             var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
-            var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
+            var pr = Assert.IsType<PaymentTransaction>(transactionResponse.Transaction);
             Assert.Equal(transaction.Amount, pr.Amount);
 
             ulong endingDrops;
@@ -514,7 +514,7 @@ namespace Ibasa.Ripple.Tests
             var secretTwo = Setup.TestAccountTwo.Secret;
 
             // Set up a trust line
-            var trustSet = new TrustSet();
+            var trustSet = new TrustSetTransaction();
             trustSet.Account = accountTwo;
             trustSet.LimitAmount = new IssuedAmount(accountOne, new CurrencyCode("GBP"), new Currency(1000m));
 
@@ -522,14 +522,14 @@ namespace Ibasa.Ripple.Tests
             var (_, _) = await SubmitTransaction(secretTwo, trustSet);
 
             // Send 100GBP
-            var payment = new Payment();
+            var payment = new PaymentTransaction();
             payment.Account = accountOne;
             payment.Destination = accountTwo;
             payment.DestinationTag = 1;
             payment.Amount = new Amount(accountOne, new CurrencyCode("GBP"), new Currency(100m));
 
             var (_, transactionResponse) = await SubmitTransaction(secretOne, payment);
-            var pr = Assert.IsType<Payment>(transactionResponse.Transaction);
+            var pr = Assert.IsType<PaymentTransaction>(transactionResponse.Transaction);
             Assert.Equal(payment.Amount, pr.Amount);
 
             // Check we have +100 GBP on our trust line
@@ -589,13 +589,13 @@ namespace Ibasa.Ripple.Tests
                 Assert.Equal("You should immediately set your default ripple flag", Assert.Single(response.Problems));
                 var transaction = Assert.Single(response.Transactions);
                 transaction.Account = testAccount.Address;
-                var accountSet = Assert.IsType<AccountSet>(transaction);
+                var accountSet = Assert.IsType<AccountSetTransaction>(transaction);
                 Assert.Equal(AccountSetFlags.DefaultRipple, accountSet.SetFlag);
             }
 
             // Make a GBP trust line to account 1
             {
-                var trustSet = new TrustSet();
+                var trustSet = new TrustSetTransaction();
                 trustSet.Account = testAccount.Address;
                 trustSet.LimitAmount = new IssuedAmount(Setup.TestAccountOne.Address, new CurrencyCode("GBP"), new Currency(1000m));
 
@@ -614,7 +614,7 @@ namespace Ibasa.Ripple.Tests
                 Assert.Equal(expected, Assert.Single(response.Problems));
                 var transaction = Assert.Single(response.Transactions);
                 transaction.Account = testAccount.Address;
-                var trustSet = Assert.IsType<TrustSet>(transaction);
+                var trustSet = Assert.IsType<TrustSetTransaction>(transaction);
                 Assert.Equal(Setup.TestAccountOne.Address, trustSet.LimitAmount.Issuer);
                 Assert.Equal(new CurrencyCode("GBP"), trustSet.LimitAmount.CurrencyCode);
                 Assert.Equal(new Currency(1000m), trustSet.LimitAmount.Value);
@@ -637,7 +637,7 @@ namespace Ibasa.Ripple.Tests
 
             // Set the no ripple flag and make sure gateway now returns no issues
             {
-                var accountSet = new AccountSet();
+                var accountSet = new AccountSetTransaction();
                 accountSet.Account = testAccount.Address;
                 accountSet.SetFlag = AccountSetFlags.DefaultRipple;
 
@@ -659,21 +659,19 @@ namespace Ibasa.Ripple.Tests
         public async Task TestGatewayBalances()
         {
             // We need a fresh accounts setup for this test
-            var gatewayAccount = await TestAccount.Create();
-            var account1 = await TestAccount.Create();
-            var account2 = await TestAccount.Create();
-            var hotwallet = await TestAccount.Create();
-            await Setup.WaitForAccount(gatewayAccount.Address);
-            await Setup.WaitForAccount(account1.Address);
-            await Setup.WaitForAccount(account2.Address);
-            await Setup.WaitForAccount(hotwallet.Address);
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create(), TestAccount.Create(), TestAccount.Create());
+            var gatewayAccount = accounts[0];
+            var account1 = accounts[1];
+            var account2 = accounts[2];
+            var hotwallet = accounts[3];
+            await Setup.WaitForAccounts(gatewayAccount.Address, account1.Address, account2.Address, hotwallet.Address);
 
             var testAccounts = new[] { account1, account2 };
 
             // Setup trust lines from account 1 and 2 to the gateway and send some money
             foreach (var account in testAccounts)
             {
-                var trustSet = new TrustSet();
+                var trustSet = new TrustSetTransaction();
                 trustSet.Account = account.Address;
                 // GBP
                 trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(1000m));
@@ -682,7 +680,7 @@ namespace Ibasa.Ripple.Tests
                 trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("BTC"), new Currency(100m));
                 var (_, _) = await SubmitTransaction(account.Secret, trustSet);
 
-                var payment = new Payment();
+                var payment = new PaymentTransaction();
                 payment.Account = gatewayAccount.Address;
                 payment.Destination = account.Address;
 
@@ -696,12 +694,12 @@ namespace Ibasa.Ripple.Tests
 
             // Send some GBP to the hotwallet
             {
-                var trustSet = new TrustSet();
+                var trustSet = new TrustSetTransaction();
                 trustSet.Account = hotwallet.Address;
                 trustSet.LimitAmount = new IssuedAmount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(100m));
                 var (_, _) = await SubmitTransaction(hotwallet.Secret, trustSet);
 
-                var payment = new Payment();
+                var payment = new PaymentTransaction();
                 payment.Account = gatewayAccount.Address;
                 payment.Destination = hotwallet.Address;
                 payment.Amount = new Amount(gatewayAccount.Address, new CurrencyCode("GBP"), new Currency(24m));
@@ -768,7 +766,7 @@ namespace Ibasa.Ripple.Tests
                 startingDrops = response.AccountData.Balance.Drops;
             }
 
-            var transaction = new AccountDelete();
+            var transaction = new AccountDeleteTransaction();
             transaction.Account = deleteAccount.Address;
             transaction.Destination = accountOne.Address;
             // Set the fee to a fixed number so our assert later is correct
@@ -785,7 +783,7 @@ namespace Ibasa.Ripple.Tests
             }
 
             var (_, transactionResponse) = await SubmitTransaction(deleteAccount.Secret, transaction);
-            var adr = Assert.IsType<AccountDelete>(transactionResponse.Transaction);
+            var adr = Assert.IsType<AccountDeleteTransaction>(transactionResponse.Transaction);
             Assert.Equal(transaction.Account, adr.Account);
             Assert.Equal(transaction.Destination, adr.Destination);
             Assert.Equal(transaction.DestinationTag, adr.DestinationTag);
@@ -828,7 +826,7 @@ namespace Ibasa.Ripple.Tests
                 TestAccount.FromSeed(makeSeed(KeyType.Ed25519)),
             };
 
-            var signerListSet = new SignerListSet();
+            var signerListSet = new SignerListSetTransaction();
             signerListSet.Account = testAccount.Address;
             signerListSet.SignerQuorum = 2;
             signerListSet.SignerEntries = Array.AsReadOnly(new[] {
@@ -838,7 +836,7 @@ namespace Ibasa.Ripple.Tests
             });
 
             var (_, transactionResponse) = await SubmitTransaction(testAccount.Secret, signerListSet);
-            var slsr = Assert.IsType<SignerListSet>(transactionResponse.Transaction);
+            var slsr = Assert.IsType<SignerListSetTransaction>(transactionResponse.Transaction);
             Assert.Equal(signerListSet.Account, slsr.Account);
             Assert.Equal(signerListSet.SignerQuorum, slsr.SignerQuorum);
             Assert.Equal(signerListSet.SignerEntries[0], slsr.SignerEntries[0]);
@@ -858,7 +856,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Contains(signerListSet.SignerEntries[2], accountInfoResponse.SignerList.SignerEntries);
 
             // And multi sign a transaction (paying accounts[0])
-            var payment = new Payment();
+            var payment = new PaymentTransaction();
             payment.Account = testAccount.Address;
             payment.Destination = accounts[0].Address;
             payment.Amount = XrpAmount.FromDrops(50_000_000);
@@ -872,7 +870,7 @@ namespace Ibasa.Ripple.Tests
                 };
 
                 var (_, paymentResponse) = await SubmitTransaction(signers, payment);
-                var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
+                var pr = Assert.IsType<PaymentTransaction>(paymentResponse.Transaction);
                 Assert.Equal(payment.Amount, pr.Amount);
             }
 
@@ -884,7 +882,7 @@ namespace Ibasa.Ripple.Tests
                 };
 
                 var (_, paymentResponse) = await SubmitTransaction(signers, payment);
-                var pr = Assert.IsType<Payment>(paymentResponse.Transaction);
+                var pr = Assert.IsType<PaymentTransaction>(paymentResponse.Transaction);
                 Assert.Equal(payment.Amount, pr.Amount);
             }
 
@@ -904,49 +902,49 @@ namespace Ibasa.Ripple.Tests
             var accountTwo = Setup.TestAccountTwo;
 
             // Create a check
-            var checkCreate = new CheckCreate();
+            var checkCreate = new CheckCreateTransaction();
             checkCreate.Account = accountOne.Address;
             checkCreate.Destination = accountTwo.Address;
             checkCreate.SendMax = new Amount(500);
             checkCreate.InvoiceID = new Hash256("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
 
             var (_, checkCreateResponse) = await SubmitTransaction(accountOne.Secret, checkCreate);
-            var ccrr = Assert.IsType<CheckCreate>(checkCreateResponse.Transaction);
+            var ccrr = Assert.IsType<CheckCreateTransaction>(checkCreateResponse.Transaction);
             Assert.Equal(checkCreate.Account, ccrr.Account);
             Assert.Equal(checkCreate.Destination, ccrr.Destination);
             Assert.Equal(checkCreate.SendMax, ccrr.SendMax);
             Assert.Equal(checkCreate.InvoiceID, ccrr.InvoiceID);
 
             // Cancel that check with account two
-            var checkCancel = new CheckCancel();
+            var checkCancel = new CheckCancelTransaction();
             checkCancel.Account = accountTwo.Address;
-            checkCancel.CheckID = Check.CalculateId(accountOne.Address, ccrr.Sequence);
+            checkCancel.CheckID = CheckLedgerEntry.CalculateId(accountOne.Address, ccrr.Sequence);
             var (_, checkCancelResponse) = await SubmitTransaction(accountTwo.Secret, checkCancel);
-            var ccanr = Assert.IsType<CheckCancel>(checkCancelResponse.Transaction);
+            var ccanr = Assert.IsType<CheckCancelTransaction>(checkCancelResponse.Transaction);
             Assert.Equal(checkCancel.Account, ccanr.Account);
             Assert.Equal(checkCancel.CheckID, ccanr.CheckID);
 
 
             // Create a new check
-            var sndCheckCreate = new CheckCreate();
+            var sndCheckCreate = new CheckCreateTransaction();
             sndCheckCreate.Account = accountOne.Address;
             sndCheckCreate.Destination = accountTwo.Address;
             sndCheckCreate.SendMax = new Amount(1000);
 
             var (_, sndCheckCreateResponse) = await SubmitTransaction(accountOne.Secret, sndCheckCreate);
-            ccrr = Assert.IsType<CheckCreate>(sndCheckCreateResponse.Transaction);
+            ccrr = Assert.IsType<CheckCreateTransaction>(sndCheckCreateResponse.Transaction);
             Assert.Equal(sndCheckCreate.Account, ccrr.Account);
             Assert.Equal(sndCheckCreate.Destination, ccrr.Destination);
             Assert.Equal(sndCheckCreate.SendMax, ccrr.SendMax);
             Assert.Equal(sndCheckCreate.InvoiceID, ccrr.InvoiceID);
 
             // Try to claim the check
-            var checkCash = new CheckCash();
+            var checkCash = new CheckCashTransaction();
             checkCash.Account = accountTwo.Address;
-            checkCash.CheckID = Check.CalculateId(accountOne.Address, ccrr.Sequence);
+            checkCash.CheckID = CheckLedgerEntry.CalculateId(accountOne.Address, ccrr.Sequence);
             checkCash.Amount = new Amount(750);
             var (_, checkCashResponse) = await SubmitTransaction(accountTwo.Secret, checkCash);
-            var ccashr = Assert.IsType<CheckCash>(checkCashResponse.Transaction);
+            var ccashr = Assert.IsType<CheckCashTransaction>(checkCashResponse.Transaction);
             Assert.Equal(checkCash.Account, ccashr.Account);
             Assert.Equal(checkCash.CheckID, ccashr.CheckID);
             Assert.Equal(checkCash.Amount, ccashr.Amount);
@@ -985,7 +983,7 @@ namespace Ibasa.Ripple.Tests
                 {
                     var currency = currencies[i];
 
-                    var trustSet = new TrustSet();
+                    var trustSet = new TrustSetTransaction();
                     trustSet.Account = account.Address;
                     trustSet.LimitAmount = new IssuedAmount(account1.Address, currency, new Currency(1000m));
                     trustSetTransactions.Add(trustSet);
@@ -1000,7 +998,7 @@ namespace Ibasa.Ripple.Tests
                 {
                     var currency = currencies[i];
 
-                    var payment = new Payment();
+                    var payment = new PaymentTransaction();
                     payment.Account = account1.Address;
                     payment.Destination = account.Address;
                     payment.Amount = new Amount(account1.Address, currency, new Currency(i + 1));
@@ -1063,75 +1061,75 @@ namespace Ibasa.Ripple.Tests
                 foreach(var obj in response.State)
                 {
                     Assert.NotNull(obj.Item1);
-                    if (obj.Item1 is AccountRoot)
+                    if (obj.Item1 is AccountRootLedgerEntry)
                     {
-                        var accountRoot = (AccountRoot)obj.Item1;
+                        var accountRoot = (AccountRootLedgerEntry)obj.Item1;
                         Assert.Equal(accountRoot.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is Amendments)
+                    else if (obj.Item1 is AmendmentsLedgerEntry)
                     {
-                        Assert.Equal(Amendments.ID, obj.Item2);
+                        Assert.Equal(AmendmentsLedgerEntry.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is Check)
+                    else if (obj.Item1 is CheckLedgerEntry)
                     {
-                        var check = (Check)obj.Item1;
+                        var check = (CheckLedgerEntry)obj.Item1;
                         Assert.Equal(check.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is DepositPreauth)
+                    else if (obj.Item1 is DepositPreauthLedgerEntry)
                     {
-                        var depositPreauth = (DepositPreauth)obj.Item1;
+                        var depositPreauth = (DepositPreauthLedgerEntry)obj.Item1;
                         Assert.Equal(depositPreauth.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is DirectoryNode)
+                    else if (obj.Item1 is DirectoryNodeLedgerEntry)
                     {
-                        var directoryNode = (DirectoryNode)obj.Item1;
+                        var directoryNode = (DirectoryNodeLedgerEntry)obj.Item1;
                         // TODO
                         // Assert.Equal(directoryNode.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is Escrow)
+                    else if (obj.Item1 is EscrowLedgerEntry)
                     {
-                        var escrow = (Escrow)obj.Item1;
+                        var escrow = (EscrowLedgerEntry)obj.Item1;
                         // TODO
                         // Assert.Equal(escrow.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is FeeSettings)
+                    else if (obj.Item1 is FeeSettingsLedgerEntry)
                     {
-                        Assert.Equal(FeeSettings.ID, obj.Item2);
+                        Assert.Equal(FeeSettingsLedgerEntry.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is LedgerHashes)
+                    else if (obj.Item1 is LedgerHashesLedgerEntry)
                     {
                         // TODO
                         // Assert.Equal(LedgerHashes.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is NegativeUNL)
+                    else if (obj.Item1 is NegativeUNLLedgerEntry)
                     {
-                        Assert.Equal(NegativeUNL.ID, obj.Item2);
+                        Assert.Equal(NegativeUNLLedgerEntry.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is Offer)
+                    else if (obj.Item1 is OfferLedgerEntry)
                     {
-                        var offer = (Offer)obj.Item1;
+                        var offer = (OfferLedgerEntry)obj.Item1;
                         Assert.Equal(offer.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is PayChannel)
+                    else if (obj.Item1 is PayChannelLedgerEntry)
                     {
-                        var payChannel = (PayChannel)obj.Item1;
+                        var payChannel = (PayChannelLedgerEntry)obj.Item1;
                         // TODO
                         // Assert.Equal(payChannel.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is RippleState)
+                    else if (obj.Item1 is RippleStateLedgerEntry)
                     {
-                        var rippleState = (RippleState)obj.Item1;
+                        var rippleState = (RippleStateLedgerEntry)obj.Item1;
                         Assert.Equal(rippleState.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is SignerList)
+                    else if (obj.Item1 is SignerListLedgerEntry)
                     {
-                        var signerList = (SignerList)obj.Item1;
+                        var signerList = (SignerListLedgerEntry)obj.Item1;
                         // TODO
                         // Assert.Equal(signerList.ID, obj.Item2);
                     }
-                    else if (obj.Item1 is Ticket)
+                    else if (obj.Item1 is TicketLedgerEntry)
                     {
-                        var ticket = (Ticket)obj.Item1;
+                        var ticket = (TicketLedgerEntry)obj.Item1;
                         Assert.Equal(ticket.ID, obj.Item2);
                     }
                 }
@@ -1150,12 +1148,12 @@ namespace Ibasa.Ripple.Tests
             };
             LedgerEntryResponse response;
 
-            request.Index = FeeSettings.ID;
+            request.Index = FeeSettingsLedgerEntry.ID;
             response = await Api.LedgerEntry(request);
             Assert.NotNull(response.LedgerHash);
-            if (response.Node is FeeSettings)
+            if (response.Node is FeeSettingsLedgerEntry)
             {
-                var feeSettings = (FeeSettings)response.Node;
+                var feeSettings = (FeeSettingsLedgerEntry)response.Node;
                 Assert.NotEqual(0ul, feeSettings.BaseFee);
                 Assert.NotEqual(0u, feeSettings.ReferenceFeeUnits);
                 Assert.NotEqual(0u, feeSettings.ReserveBase);
@@ -1166,12 +1164,12 @@ namespace Ibasa.Ripple.Tests
                 throw new Exception("Expected FeeSettings");
             }
 
-            request.Index = Amendments.ID;
+            request.Index = AmendmentsLedgerEntry.ID;
             response = await Api.LedgerEntry(request);
             Assert.NotNull(response.LedgerHash);
-            if (response.Node is Amendments)
+            if (response.Node is AmendmentsLedgerEntry)
             {
-                var amendments = (Amendments)response.Node;
+                var amendments = (AmendmentsLedgerEntry)response.Node;
                 Assert.Equal(0u, amendments.Flags);
             }
             else
@@ -1203,7 +1201,7 @@ namespace Ibasa.Ripple.Tests
             var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
 
             // Set up a trust line
-            var trustSet = new TrustSet();
+            var trustSet = new TrustSetTransaction();
             trustSet.Account = accounts[1].Address;
             trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(1000m));
 
@@ -1211,34 +1209,34 @@ namespace Ibasa.Ripple.Tests
             var (_, _) = await SubmitTransaction(accounts[1].Secret, trustSet);
 
             // Offer 100USD for 10XRP from accountOne
-            var offer = new OfferCreate();
+            var offer = new OfferCreateTransaction();
             offer.Account = accounts[0].Address;
             offer.TakerPays = XrpAmount.FromXrp(10.0m);
             offer.TakerGets = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(100m));
 
             var (_, transactionResponse) = await SubmitTransaction(accounts[0].Secret, offer);
-            var or = Assert.IsType<OfferCreate>(transactionResponse.Transaction);
+            var or = Assert.IsType<OfferCreateTransaction>(transactionResponse.Transaction);
             Assert.Equal(offer.Account, or.Account);
             Assert.Equal(offer.TakerPays, or.TakerPays);
             Assert.Equal(offer.TakerGets, or.TakerGets);
 
             // Offer 5XRP for 50USD from accountTwo
-            var counterOffer = new OfferCreate();
+            var counterOffer = new OfferCreateTransaction();
             counterOffer.Account = accounts[1].Address;
             counterOffer.TakerPays = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m));
             counterOffer.TakerGets = XrpAmount.FromXrp(5.0m);
 
             var (_, counterTransactionResponse) = await SubmitTransaction(accounts[1].Secret, counterOffer);
-            var cor = Assert.IsType<OfferCreate>(counterTransactionResponse.Transaction);
+            var cor = Assert.IsType<OfferCreateTransaction>(counterTransactionResponse.Transaction);
             Assert.Equal(counterOffer.Account, cor.Account);
             Assert.Equal(counterOffer.TakerPays, cor.TakerPays);
             Assert.Equal(counterOffer.TakerGets, cor.TakerGets);
 
             var ledgerEntryRequest = new LedgerEntryRequest();
             ledgerEntryRequest.Ledger = LedgerSpecification.Current;
-            ledgerEntryRequest.Index = Offer.CalculateId(accounts[0].Address, or.Sequence);
+            ledgerEntryRequest.Index = OfferLedgerEntry.CalculateId(accounts[0].Address, or.Sequence);
             var ledgerEntryResponse = await Api.LedgerEntry(ledgerEntryRequest);
-            var offerData = Assert.IsType<Offer>(ledgerEntryResponse.Node);
+            var offerData = Assert.IsType<OfferLedgerEntry>(ledgerEntryResponse.Node);
 
             Assert.Equal(accounts[0].Address, offerData.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);

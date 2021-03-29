@@ -18,7 +18,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(StFieldId.UInt16_LedgerEntryType, reader.ReadFieldId());
             Assert.Equal(StLedgerEntryType.AccountRoot, (StLedgerEntryType)reader.ReadUInt16());
 
-            var accountRoot = new AccountRoot(ref reader);
+            var accountRoot = new AccountRootLedgerEntry(ref reader);
             Assert.Equal(new AccountId("rKKzk9ghA2iuy3imqMXUHJqdRPMtNDGf4c"), accountRoot.Account);
             Assert.Equal(XrpAmount.FromDrops(893730848), accountRoot.Balance);
             Assert.Equal(AccountRootFlags.None, accountRoot.Flags);

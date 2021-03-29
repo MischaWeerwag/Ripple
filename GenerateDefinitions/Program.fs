@@ -695,6 +695,49 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         }
         {
             IsTransaction = true
+            Name = "DepositPreauth"
+            Doc = "A DepositPreauth transaction gives another account pre-approval to deliver payments to the sender of this transaction. This is only useful if the sender of this transaction is using (or plans to use) Deposit Authorization."
+            Fields = [
+                fieldOpt "Authorize" "The XRP Ledger address of the sender to preauthorize."
+                fieldOpt "Unauthorize" "The XRP Ledger address of a sender whose preauthorization should be revoked."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "EscrowCancel"
+            Doc = "Return escrowed XRP to the sender."
+            Fields = [
+                field "Owner" "Address of the source account that funded the escrow payment."
+                field "OfferSequence" "Transaction sequence (or Ticket number) of EscrowCreate transaction that created the escrow to cancel."
+            ] 
+        }
+        {
+            IsTransaction = true
+            Name = "EscrowCreate"
+            Doc = "Sequester XRP until the escrow process either finishes or is canceled."
+            Fields = [
+                field "Amount" "Amount of XRP, in drops, to deduct from the sender's balance and escrow. Once escrowed, the XRP can either go to the Destination address (after the FinishAfter time) or returned to the sender (after the CancelAfter time)."
+                |> withOverride "XrpAmount"
+                field "Destination" "Address to receive escrowed XRP."
+                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this escrow expires. This value is immutable; the funds can only be returned the sender after this time."
+                fieldOpt "FinishAfter" "The time, in seconds since the Ripple Epoch, when the escrowed XRP can be released to the recipient. This value is immutable; the funds cannot move until this time is reached."
+                fieldOpt "Condition" "Hex value representing a PREIMAGE-SHA-256 crypto-condition. The funds can only be delivered to the recipient if this condition is fulfilled."
+                fieldOpt "DestinationTag" "Arbitrary tag to further specify the destination for this escrowed payment, such as a hosted recipient at the destination address."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "EscrowFinish"
+            Doc = "Deliver XRP from a held payment to the recipient."
+            Fields = [
+                field "Owner" "Address of the source account that funded the held payment."
+                field "OfferSequence" "Transaction sequence of EscrowCreate transaction that created the held payment to finish."
+                fieldOpt "Condition" "Hex value matching the previously-supplied PREIMAGE-SHA-256 crypto-condition of the held payment."
+                fieldOpt "Fulfillment" "Hex value of the PREIMAGE-SHA-256 crypto-condition fulfillment matching the held payment's Condition."
+            ]
+        }
+        {
+            IsTransaction = true
             Name = "OfferCancel"
             Doc = "An OfferCancel transaction removes an Offer object from the XRP Ledger."
             Fields = [
@@ -728,6 +771,45 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         }
         {
             IsTransaction = true
+            Name = "PaymentChannelClaim"
+            Doc = "Claim XRP from a payment channel, adjust the payment channel's expiration, or both."
+            Fields = [
+                field "Channel" "The unique ID of the channel, as a 64-character hexadecimal string."
+                fieldOpt "Balance" "Total amount of XRP, in drops, delivered by this channel after processing this claim. Required to deliver XRP. Must be more than the total amount delivered by the channel so far, but not greater than the Amount of the signed claim. Must be provided except when closing the channel."
+                |> withOverride "XrpAmount"
+                fieldOpt "Amount" "The amount of XRP, in drops, authorized by the Signature. This must match the amount in the signed message. This is the cumulative amount of XRP that can be dispensed by the channel, including XRP previously redeemed."
+                |> withOverride "XrpAmount"
+                fieldOpt "Signature" "The signature of this claim, as hexadecimal. The signed message contains the channel ID and the amount of the claim. Required unless the sender of the transaction is the source address of the channel."
+                fieldOpt "PublicKey" "The public key used for the signature, as hexadecimal. This must match the PublicKey stored in the ledger for the channel. Required unless the sender of the transaction is the source address of the channel and the Signature field is omitted. (The transaction includes the public key so that rippled can check the validity of the signature before trying to apply the transaction to the ledger.)"
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "PaymentChannelCreate"
+            Doc = "Create a unidirectional channel and fund it with XRP. The address sending this transaction becomes the \"source address\" of the payment channel."
+            Fields = [
+                field "Amount" "Amount of XRP, in drops, to deduct from the sender's balance and set aside in this channel. While the channel is open, the XRP can only go to the Destination address. When the channel closes, any unclaimed XRP is returned to the source address's balance."
+                |> withOverride "XrpAmount"
+                field "Destination" "Address to receive XRP claims against this channel. This is also known as the \"destination address\" for the channel. Cannot be the same as the sender (Account)."
+                field "SettleDelay" "Amount of time the source address must wait before closing the channel if it has unclaimed XRP."
+                field "PublicKey" "The public key of the key pair the source will use to sign claims against this channel, in hexadecimal. This can be any secp256k1 or Ed25519 public key."
+                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this channel expires. Any transaction that would modify the channel after this time closes the channel without otherwise affecting it. This value is immutable; the channel can be closed earlier than this time but cannot remain open after this time."
+                fieldOpt "DestinationTag" "Arbitrary tag to further specify the destination for this payment channel, such as a hosted recipient at the destination address."
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "PaymentChannelFund"
+            Doc = "Add additional XRP to an open payment channel, and optionally update the expiration time of the channel. Only the source address of the channel can use this transaction."
+            Fields = [
+                field "Channel" "The unique ID of the channel, as a 64-character hexadecimal string."
+                field "Amount" "Amount of XRP, in drops to add to the channel. Must be a positive amount of XRP."
+                |> withOverride "XrpAmount"
+                fieldOpt "Expiration" "New Expiration time to set for the channel, in seconds since the Ripple Epoch. This must be later than either the current time plus the SettleDelay of the channel, or the existing Expiration of the channel. After the Expiration time, any transaction that would access the channel closes the channel without taking its normal action. Any unspent XRP is returned to the source address when the channel closes. (Expiration is separate from the channel's immutable CancelAfter time.) For more information, see the PayChannel ledger object type."
+            ]
+        }
+        {
+            IsTransaction = true
             Name = "SetRegularKey"
             Doc = "A SetRegularKey transaction assigns, changes, or removes the regular key pair associated with an account."
             Fields = [
@@ -742,6 +824,14 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "SignerQuorum" "A target number for the signer weights. A multi-signature from this list is valid only if the sum weights of the signatures provided is greater than or equal to this value. To delete a signer list, use the value 0."
                 field "SignerEntries" "(Omitted when deleting) Array of SignerEntry objects, indicating the addresses and weights of signers in this list. This signer list must have at least 1 member and no more than 8 members. No address may appear more than once in the list, nor may the Account submitting the transaction appear in the list."
                 |> withOverride "Array<SignerEntry>"
+            ]
+        }
+        {
+            IsTransaction = true
+            Name = "TicketCreate"
+            Doc = "A TicketCreate transaction sets aside one or more sequence numbers as Tickets."
+            Fields = [
+                field "TicketCount" "How many Tickets to create. This must be a positive number and cannot cause the account to own more than 250 Tickets after executing this transaction."
             ]
         }
         {
@@ -778,11 +868,13 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         let allFields = 
             ledgerType.Fields @ (if ledgerType.IsTransaction then transactionFields else [])
 
+        let ledgerTypeClassName = sprintf "%s%s" ledgerType.Name (if ledgerType.IsTransaction then "Transaction" else "LedgerEntry")
+
         
         writer.WriteLine("    /// <summary>")
         writer.WriteLine("    /// {0}", ledgerType.Doc)
         writer.WriteLine("    /// </summary>")
-        writer.WriteLine("    public sealed partial class {0} : {1}", ledgerType.Name, if ledgerType.IsTransaction then "Transaction" else "LedgerObject")
+        writer.WriteLine("    public sealed partial class {0} : {1}", ledgerTypeClassName, if ledgerType.IsTransaction then "Transaction" else "LedgerObject")
         writer.WriteLine("    {")
         for field in ledgerType.Fields do
             // Need to override Ammendments because it can't be the same name as the type
@@ -797,7 +889,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
 
         // Transaction empty constructor
         if ledgerType.IsTransaction then
-            writer.WriteLine("        public {0}()", ledgerType.Name)
+            writer.WriteLine("        public {0}()", ledgerTypeClassName)
             writer.WriteLine("        {")
             writer.WriteLine("        }")
             writer.WriteLine()
@@ -813,7 +905,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         // JSON Constructor
         let typeField = if ledgerType.IsTransaction then "TransactionType" else "LedgerEntryType"
         let baseCtor =  if ledgerType.IsTransaction then ": base(json)" else ""
-        writer.WriteLine("        internal {0}(JsonElement json){1}", ledgerType.Name, baseCtor)
+        writer.WriteLine("        internal {0}(JsonElement json){1}", ledgerTypeClassName, baseCtor)
         writer.WriteLine("        {")
         writer.WriteLine("            if (json.GetProperty(\"{0}\").GetString() != \"{1}\")", typeField, ledgerType.Name)
         writer.WriteLine("            {")
@@ -854,7 +946,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         writer.WriteLine()
 
         // StReader Constructor (can't easily use a base constructor for Transactions here)
-        writer.WriteLine("        internal {0}(ref StReader reader)", ledgerType.Name)
+        writer.WriteLine("        internal {0}(ref StReader reader)", ledgerTypeClassName)
         writer.WriteLine("        {")        
         writer.WriteLine("            StFieldId fieldId = reader.ReadFieldId();")
 

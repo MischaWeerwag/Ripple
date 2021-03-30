@@ -89,18 +89,25 @@ namespace Ibasa.Ripple.Tests
                     }
 
                     if (exc.Error != "actNotFound") { throw; }
+                }
 
+                if (infoResponse == null)
+                {
                     System.Threading.Thread.Sleep(1000);
                 }
             }
             return infoResponse;
         }
 
-        public Task<AccountInfoResponse[]> WaitForAccounts(params AccountId[] accounts)
+        public async Task<AccountInfoResponse[]> WaitForAccounts(params AccountId[] accounts)
         {
-            return Task.WhenAll(accounts.Select(account => WaitForAccount(account)));
+            var results = new AccountInfoResponse[accounts.Length];
+            for (var i = 0; i < accounts.Length; ++i)
+            {
+                results[i] = await WaitForAccount(accounts[i]);
+            }
+            return results;
         }
-
 
         public void Dispose()
         {

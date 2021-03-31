@@ -1239,6 +1239,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(counterOffer.TakerPays, cor.TakerPays);
             Assert.Equal(counterOffer.TakerGets, cor.TakerGets);
 
+            // Check the offer in the ledger
             var ledgerEntryRequest = new LedgerEntryRequest();
             ledgerEntryRequest.Ledger = LedgerSpecification.Current;
             ledgerEntryRequest.Index = OfferLedgerEntry.CalculateId(accounts[0].Address, or.Sequence);
@@ -1248,6 +1249,21 @@ namespace Ibasa.Ripple.Tests
             Assert.Equal(accounts[0].Address, offerData.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);
             Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
+
+            // Check the offer book
+            var bookOffersRequest = new BookOffersRequest();
+            bookOffersRequest.Ledger = LedgerSpecification.Current;
+            bookOffersRequest.TakerPays = CurrencyType.XRP;
+            bookOffersRequest.TakerGets = new CurrencyType(accounts[0].Address, new CurrencyCode("USD"));
+            var bookOffersResponse = await Api.BookOffers(bookOffersRequest);
+            var bookOffer = bookOffersResponse.Offers.Single();
+
+            Assert.Equal(accounts[0].Address, bookOffer.Offer.Account);
+            Assert.Equal(XrpAmount.FromXrp(5.0m), bookOffer.Offer.TakerPays);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), bookOffer.Offer.TakerGets);
+
+            Assert.Equal(100000m, bookOffer.Quality);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), bookOffer.OwnerFunds);
         }
     }
 }

@@ -1598,28 +1598,68 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Specification of which currency the account taking the offer would receive.
         /// </summary>
-        public CurrencyCode TakerGets { get; set; }
+        public CurrencyType TakerGets { get; set; }
 
         /// <summary>
         /// Specification of which currency the account taking the offer would pay.
         /// </summary>
-        public CurrencyCode TakerPays { get; set; }
+        public CurrencyType TakerPays { get; set; }
     }
 
+    /// <summary>
+    /// In addition to the standard Offer fields, the following fields may be included in members of the offers array:
+    /// </summary>
     public sealed class BookOffer
     {
         public OfferLedgerEntry Offer { get; private set; }
-        //owner_funds String  Amount of the TakerGets currency the side placing the offer has available to be traded. (XRP is represented as drops; any other currency is represented as a decimal value.) If a trader has multiple offers in the same book, only the highest-ranked offer includes this field.
-        //taker_gets_funded String (XRP) or Object (non-XRP)	(Only included in partially-funded offers) The maximum amount of currency that the taker can get, given the funding status of the offer.
-        //taker_pays_funded   String (XRP) or Object (non-XRP)    (Only included in partially-funded offers) The maximum amount of currency that the taker would pay, given the funding status of the offer.
-        //quality String The exchange rate, as the ratio taker_pays divided by taker_gets. For fairness, offers that have the same quality are automatically taken first-in, first-out. (In other words, if multiple people offer to exchange currency at the same rate, the oldest offer is taken first.)
+
+        /// <summary>
+        /// Amount of the TakerGets currency the side placing the offer has available to be traded.
+        /// (XRP is represented as drops; any other currency is represented as a decimal value.)
+        /// If a trader has multiple offers in the same book, only the highest-ranked offer includes this field.
+        /// </summary>
+        public Amount? OwnerFunds { get; private set; }
+
+        /// <summary>
+        /// The exchange rate, as the ratio taker_pays divided by taker_gets. For fairness, offers that have the same quality are automatically taken first-in, first-out.
+        /// (In other words, if multiple people offer to exchange currency at the same rate, the oldest offer is taken first.)
+        /// </summary>
+        public decimal Quality { get; private set; }
+
+        /// <summary>
+        /// (Only included in partially-funded offers)
+        /// The maximum amount of currency that the taker can get, given the funding status of the offer.
+        /// </summary>
+        public Amount? TakerGetsFunded => throw new NotImplementedException();
+
+        /// <summary>
+        /// (Only included in partially-funded offers)
+        /// The maximum amount of currency that the taker would pay, given the funding status of the offer.
+        /// </summary>
+        public Amount? TakerPaysFunded => throw new NotImplementedException();
     
         internal BookOffer(JsonElement json)
         {
             Offer = new OfferLedgerEntry(json);
+
+            Quality = decimal.Parse(json.GetProperty("quality").GetString());
+            
+            if (json.TryGetProperty("owner_funds", out var ownerFunds))
+            {
+                var issuedAmount = Offer.TakerGets.IssuedAmount;
+                if (issuedAmount.HasValue)
+                {
+                    // Issued amount
+                    OwnerFunds = new IssuedAmount(issuedAmount.Value.Issuer, issuedAmount.Value.CurrencyCode, Currency.Parse(ownerFunds.ToString()));
+                }
+                else
+                {
+                    // Drops
+                    OwnerFunds = XrpAmount.FromDrops(ulong.Parse(ownerFunds.ToString()));
+                }
+            }
         }
     }
-
 
     public sealed class BookOffersResponse
     {

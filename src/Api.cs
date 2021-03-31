@@ -469,5 +469,34 @@ namespace Ibasa.Ripple
             var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
             return new DepositAuthorizedResponse(response);
         }
+
+        /// <summary>
+        /// The book_offers method retrieves a list of offers, also known as the order book, between two currencies.
+        /// </summary>
+        public async Task<BookOffersResponse> BookOffers(BookOffersRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "book_offers");
+            LedgerSpecification.Write(jsonWriter, request.Ledger);
+            if (request.Limit.HasValue)
+            {
+                jsonWriter.WriteNumber("limit", request.Limit.Value);
+            }
+            if (request.Taker.HasValue)
+            {
+                jsonWriter.WriteString("taker", request.Taker.Value.ToString());
+            }
+            jsonWriter.WritePropertyName("taker_gets");
+            request.TakerGets.WriteJson(jsonWriter);
+            jsonWriter.WritePropertyName("taker_pays");
+            request.TakerPays.WriteJson(jsonWriter);
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new BookOffersResponse(response);
+        }
     }
 }

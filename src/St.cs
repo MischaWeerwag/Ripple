@@ -165,25 +165,26 @@ namespace Ibasa.Ripple.St
             bufferWriter.Advance(8);
         }
 
-        public void WriteAmount(StAmountFieldCode fieldCode, Amount value)
+        public void WriteAmount(StAmountFieldCode fieldCode, IssuedAmount value)
         {
             WriteFieldId(StTypeCode.Amount, (uint)fieldCode);
+            var span = bufferWriter.GetSpan(48);
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), Currency.ToUInt64Bits(value.Value));
+            value.CurrencyCode.CopyTo(span.Slice(8));
+            value.Issuer.CopyTo(span.Slice(28));
+            bufferWriter.Advance(48);
+        }
+
+        public void WriteAmount(StAmountFieldCode fieldCode, Amount value)
+        {
             var xrp = value.XrpAmount;
-            var issued = value.IssuedAmount;
             if (xrp.HasValue)
             {
-                var amount = xrp.Value;
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), amount.Drops | 0x4000000000000000);
-                bufferWriter.Advance(8);
+                WriteAmount(fieldCode, xrp.Value);
             }
             else
             {
-                var amount = issued.Value;
-                var span = bufferWriter.GetSpan(48);
-                System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(bufferWriter.GetSpan(8), Currency.ToUInt64Bits(amount.Value));
-                amount.CurrencyCode.CopyTo(span.Slice(8));
-                amount.Issuer.CopyTo(span.Slice(28));
-                bufferWriter.Advance(48);
+                WriteAmount(fieldCode, value.IssuedAmount.Value);
             }
         }
 
@@ -252,6 +253,64 @@ namespace Ibasa.Ripple.St
         public void WritePathSet(StPathSetFieldCode fieldCode, PathSet value)
         {
             WriteFieldId(StTypeCode.PathSet, (uint)fieldCode);
+
+            var first = true;
+            Span<byte> span;
+
+            foreach (var path in value)
+            {
+                if (first)
+                {
+                    first = false;
+                }
+                else
+                {
+                    span = bufferWriter.GetSpan(1);
+                    span[0] = 0xFF;
+                    bufferWriter.Advance(1);
+                }
+
+                foreach (var element in path)
+                {
+                    var flags =
+                        (element.Account.HasValue ? 0x01 : 0x00) |
+                        (element.Currency.HasValue ? 0x10 : 0x00) |
+                        (element.Issuer.HasValue ? 0x20 : 0x00);
+
+                    var size =
+                        (element.Account.HasValue ? 20 : 0) +
+                        (element.Currency.HasValue ? 20 : 0) +
+                        (element.Issuer.HasValue ? 20 : 0) +
+                        1;
+
+                    span = bufferWriter.GetSpan(size);
+
+                    span[0] = (byte)flags;
+
+                    var offset = 1;
+                    if(element.Account.HasValue)
+                    {
+                        element.Account.Value.CopyTo(span.Slice(offset));
+                        offset += 20;
+                    }
+                    if (element.Currency.HasValue)
+                    {
+                        element.Currency.Value.CopyTo(span.Slice(offset));
+                        offset += 20;
+                    }
+                    if (element.Issuer.HasValue)
+                    {
+                        element.Issuer.Value.CopyTo(span.Slice(offset));
+                        offset += 20;
+                    }
+
+                    bufferWriter.Advance(size);
+                }
+            }
+
+            span = bufferWriter.GetSpan(1);
+            span[0] = 0x0;
+            bufferWriter.Advance(1);
         }
     }
 
@@ -744,6 +803,56 @@ namespace Ibasa.Ripple.St
                 throw new Exception();
             }
             return value;
+        }
+
+        public PathSet ReadPathSet()
+        {
+            var paths = new System.Collections.Generic.List<Path>();
+            var path = new System.Collections.Generic.List<PathElement>();
+
+            while(true)
+            {
+                var type = data[ConsumedBytes++];
+
+                if (type == 0x00 || type == 0xFF)
+                {
+                    paths.Add(new Path(path));
+                    path.Clear();
+
+                    if (type == 0x00) break;
+                }
+                else if (type == 0x01)
+                {
+                    var account = new AccountId(data.Slice(ConsumedBytes, 20));
+                    path.Add(PathElement.FromAccount(account));
+                    ConsumedBytes += 20;
+                }
+                else if (type == 0x10)
+                {
+                    var currency = new CurrencyCode(data.Slice(ConsumedBytes, 20));
+                    path.Add(PathElement.FromCurrency(currency));
+                    ConsumedBytes += 20;
+                }
+                else if (type == 0x20)
+                {
+                    var issuer = new AccountId(data.Slice(ConsumedBytes, 20));
+                    path.Add(PathElement.FromIssuer(issuer));
+                    ConsumedBytes += 20;
+                }
+                else if (type == 0x30)
+                {
+                    var currency = new CurrencyCode(data.Slice(ConsumedBytes, 20));
+                    var issuer = new AccountId(data.Slice(ConsumedBytes + 20, 20));
+                    path.Add(PathElement.FromIssuedCurrency(issuer, currency));
+                    ConsumedBytes += 40;
+                }
+                else
+                {
+                    throw new RippleException(string.Format("Bad path element {0} in pathset", type));
+                }
+            }
+
+            return new PathSet(paths);
         }
     }
 }

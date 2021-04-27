@@ -13,20 +13,18 @@ namespace Ibasa.Ripple.Tests
 
         public readonly AccountId Address;
         public readonly Seed Secret;
-        public readonly ulong Amount;
 
-        private TestAccount(AccountId address, Seed secret, ulong amount)
+        private TestAccount(AccountId address, Seed secret)
         {
             Address = address;
             Secret = secret;
-            Amount = amount;
         }
 
         public static TestAccount FromSeed(Seed secret)
         {
             secret.KeyPair(out var _, out var keyPair);
             var address = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
-            return new TestAccount(address, secret, 0);
+            return new TestAccount(address, secret);
         }
 
         public static async Task<TestAccount> Create()
@@ -37,8 +35,7 @@ namespace Ibasa.Ripple.Tests
             var account = document.RootElement.GetProperty("account");
             return new TestAccount(
                 new AccountId(account.GetProperty("address").GetString()),
-                new Seed(account.GetProperty("secret").GetString()),
-                document.RootElement.GetProperty("balance").GetUInt64() * 1000000UL);
+                new Seed(account.GetProperty("secret").GetString()));
         }
     }
 
@@ -151,7 +148,7 @@ namespace Ibasa.Ripple.Tests
             var submits = new List<(SubmitResponse, Hash256)>();
             foreach (var transaction in transactions)
             {
-                if(transaction.Account != account)
+                if (transaction.Account != account)
                 {
                     throw new Exception(string.Format("Transaction in submit batch did not match first transactions account"));
                 }
@@ -189,7 +186,7 @@ namespace Ibasa.Ripple.Tests
             }
 
             var results = new (SubmitResponse, TransactionResponse)[submits.Count];
-            for(int i = 0; i < submits.Count; ++i)
+            for (int i = 0; i < submits.Count; ++i)
             {
                 var submit = submits[i];
 
@@ -806,7 +803,7 @@ namespace Ibasa.Ripple.Tests
             }
 
             Assert.Equal(
-                deleteAccount.Amount - transaction.Fee.Drops,
+                info.AccountData.Balance.Drops - transaction.Fee.Drops,
                 endingDrops - startingDrops);
         }
 
@@ -975,7 +972,7 @@ namespace Ibasa.Ripple.Tests
             currencies[1] = new CurrencyCode("BTC");
             currencies[2] = new CurrencyCode("USD");
             currencies[3] = new CurrencyCode("EUR");
-            for(int i = 4; i < currencies.Length; ++i)
+            for (int i = 4; i < currencies.Length; ++i)
             {
                 var bytes = String.Concat(Enumerable.Repeat(i.ToString("x2"), 20));
                 currencies[i] = new CurrencyCode(bytes);
@@ -1023,7 +1020,7 @@ namespace Ibasa.Ripple.Tests
             var results = new Dictionary<AccountId, List<TrustLine>>();
             results[account2.Address] = new List<TrustLine>();
             results[account3.Address] = new List<TrustLine>();
-            await foreach(var line in response)
+            await foreach (var line in response)
             {
                 var amounts = results[line.Account];
                 amounts.Add(line);
@@ -1033,7 +1030,7 @@ namespace Ibasa.Ripple.Tests
             {
                 Assert.Equal(currencies.Length, lines.Count);
 
-                for(int i = 0; i < currencies.Length; ++i)
+                for (int i = 0; i < currencies.Length; ++i)
                 {
                     var currency = currencies[i];
                     var amount = new Currency(i + 1);
@@ -1065,7 +1062,7 @@ namespace Ibasa.Ripple.Tests
                 var response = await Api.LedgerData(request);
                 Assert.NotNull(response.LedgerHash);
 
-                foreach(var obj in response.State)
+                foreach (var obj in response.State)
                 {
                     Assert.NotNull(obj.Item1);
                     if (obj.Item1 is AccountRootLedgerEntry)
@@ -1206,11 +1203,12 @@ namespace Ibasa.Ripple.Tests
         public async Task TestUsdOffer()
         {
             var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
+            var usd = new CurrencyCode("USD");
 
             // Set up a trust line
             var trustSet = new TrustSetTransaction();
             trustSet.Account = accounts[1].Address;
-            trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(1000m));
+            trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, usd, new Currency(1000m));
 
             // Submit and wait for the trust line
             var (_, _) = await SubmitTransaction(accounts[1].Secret, trustSet);
@@ -1219,7 +1217,7 @@ namespace Ibasa.Ripple.Tests
             var offer = new OfferCreateTransaction();
             offer.Account = accounts[0].Address;
             offer.TakerPays = XrpAmount.FromXrp(10.0m);
-            offer.TakerGets = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(100m));
+            offer.TakerGets = new IssuedAmount(accounts[0].Address, usd, new Currency(100m));
 
             var (_, transactionResponse) = await SubmitTransaction(accounts[0].Secret, offer);
             var or = Assert.IsType<OfferCreateTransaction>(transactionResponse.Transaction);
@@ -1230,7 +1228,7 @@ namespace Ibasa.Ripple.Tests
             // Offer 5XRP for 50USD from accountTwo
             var counterOffer = new OfferCreateTransaction();
             counterOffer.Account = accounts[1].Address;
-            counterOffer.TakerPays = new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m));
+            counterOffer.TakerPays = new IssuedAmount(accounts[0].Address, usd, new Currency(50m));
             counterOffer.TakerGets = XrpAmount.FromXrp(5.0m);
 
             var (_, counterTransactionResponse) = await SubmitTransaction(accounts[1].Secret, counterOffer);
@@ -1248,22 +1246,180 @@ namespace Ibasa.Ripple.Tests
 
             Assert.Equal(accounts[0].Address, offerData.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), offerData.TakerPays);
-            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), offerData.TakerGets);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, usd, new Currency(50m)), offerData.TakerGets);
 
             // Check the offer book
             var bookOffersRequest = new BookOffersRequest();
             bookOffersRequest.Ledger = LedgerSpecification.Current;
             bookOffersRequest.TakerPays = CurrencyType.XRP;
-            bookOffersRequest.TakerGets = new CurrencyType(accounts[0].Address, new CurrencyCode("USD"));
+            bookOffersRequest.TakerGets = new CurrencyType(accounts[0].Address, usd);
             var bookOffersResponse = await Api.BookOffers(bookOffersRequest);
             var bookOffer = bookOffersResponse.Offers.Single();
 
             Assert.Equal(accounts[0].Address, bookOffer.Offer.Account);
             Assert.Equal(XrpAmount.FromXrp(5.0m), bookOffer.Offer.TakerPays);
-            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), bookOffer.Offer.TakerGets);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, usd, new Currency(50m)), bookOffer.Offer.TakerGets);
 
             Assert.Equal(100000m, bookOffer.Quality);
-            Assert.Equal(new IssuedAmount(accounts[0].Address, new CurrencyCode("USD"), new Currency(50m)), bookOffer.OwnerFunds);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, usd, new Currency(50m)), bookOffer.OwnerFunds);
+        }
+
+        [Fact]
+        public async Task TestGetPath_NoPath()
+        {
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
+            var btc = new CurrencyCode("BTC");
+
+            // Ask for a path to send BTC to account 1 from account 0
+            var ripplePathFindRequest = new RipplePathFindRequest();
+            ripplePathFindRequest.SourceAccount = accounts[0].Address;
+            ripplePathFindRequest.DestinationAccount = accounts[1].Address;
+            ripplePathFindRequest.DestinationAmount = new Amount(accounts[1].Address, btc, new Currency(10m));
+
+            var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
+            Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
+            Assert.Equal(new[] { CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
+            Assert.Empty(ripplePathFindResponse.Alternatives);
+        }
+
+        [Fact]
+        public async Task TestGetPath_Direct()
+        {
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
+            var btc = new CurrencyCode("BTC");
+
+            var trustSet = new TrustSetTransaction();
+            trustSet.Account = accounts[1].Address;
+            trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, btc, new Currency(100m));
+            var (_, _) = await SubmitTransaction(accounts[1].Secret, trustSet);
+
+            // Ask for a path to send BTC to account 1 from account 0
+            var ripplePathFindRequest = new RipplePathFindRequest();
+            ripplePathFindRequest.SourceAccount = accounts[0].Address;
+            ripplePathFindRequest.DestinationAccount = accounts[1].Address;
+            ripplePathFindRequest.DestinationAmount = new Amount(accounts[1].Address, btc, new Currency(10m));
+
+            var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
+            Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
+            Assert.Equal(new[] { btc, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
+            var alternative = Assert.Single(ripplePathFindResponse.Alternatives);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, btc, new Currency(10m)), alternative.SourceAmount);
+            Assert.Empty(alternative.PathsComputed);
+        }
+
+        [Fact]
+        public async Task TestGetPath_Ripple()
+        {
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create(), TestAccount.Create());
+            var btc = new CurrencyCode("BTC");
+
+            // Set up some trust lines...
+            var trustSet = new TrustSetTransaction();
+            trustSet.Account = accounts[2].Address;
+            trustSet.LimitAmount = new IssuedAmount(accounts[1].Address, btc, new Currency(100m));
+            var (_, _) = await SubmitTransaction(accounts[2].Secret, trustSet);
+
+            trustSet.Account = accounts[1].Address;
+            trustSet.LimitAmount = new IssuedAmount(accounts[0].Address, btc, new Currency(100m));
+            var (_, _) = await SubmitTransaction(accounts[1].Secret, trustSet);
+
+            // Ask for a path to send BTC to account 2 from account 0
+            var ripplePathFindRequest = new RipplePathFindRequest();
+            ripplePathFindRequest.SourceAccount = accounts[0].Address;
+            ripplePathFindRequest.DestinationAccount = accounts[2].Address;
+            ripplePathFindRequest.DestinationAmount = new Amount(accounts[2].Address, btc, new Currency(10m));
+            ripplePathFindRequest.SourceCurrencies = new[] { CurrencyType.XRP, new CurrencyType(accounts[0].Address, btc) };
+            var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
+            Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
+            Assert.Equal(new[] { btc, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
+            var alternative = Assert.Single(ripplePathFindResponse.Alternatives);
+            Assert.Equal(new IssuedAmount(accounts[0].Address, btc, new Currency(10m)), alternative.SourceAmount);
+            var path = Assert.Single(alternative.PathsComputed);
+            var pathItem = Assert.Single(path);
+            Assert.Equal(accounts[1].Address, pathItem.Account);
+
+            // ... and try and make a payment with that path
+            var payment = new PaymentTransaction();
+            payment.Account = ripplePathFindRequest.SourceAccount;
+            payment.Destination = ripplePathFindRequest.DestinationAccount;
+            payment.Amount = ripplePathFindRequest.DestinationAmount;
+            payment.SendMax = alternative.SourceAmount;
+            payment.Paths = alternative.PathsComputed;
+            var (_, _) = await SubmitTransaction(accounts[0].Secret, payment);
+        }
+
+        [Fact]
+        public async Task TestGetPath_OrderBook()
+        {
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create(), TestAccount.Create(), TestAccount.Create());
+            var gbp = new CurrencyCode("GBP");
+
+            var A1 = accounts[0];
+            var A2 = accounts[1];
+            var G3 = accounts[2];
+            var M1 = accounts[3];
+
+            // Set up trust lines, payments and offers
+            var accountSet = new AccountSetTransaction();
+            accountSet.Account = G3.Address;
+            accountSet.SetFlag = AccountSetFlags.DefaultRipple;
+            var (_, _) = await SubmitTransaction(G3.Secret, accountSet);
+
+            var trustSet = new TrustSetTransaction();
+            trustSet.LimitAmount = new IssuedAmount(G3.Address, gbp, new Currency(100m));
+            trustSet.Account = A1.Address;
+            var (_, _) = await SubmitTransaction(A1.Secret, trustSet);
+            trustSet.Account = A2.Address;
+            var (_, _) = await SubmitTransaction(A2.Secret, trustSet);
+            trustSet.LimitAmount = new IssuedAmount(G3.Address, gbp, new Currency(1000m));
+            trustSet.Account = M1.Address;
+            var (_, _) = await SubmitTransaction(M1.Secret, trustSet);
+
+            var payment = new PaymentTransaction();
+            payment.Account = G3.Address;
+            payment.Amount = new IssuedAmount(G3.Address, gbp, new Currency(50m));
+            payment.Destination = A1.Address;
+            var (_, _) = await SubmitTransaction(G3.Secret, payment);
+            payment.Destination = A2.Address;
+            var (_, _) = await SubmitTransaction(G3.Secret, payment);
+            payment.Amount = new IssuedAmount(G3.Address, gbp, new Currency(100m));
+            payment.Destination = M1.Address;
+            var (_, _) = await SubmitTransaction(G3.Secret, payment);
+
+            var offerCreate = new OfferCreateTransaction();
+            offerCreate.Account = M1.Address;
+            offerCreate.TakerPays = new IssuedAmount(G3.Address, gbp, new Currency(1m));
+            offerCreate.TakerGets = XrpAmount.FromXrp(10m); 
+            var (_, _) = await SubmitTransaction(M1.Secret, offerCreate);
+
+            // Ask for a path to send XRP to A2 from A1 via GBP
+            var ripplePathFindRequest = new RipplePathFindRequest();
+            ripplePathFindRequest.SourceAccount = A1.Address;
+            ripplePathFindRequest.DestinationAccount = A2.Address;
+            ripplePathFindRequest.DestinationAmount = XrpAmount.FromXrp(10m);
+            ripplePathFindRequest.SourceCurrencies = new[] { new CurrencyType(gbp) };
+            var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
+            Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
+            Assert.Equal(new[] { gbp, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
+            var alternative = Assert.Single(ripplePathFindResponse.Alternatives);
+            Assert.Equal(new IssuedAmount(A1.Address, gbp, new Currency(1m)), alternative.SourceAmount);
+            var path = Assert.Single(alternative.PathsComputed);
+            Assert.Collection(path,
+                item => Assert.Equal(G3.Address, item.Account),
+                item => Assert.Equal(CurrencyCode.XRP, item.Currency));
+            
+            // ... and try and make a payment with that path
+            payment = new PaymentTransaction();
+            payment.Account = ripplePathFindRequest.SourceAccount;
+            payment.Destination = ripplePathFindRequest.DestinationAccount;
+            payment.Amount = ripplePathFindRequest.DestinationAmount;
+            payment.SendMax = alternative.SourceAmount;
+            payment.Paths = alternative.PathsComputed;
+            var (_, _) = await SubmitTransaction(A1.Secret, payment);
         }
     }
 }

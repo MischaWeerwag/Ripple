@@ -38,10 +38,10 @@ namespace Ibasa.Ripple
 
         internal void WriteTo(ref StWriter writer)
         {
-            writer.WriteStartObject(StObjectFieldCode.Signer);            
+            writer.WriteStartObject(StObjectFieldCode.Signer);
             writer.WriteBlob(StBlobFieldCode.SigningPubKey, SigningPubKey.Span);
             writer.WriteBlob(StBlobFieldCode.TxnSignature, TxnSignature.Span);
-            writer.WriteAccount(StAccountIDFieldCode.Account, Account);            
+            writer.WriteAccount(StAccountIDFieldCode.Account, Account);
             writer.WriteEndObject();
         }
     }
@@ -70,15 +70,15 @@ namespace Ibasa.Ripple
 
         private static string _allowedChars =
                     "0123456789" +
-                    "-._~:/?#[]@!$&'()*+,;=%" + 
+                    "-._~:/?#[]@!$&'()*+,;=%" +
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
                     "abcdefghijklmnopqrstuvwxyz";
 
         private static void Validate(string value, string paramName)
         {
-            foreach(var c in value)
+            foreach (var c in value)
             {
-                if(!_allowedChars.Contains(c))
+                if (!_allowedChars.Contains(c))
                 {
                     var message = String.Format("The character '{0}' is not valid", c);
                     throw new ArgumentException(message, paramName);
@@ -146,13 +146,140 @@ namespace Ibasa.Ripple
         }
     }
 
-    public sealed class PathSet
+    public struct PathElement
     {
-        public PathSet()
-        {
+        /// <summary>
+        /// (Optional) If present, this path step represents rippling through the specified address.
+        /// MUST NOT be provided if this step specifies the currency or issuer fields.
+        /// </summary>
+        public AccountId? Account { get; }
 
+        /// <summary>
+        /// (Optional) If present, this path step represents changing currencies through an order book.
+        /// The currency specified indicates the new currency.
+        /// MUST NOT be provided if this step specifies the account field.
+        /// </summary>
+        public CurrencyCode? Currency { get; }
+
+        /// <summary>
+        /// (Optional) If present, this path step represents changing currencies and this address defines the issuer of the new currency.If omitted in a step with a non-XRP currency, a previous step of the path defines the issuer.If present when currency is omitted, indicates a path step that uses an order book between same-named currencies with different issuers.
+        /// MUST be omitted if the currency is XRP.
+        /// MUST NOT be provided if this step specifies the account field.
+        /// </summary>
+        public AccountId? Issuer { get; }
+
+        private PathElement(AccountId? account, CurrencyCode? currency, AccountId? issuer)
+        {
+            Account = account;
+            Currency = currency;
+            Issuer = issuer;
         }
 
+        public static PathElement FromAccount(AccountId account)
+        {
+            return new PathElement(account, null, null);
+        }
+
+        public static PathElement FromIssuer(AccountId issuer)
+        {
+            return new PathElement(null, null, issuer);
+        }
+
+        public static PathElement FromCurrency(CurrencyCode currency)
+        {
+            return new PathElement(null, currency, null);
+        }
+
+        public static PathElement FromIssuedCurrency(AccountId issuer, CurrencyCode currency)
+        {
+            return new PathElement(null, currency, issuer);
+        }
+
+        public PathElement(JsonElement json)
+        {
+            JsonElement element;
+            if (json.TryGetProperty("account", out element))
+            {
+                Account = new AccountId(element.GetString());
+            }
+            else
+            {
+                Account = default;
+            }
+            if (json.TryGetProperty("currency", out element))
+            {
+                Currency = new CurrencyCode(element.GetString());
+            }
+            else
+            {
+                Currency = default;
+            }
+            if (json.TryGetProperty("issuer", out element))
+            {
+                Issuer = new AccountId(element.GetString());
+            }
+            else
+            {
+                Issuer = default;
+            }
+        }
+    }
+
+    public sealed class Path : ReadOnlyCollection<PathElement>
+    {
+        private static PathElement[] Parse(JsonElement element)
+        {
+            var path = new PathElement[element.GetArrayLength()];
+            for (var i = 0; i < path.Length; ++i)
+            {
+                path[i] = new PathElement(element[i]);
+            }
+            return path;
+        }
+
+        public Path(JsonElement element)
+            : base(Parse(element))
+        {
+        }
+
+        public Path(System.Collections.Generic.IEnumerable<PathElement> path)
+            : base(System.Linq.Enumerable.ToArray(path))
+        {
+        }
+
+        public Path(params PathElement[] path)
+            : base(path)
+        {
+        }
+    }
+
+
+    public sealed class PathSet : ReadOnlyCollection<Path>
+    {
+        private static Path[] Parse(JsonElement element)
+        {
+            var paths = new Path[element.GetArrayLength()];
+            for (var i = 0; i < paths.Length; ++i)
+            {
+                paths[i] = new Path(element[i]);
+            }
+            return paths;
+        }
+
+        public PathSet(JsonElement element) 
+            : base(Parse(element))
+        {
+        }
+
+        public PathSet(System.Collections.Generic.IEnumerable<Path> paths) 
+            : base(System.Linq.Enumerable.ToArray(paths))
+        {
+        }
+
+        public PathSet(params Path[] paths)
+            : base(paths)
+        {
+        }
     }
 
     public abstract class Transaction
@@ -564,4 +691,37 @@ namespace Ibasa.Ripple
             set { base.Flags = (uint)value; }
         }
     }
+
+    [Flags]
+    public enum PaymentFlags
+    {
+        /// <summary>
+        /// Do not use the default path; only use paths included in the Paths field.
+        /// This is intended to force the transaction to take arbitrage opportunities.
+        /// Most clients do not need this.
+        /// </summary>
+        NoDirectRipple = 0x00010000,
+
+        /// <summary>
+        /// If the specified Amount cannot be sent without spending more than SendMax, reduce the received amount instead of failing outright.
+        /// See Partial Payments for more details.
+        /// </summary>
+        PartialPayment = 0x00020000,
+
+        /// <summary>
+        /// Only take paths where all the conversions have an input:output ratio that is equal or better than the ratio of Amount:SendMax.
+        /// See Limit Quality for details.
+        /// </summary>
+        LimitQuality = 0x00040000,
+    }
+
+    public sealed partial class PaymentTransaction
+    {
+        public new PaymentFlags Flags
+        {
+            get { return (PaymentFlags)base.Flags; }
+            set { base.Flags = (uint)value; }
+        }
+    }
+
 }

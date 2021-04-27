@@ -319,8 +319,8 @@ let knownTypes = Map.ofList [
     "PathSet", (
         false,
         "PathSet",
-        "new PathSet()",
-        "new PathSet()",
+        "new PathSet({0})",
+        "reader.ReadPathSet()",
         "writer.WritePathSet({0}, {1})"
         )
 ]

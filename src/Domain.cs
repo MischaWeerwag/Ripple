@@ -4,14 +4,20 @@ using System.Text.Json;
 namespace Ibasa.Ripple
 {
     /// <summary>
-    /// The "CurrencyType" type is a special field type that represents an issued currency with a code and issuer or XRP.
+    /// The "CurrencyType" type is a special field type that represents an issued currency with a code and optionally an issuer or XRP.
     /// </summary>
     public struct CurrencyType
     {
-        public readonly AccountId Issuer;
+        public readonly AccountId? Issuer;
         public readonly CurrencyCode CurrencyCode;
 
         public static readonly CurrencyType XRP = new CurrencyType();
+
+        public CurrencyType(CurrencyCode currencyCode)
+        {
+            CurrencyCode = currencyCode;
+            Issuer = null;
+        }
 
         public CurrencyType(AccountId issuer, CurrencyCode currencyCode)
         {
@@ -27,9 +33,9 @@ namespace Ibasa.Ripple
         {
             writer.WriteStartObject();
             writer.WriteString("currency", CurrencyCode.ToString());
-            if (CurrencyCode != CurrencyCode.XRP)
+            if (Issuer.HasValue)
             {
-                writer.WriteString("issuer", Issuer.ToString());
+                writer.WriteString("issuer", Issuer.Value.ToString());
             }
             writer.WriteEndObject();
         }
@@ -38,26 +44,31 @@ namespace Ibasa.Ripple
         {
             var currencyCode = new CurrencyCode(json.GetProperty("currency").GetString());
 
-            if (currencyCode == CurrencyCode.XRP)
+            if (json.TryGetProperty("issuer", out var element))
             {
-                return XRP;
+                return new CurrencyType(new AccountId(element.GetString()), currencyCode);
             }
             else
             {
-                return new CurrencyType(new AccountId(json.GetProperty("issuer").GetString()), currencyCode);
+                return new CurrencyType(currencyCode);
             }
         }
 
         public override string ToString()
         {
-            if (CurrencyCode == CurrencyCode.XRP)
+            if (Issuer.HasValue)
             {
-                return "XRP";
+                return string.Format("{1}({2})", CurrencyCode, Issuer.Value);
             }
             else
             {
-                return string.Format("{1}({2})", CurrencyCode, Issuer);
+                return CurrencyCode.ToString();
             }
+        }
+
+        public static implicit operator CurrencyType(CurrencyCode value)
+        {
+            return new CurrencyType(value);
         }
     }
 
@@ -116,6 +127,27 @@ namespace Ibasa.Ripple
             this.value = Currency.ToUInt64Bits(value);
             this.currencyCode = currencyCode;
             this.issuer = issuer;
+        }
+
+        public void WriteJson(Utf8JsonWriter writer)
+        {
+            var xrp = XrpAmount;
+            if (xrp.HasValue)
+            {
+                xrp.Value.WriteJson(writer);
+            }
+            else
+            {
+                var issued = IssuedAmount;
+                if (issued.HasValue)
+                {
+                    issued.Value.WriteJson(writer);
+                }
+                else
+                {
+                    throw new Exception("Unreachable");
+                }
+            }
         }
 
         internal static Amount ReadJson(JsonElement json)
@@ -200,6 +232,11 @@ namespace Ibasa.Ripple
             return new Amount(value.Drops);
         }
 
+        public void WriteJson(Utf8JsonWriter writer)
+        {
+            writer.WriteStringValue(Drops.ToString());
+        }
+
         public static XrpAmount ReadJson(JsonElement json)
         {
             if (json.ValueKind == JsonValueKind.String)
@@ -244,14 +281,23 @@ namespace Ibasa.Ripple
                 throw new ArgumentException("Can not be XRP", "currencyCode");
             }
 
-            this.Issuer = issuer;
-            this.CurrencyCode = currencyCode;
-            this.Value = value;
+            Issuer = issuer;
+            CurrencyCode = currencyCode;
+            Value = value;
         }
 
         public static implicit operator Amount(IssuedAmount value)
         {
             return new Amount(value.Issuer, value.CurrencyCode, value.Value);
+        }
+
+        public void WriteJson(Utf8JsonWriter writer)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("currency", CurrencyCode.ToString());
+            writer.WriteString("issuer", Issuer.ToString());
+            writer.WriteString("value", Value.ToString());
+            writer.WriteEndObject();
         }
 
         public static IssuedAmount ReadJson(JsonElement json)

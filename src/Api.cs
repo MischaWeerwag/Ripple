@@ -434,8 +434,7 @@ namespace Ibasa.Ripple
                 }
                 else
                 {
-                    jsonWriter.WritePropertyName("hotwallet");
-                    jsonWriter.WriteStartArray();
+                    jsonWriter.WriteStartArray("hotwallet");
                     foreach (var account in request.HotWallet)
                     {
                         jsonWriter.WriteStringValue(account.ToString());
@@ -497,6 +496,43 @@ namespace Ibasa.Ripple
             jsonWriter.Flush();
             var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
             return new BookOffersResponse(response);
+        }
+
+        /// <summary>
+        /// The ripple_path_find method is a simplified version of the path_find method that provides a single response with a payment path you can use right away.
+        /// It is available in both the WebSocket and JSON-RPC APIs. However, the results tend to become outdated as time passes.
+        /// Instead of making multiple calls to stay updated, you should instead use the path_find method to subscribe to continued updates where possible.
+        /// </summary>
+        public async Task<RipplePathFindResponse> RipplePathFind(RipplePathFindRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "ripple_path_find");
+            LedgerSpecification.Write(jsonWriter, request.Ledger);
+            jsonWriter.WriteString("source_account", request.SourceAccount.ToString());
+            jsonWriter.WriteString("destination_account", request.DestinationAccount.ToString());
+            jsonWriter.WritePropertyName("destination_amount");
+            request.DestinationAmount.WriteJson(jsonWriter);
+            if (request.SendMax.HasValue)
+            {
+                jsonWriter.WritePropertyName("send_max");
+                request.SendMax.Value.WriteJson(jsonWriter);
+            }
+            if (request.SourceCurrencies != null)
+            {
+                jsonWriter.WriteStartArray("source_currencies");
+                foreach (var entry in request.SourceCurrencies)
+                {
+                    entry.WriteJson(jsonWriter);
+                }
+                jsonWriter.WriteEndArray();
+            }
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new RipplePathFindResponse(response);
         }
     }
 }

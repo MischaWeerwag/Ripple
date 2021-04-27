@@ -5790,7 +5790,7 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Paths", out element))
             {
-                Paths = new PathSet();
+                Paths = new PathSet(element);
             }
             if (json.TryGetProperty("SendMax", out element))
             {
@@ -5985,7 +5985,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.PathSet_Paths)
             {
-                Paths = new PathSet();
+                Paths = reader.ReadPathSet();
             }
         }
 

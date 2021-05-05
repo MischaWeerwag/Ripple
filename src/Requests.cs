@@ -1771,9 +1771,13 @@ namespace Ibasa.Ripple
         }
     }
 
-
     public sealed class RipplePathFindResponse
     {
+        /// <summary>
+        /// Unique address of the account that would send funds in a transaction.
+        /// </summary>
+        public AccountId SourceAccount { get; set; }
+
         /// <summary>
         /// Unique address of the account that would receive a payment transaction
         /// </summary>
@@ -1795,8 +1799,38 @@ namespace Ibasa.Ripple
         /// </summary>
         public ReadOnlyCollection<RipplePathAlternative> Alternatives { get; private set; }
 
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; private set; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; private set; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; private set; }
+
         internal RipplePathFindResponse(JsonElement json)
         {
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            SourceAccount = new AccountId(json.GetProperty("source_account").ToString());
             DestinationAccount = new AccountId(json.GetProperty("destination_account").ToString());
             DestinationAmount = Amount.ReadJson(json.GetProperty("destination_amount"));
 
@@ -1807,6 +1841,96 @@ namespace Ibasa.Ripple
                 destinationCurrencies[i] = new CurrencyCode(destinationCurrenciesJson[i].ToString());
             }
             DestinationCurrencies = Array.AsReadOnly(destinationCurrencies);
+
+            var alternativesJson = json.GetProperty("alternatives");
+            var alternatives = new RipplePathAlternative[alternativesJson.GetArrayLength()];
+            for (int i = 0; i < alternatives.Length; ++i)
+            {
+                alternatives[i] = new RipplePathAlternative(alternativesJson[i]);
+            }
+            Alternatives = Array.AsReadOnly(alternatives);
+        }
+    }
+
+    public sealed class PathFindRequest
+    {
+        /// <summary>
+        /// Unique address of the account that would send funds in a transaction.
+        /// </summary>
+        public AccountId SourceAccount { get; set; }
+
+        /// <summary>
+        /// Unique address of the account that would receive funds in a transaction.
+        /// </summary>
+        public AccountId DestinationAccount { get; set; }
+
+        /// <summary>
+        /// Currency Amount that the destination account would receive in a transaction.
+        /// Special case: New in: rippled 0.30.0
+        /// You can specify "-1" (for XRP) or provide -1 as the contents of the value field(for non-XRP currencies).
+        /// This requests a path to deliver as much as possible, while spending no more than the amount specified in send_max(if provided).
+        /// </summary>
+        public Amount DestinationAmount { get; set; }
+
+        /// <summary>
+        /// (Optional) Currency Amount that would be spent in the transaction.
+        /// Cannot be used with source_currencies.
+        /// New in: rippled 0.30.0 
+        /// </summary>
+        public Amount? SendMax { get; set; }
+
+        /// <summary>
+        /// (Optional) Array of currencies that the source account might want to spend.
+        /// Each entry in the array should be a JSON object with a mandatory currency field and optional issuer field, like how currency amounts are specified.
+        /// Cannot contain more than 18 source currencies.
+        /// By default, uses all source currencies available up to a maximum of 88 different currency/issuer pairs.
+        /// </summary>
+        public CurrencyType[] SourceCurrencies { get; set; }
+
+        /// <summary>
+        /// (Optional) Array of arrays of objects, representing payment paths to check.
+        /// You can use this to keep updated on changes to particular paths you already know about, or to check the overall cost to make a payment along a certain path.
+        /// </summary>
+        public PathSet Paths { get; set; }
+    }
+
+    public sealed class PathFindResponse
+    {
+        /// <summary>
+        /// Unique address that would send a transaction.
+        /// </summary>
+        public AccountId SourceAccount { get; private set; }
+
+        /// <summary>
+        /// Unique address of the account that would receive a payment transaction.
+        /// </summary>
+        public AccountId DestinationAccount { get; private set; }
+
+        /// <summary>
+        /// Currency Amount that the destination would receive in a transaction.
+        /// </summary>
+        public Amount DestinationAmount { get; private set; }
+
+        /// <summary>
+        /// Array of objects with possible paths to take, as described below.
+        /// If empty, then there are no paths connecting the source and destination accounts.
+        /// </summary>
+        public ReadOnlyCollection<RipplePathAlternative> Alternatives { get; private set; }
+
+        /// <summary>
+        /// If false, this is the result of an incomplete search.
+        /// A later reply may have a better path. If true, then this is the best path found.
+        /// (It is still theoretically possible that a better path could exist, but rippled won't find it.)
+        /// Until you close the pathfinding request, rippled continues to send updates each time a new ledger closes.
+        /// </summary>
+        public bool FullReply { get; private set; }
+
+        internal PathFindResponse(JsonElement json)
+        {
+            FullReply = json.GetProperty("full_reply").GetBoolean();
+            SourceAccount = new AccountId(json.GetProperty("source_account").ToString());
+            DestinationAccount = new AccountId(json.GetProperty("destination_account").ToString());
+            DestinationAmount = Amount.ReadJson(json.GetProperty("destination_amount"));
 
             var alternativesJson = json.GetProperty("alternatives");
             var alternatives = new RipplePathAlternative[alternativesJson.GetArrayLength()];

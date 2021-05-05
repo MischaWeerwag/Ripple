@@ -96,12 +96,12 @@ namespace Ibasa.Ripple.Tests
             return infoResponse;
         }
 
-        public async Task<AccountInfoResponse[]> WaitForAccounts(params AccountId[] accounts)
+        public async Task<AccountInfoResponse[]> WaitForAccounts(params TestAccount[] accounts)
         {
             var results = new AccountInfoResponse[accounts.Length];
             for (var i = 0; i < accounts.Length; ++i)
             {
-                results[i] = await WaitForAccount(accounts[i]);
+                results[i] = await WaitForAccount(accounts[i].Address);
             }
             return results;
         }
@@ -138,51 +138,74 @@ namespace Ibasa.Ripple.Tests
         /// </summary>
         private async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Func<Transaction, Tuple<ReadOnlyMemory<byte>, Hash256>> sign, IEnumerable<Transaction> transactions)
         {
-            var account = transactions.First().Account;
-            AccountInfoResponse infoResponse = await Setup.WaitForAccount(account);
-            var feeResponse = await Api.Fee();
+            var submits = new List<(Transaction, SubmitResponse, Hash256)>();
+            var minLedger = uint.MaxValue;
+            var maxLedger = uint.MinValue;
 
-            var lastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
-            var sequence = infoResponse.AccountData.Sequence;
+            while (true) {
+                var toSubmit = transactions
+                    .Where(transaction => !submits.Exists(tuple => tuple.Item1.Equals(transaction)))
+                    .ToArray();
 
-            var submits = new List<(SubmitResponse, Hash256)>();
-            foreach (var transaction in transactions)
-            {
-                if (transaction.Account != account)
+                if (toSubmit.Length == 0)
                 {
-                    throw new Exception(string.Format("Transaction in submit batch did not match first transactions account"));
+                    break;
                 }
 
-                transaction.LastLedgerSequence = lastLedgerSequence;
-                // Give each transaction a unique sequence number
-                transaction.Sequence = sequence++;
-                // Some transactions have higher or fixed fee requirements.
-                // Don't overwrite them.
-                if (transaction.Fee.Drops == 0)
-                {
-                    transaction.Fee = feeResponse.Drops.MedianFee;
-                }
+                var account = toSubmit[0].Account;
+                AccountInfoResponse infoResponse = await Setup.WaitForAccount(account);
+                var feeResponse = await Api.Fee();
 
-                var signature = sign(transaction);
+                var lastLedgerSequence = feeResponse.LedgerCurrentIndex + 8;
+                var sequence = infoResponse.AccountData.Sequence;
 
-                var request = new SubmitRequest();
-                request.FailHard = true;
-                request.TxBlob = signature.Item1;
-                var submitResponse = await Api.Submit(request);
-                if (!submitResponse.Accepted)
-                {
-                    throw new SubmitException("Transaction was not accepted", submitResponse);
-                }
-                else
-                {
-                    Assert.True(
-                        submitResponse.Kept ||
-                        submitResponse.Queued ||
-                        submitResponse.Applied ||
-                        submitResponse.Broadcast);
-                }
+                minLedger = Math.Min(minLedger, feeResponse.LedgerCurrentIndex);
+                maxLedger = Math.Max(maxLedger, lastLedgerSequence);
 
-                submits.Add((submitResponse, signature.Item2));
+                foreach (var transaction in transactions)
+                {
+                    if (transaction.Account != account)
+                    {
+                        throw new Exception(string.Format("Transaction in submit batch did not match first transactions account"));
+                    }
+
+                    transaction.LastLedgerSequence = lastLedgerSequence;
+                    // Give each transaction a unique sequence number
+                    transaction.Sequence = sequence++;
+                    // Some transactions have higher or fixed fee requirements.
+                    // Don't overwrite them.
+                    if (transaction.Fee.Drops == 0)
+                    {
+                        transaction.Fee = feeResponse.Drops.MedianFee;
+                    }
+
+                    var signature = sign(transaction);
+
+                    var request = new SubmitRequest();
+                    request.FailHard = true;
+                    request.TxBlob = signature.Item1;
+                    var submitResponse = await Api.Submit(request);
+                    if (submitResponse.EngineResult == EngineResult.telCAN_NOT_QUEUE)
+                    {
+                        // Server was too busy to queue, we should try again
+                        // Need to reuse this sequence number
+                        --sequence;
+                    }
+                    else if (!submitResponse.Accepted)
+                    {
+                        throw new SubmitException("Transaction was not accepted", submitResponse);
+                    }
+                    else
+                    {
+                        Assert.True(
+                            submitResponse.Kept ||
+                            submitResponse.Queued ||
+                            submitResponse.Applied ||
+                            submitResponse.Broadcast);
+
+                        submits.Add((transaction, submitResponse, signature.Item2));
+                    }
+                }
             }
 
             var results = new (SubmitResponse, TransactionResponse)[submits.Count];
@@ -192,24 +215,24 @@ namespace Ibasa.Ripple.Tests
 
                 var txRequest = new TxRequest()
                 {
-                    Transaction = submit.Item2,
-                    MinLedger = feeResponse.LedgerCurrentIndex,
-                    MaxLedger = lastLedgerSequence,
+                    Transaction = submit.Item3,
+                    MinLedger = minLedger,
+                    MaxLedger = maxLedger,
                 };
                 while (true)
                 {
                     var ledgerCurrent = await Api.LedgerCurrent();
                     var transactionResponse = await Api.Tx(txRequest);
-                    Assert.Equal(submit.Item2, transactionResponse.Hash);
+                    Assert.Equal(submit.Item3, transactionResponse.Hash);
                     if (transactionResponse.Validated)
                     {
-                        results[i] = (submit.Item1, transactionResponse);
+                        results[i] = (submit.Item2, transactionResponse);
                         break;
                     }
 
                     if (ledgerCurrent > txRequest.MaxLedger)
                     {
-                        throw new SubmitException("Transaction was not validated", submit.Item1);
+                        throw new SubmitException("Transaction was not validated", submit.Item2);
                     }
 
                     System.Threading.Thread.Sleep(2000);
@@ -219,7 +242,7 @@ namespace Ibasa.Ripple.Tests
             return results;
         }
 
-        private async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Seed secret, IEnumerable<Transaction> transactions)
+        protected async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Seed secret, IEnumerable<Transaction> transactions)
         {
             secret.KeyPair(out var _, out var keyPair);
             return await SubmitTransactions(transaction =>
@@ -229,7 +252,7 @@ namespace Ibasa.Ripple.Tests
             }, transactions);
         }
 
-        private async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Seed secret, Transaction transaction)
+        protected async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Seed secret, Transaction transaction)
         {
             secret.KeyPair(out var _, out var keyPair);
             var results = await SubmitTransactions(transaction =>
@@ -240,7 +263,7 @@ namespace Ibasa.Ripple.Tests
             return results.First();
         }
 
-        private async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Tuple<AccountId, Seed>[] secrets, Transaction transaction)
+        protected async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Tuple<AccountId, Seed>[] secrets, Transaction transaction)
         {
             var signers =
                 secrets.Select(tuple =>
@@ -257,7 +280,7 @@ namespace Ibasa.Ripple.Tests
             return results.First();
         }
 
-        private void AssertMemoryEqual(ReadOnlyMemory<byte>? expected, ReadOnlyMemory<byte>? actual)
+        protected void AssertMemoryEqual(ReadOnlyMemory<byte>? expected, ReadOnlyMemory<byte>? actual)
         {
             Assert.Equal(expected.HasValue, actual.HasValue);
             if (!expected.HasValue) return;
@@ -664,11 +687,11 @@ namespace Ibasa.Ripple.Tests
         {
             // We need a fresh accounts setup for this test
             var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create(), TestAccount.Create(), TestAccount.Create());
+            await Setup.WaitForAccounts(accounts);
             var gatewayAccount = accounts[0];
             var account1 = accounts[1];
             var account2 = accounts[2];
             var hotwallet = accounts[3];
-            await Setup.WaitForAccounts(gatewayAccount.Address, account1.Address, account2.Address, hotwallet.Address);
 
             var testAccounts = new[] { account1, account2 };
 
@@ -1277,6 +1300,7 @@ namespace Ibasa.Ripple.Tests
             ripplePathFindRequest.DestinationAmount = new Amount(accounts[1].Address, btc, new Currency(10m));
 
             var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.SourceAccount, ripplePathFindResponse.SourceAccount);
             Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
             Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
             Assert.Equal(new[] { CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
@@ -1301,6 +1325,7 @@ namespace Ibasa.Ripple.Tests
             ripplePathFindRequest.DestinationAmount = new Amount(accounts[1].Address, btc, new Currency(10m));
 
             var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.SourceAccount, ripplePathFindResponse.SourceAccount);
             Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
             Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
             Assert.Equal(new[] { btc, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
@@ -1332,6 +1357,7 @@ namespace Ibasa.Ripple.Tests
             ripplePathFindRequest.DestinationAmount = new Amount(accounts[2].Address, btc, new Currency(10m));
             ripplePathFindRequest.SourceCurrencies = new[] { CurrencyType.XRP, new CurrencyType(accounts[0].Address, btc) };
             var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
+            Assert.Equal(ripplePathFindResponse.SourceAccount, ripplePathFindResponse.SourceAccount);
             Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
             Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
             Assert.Equal(new[] { btc, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
@@ -1402,7 +1428,8 @@ namespace Ibasa.Ripple.Tests
             ripplePathFindRequest.DestinationAmount = XrpAmount.FromXrp(10m);
             ripplePathFindRequest.SourceCurrencies = new[] { new CurrencyType(gbp) };
             var ripplePathFindResponse = await Api.RipplePathFind(ripplePathFindRequest);
-            Assert.Equal(ripplePathFindResponse.DestinationAccount, ripplePathFindResponse.DestinationAccount);
+            Assert.Equal(ripplePathFindResponse.SourceAccount, ripplePathFindResponse.SourceAccount);
+            Assert.Equal(ripplePathFindRequest.DestinationAccount, ripplePathFindResponse.DestinationAccount);
             Assert.Equal(ripplePathFindRequest.DestinationAmount, ripplePathFindResponse.DestinationAmount);
             Assert.Equal(new[] { gbp, CurrencyCode.XRP }, ripplePathFindResponse.DestinationCurrencies);
             var alternative = Assert.Single(ripplePathFindResponse.Alternatives);

@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 
 namespace Ibasa.Ripple
 {
+    public delegate void OnPathFind(WebSocketApi sender, uint requestId, PathFindResponse response);
+
     public sealed class WebSocketApi : Api
     {
         private readonly ClientWebSocket socket;
@@ -78,6 +80,19 @@ namespace Ibasa.Ripple
                                 }
                             }
                         }
+                        else if (type == "path_find")
+                        {
+                            var id = json.RootElement.GetProperty("id").GetUInt32();
+                            var pathFindResponse = new PathFindResponse(json.RootElement);
+                            try
+                            {
+                                OnPathFind?.Invoke(this, id, pathFindResponse);
+                            }
+                            catch (Exception exc)
+                            {
+                                // TODO: We don't want user exceptions from the OnPathFind event to tear down this thread but we should bubble them up somehow.
+                            }
+                        }
 
                         response.Clear();
                     }
@@ -134,6 +149,67 @@ namespace Ibasa.Ripple
             cancellationTokenSource.Cancel();
             await receiveTask;
             await base.DisposeAsync();
+        }
+
+        public event OnPathFind OnPathFind;
+
+        public async Task<ValueTuple<uint, PathFindResponse>> PathFind(PathFindRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "path_find");
+            jsonWriter.WriteString("subcommand", "create");
+            jsonWriter.WriteString("source_account", request.SourceAccount.ToString());
+            jsonWriter.WriteString("destination_account", request.DestinationAccount.ToString());
+            jsonWriter.WritePropertyName("destination_amount");
+            request.DestinationAmount.WriteJson(jsonWriter);
+            if (request.SendMax.HasValue)
+            {
+                jsonWriter.WritePropertyName("send_max");
+                request.SendMax.Value.WriteJson(jsonWriter);
+            }
+            if (request.SourceCurrencies != null)
+            {
+                jsonWriter.WriteStartArray("source_currencies");
+                foreach (var entry in request.SourceCurrencies)
+                {
+                    entry.WriteJson(jsonWriter);
+                }
+                jsonWriter.WriteEndArray();
+            }
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return (requestId, new PathFindResponse(response));
+        }
+
+        public async Task<PathFindResponse> PathFindStatus(CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "path_find");
+            jsonWriter.WriteString("subcommand", "status");
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new PathFindResponse(response);
+        }
+
+        public async Task PathFindClose(CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "path_find");
+            jsonWriter.WriteString("subcommand", "close");
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
         }
     }
 }

@@ -46,8 +46,8 @@ namespace Ibasa.Ripple
 
     public abstract class Api : IAsyncDisposable
     {
-        private readonly System.Buffers.ArrayBufferWriter<byte> jsonBuffer;
-        private readonly System.Text.Json.Utf8JsonWriter jsonWriter;
+        protected readonly System.Buffers.ArrayBufferWriter<byte> jsonBuffer;
+        protected readonly System.Text.Json.Utf8JsonWriter jsonWriter;
 
         protected Api()
         {

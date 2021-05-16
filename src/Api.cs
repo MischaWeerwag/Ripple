@@ -568,5 +568,52 @@ namespace Ibasa.Ripple
             var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
             return new RipplePathFindResponse(response);
         }
+
+        /// <summary>
+        /// The channel_authorize method creates a signature that can be used to redeem a specific amount of XRP from a payment channel.
+        /// </summary>
+        public async Task<ReadOnlyMemory<byte>> ChannelAuthorize(ChannelAuthorizeRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "channel_authorize");
+            jsonWriter.WriteString("channel_id", request.ChannelId.ToString());
+            jsonWriter.WriteString("amount", request.Amount.Drops.ToString());
+            if (request.Seed.HasValue)
+            {
+                var seed = request.Seed.Value;
+                var type = seed.Type == KeyType.Secp256k1 ? "secp256k1" : "ed25519";
+                jsonWriter.WriteString("key_type", type);
+                jsonWriter.WriteString("seed", seed.ToString());
+            }
+            if (request.Passphrase != null) { jsonWriter.WriteString("passphrase", request.Passphrase); }
+            if (request.Secret != null) { jsonWriter.WriteString("secret", request.Secret); }
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return response.GetProperty("signature").GetBytesFromBase16();
+        }
+
+        /// <summary>
+        /// The channel_verify method checks the validity of a signature that can be used to redeem a specific amount of XRP from a payment channel.
+        /// </summary>
+        public async Task<bool> ChannelVerify(ChannelVerifyRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "channel_verify");
+            jsonWriter.WriteString("channel_id", request.ChannelId.ToString());
+            jsonWriter.WriteString("amount", request.Amount.Drops.ToString());
+            jsonWriter.WriteBase16String("public_key", request.PublicKey.GetCanoncialBytes());
+            jsonWriter.WriteBase16String("signature", request.Signature.Span);
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return response.GetProperty("signature_verified").GetBoolean();
+        }
     }
 }

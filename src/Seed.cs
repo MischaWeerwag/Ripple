@@ -73,6 +73,12 @@ namespace Ibasa.Ripple
             return new Seed(entropy, type);
         }
 
+        /// <summary>
+        /// Returns this seed value in the XRP Ledger's base58-encoded format. 
+        /// </summary>
+        /// <returns>
+        /// This seed value in the XRP Ledger's base58-encoded format.
+        /// </returns>
         public override string ToString()
         {
             if (_type == KeyType.Secp256k1)
@@ -138,7 +144,7 @@ namespace Ibasa.Ripple
 
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
-                rootKeyPair.GetCanonicalPublicKey().CopyTo(intermediateSource);
+                rootKeyPair.GetPublicKey().GetCanoncialBytes().CopyTo(intermediateSource);
                 System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(33), 0);
 
                 Org.BouncyCastle.Math.BigInteger secpIntermediateSecret = default;

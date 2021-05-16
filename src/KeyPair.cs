@@ -2,23 +2,102 @@
 
 namespace Ibasa.Ripple
 {
+    public abstract class PublicKey
+    {
+        public abstract bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature);
+
+        public abstract byte[] GetCanoncialBytes();
+    }
+
+    public sealed class Secp256k1PublicKey : PublicKey
+    {
+        private readonly Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer;
+        private readonly Org.BouncyCastle.Math.EC.ECPoint publicKey;
+
+        internal Secp256k1PublicKey(Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer, Org.BouncyCastle.Math.EC.ECPoint publicKey)
+        {
+            this.signer = signer;
+            this.publicKey = publicKey;
+        }
+
+        public override byte[] GetCanoncialBytes()
+        {
+            return publicKey.GetEncoded(true);
+        }
+
+        public override bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
+        {
+            using (var sha512 = System.Security.Cryptography.SHA512.Create())
+            {
+                Span<byte> hashSpan = stackalloc byte[64];
+                sha512.TryComputeHash(data, hashSpan, out var bytesWritten);
+                var hash256 = hashSpan.Slice(0, 32).ToArray();
+
+                signer.VerifySignature(message, r, s);
+
+                var signatures = signer.GenerateSignature(hash256);
+                var r = signatures[0];
+                var s = signatures[1];
+                var sprime = k1Params.N.Subtract(s);
+                if (s.CompareTo(sprime) == 1)
+                {
+                    s = sprime;
+                }
+
+                var bos = new System.IO.MemoryStream(72);
+                var generator = new Org.BouncyCastle.Asn1.DerSequenceGenerator(bos);
+                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(r));
+                generator.AddObject(new Org.BouncyCastle.Asn1.DerInteger(s));
+                generator.Close();
+                return bos.ToArray();
+            }
+        }
+    }
+
+    public sealed class Ed25519PublicKey : PublicKey
+    {
+        private readonly Org.BouncyCastle.Crypto.Signers.Ed25519Signer signer;
+        private readonly Org.BouncyCastle.Crypto.Parameters.Ed25519PublicKeyParameters publicKey;
+
+        internal Ed25519PublicKey(Org.BouncyCastle.Crypto.Signers.Ed25519Signer signer, Org.BouncyCastle.Crypto.Parameters.Ed25519PublicKeyParameters publicKey)
+        {
+            this.signer = signer;
+            this.publicKey = publicKey;
+        }
+
+        public override byte[] GetCanoncialBytes()
+        {
+            var key = new byte[33];
+            key[0] = 0xed;
+            publicKey.Encode(key, 1);
+            return key;
+        }
+
+        public override bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature)
+        {
+            var dataArray = data.ToArray();
+            signer.BlockUpdate(dataArray, 0, dataArray.Length);
+            return signer.VerifySignature(signature.ToArray());
+        }
+    }
+
     public abstract class KeyPair
     {
         public abstract byte[] GetPrivateKey();
 
-        public abstract byte[] GetCanonicalPublicKey();
+        public abstract PublicKey GetPublicKey();
 
         public abstract byte[] Sign(ReadOnlySpan<byte> data);
     }
 
     public sealed class Secp256k1KeyPair : KeyPair
     {
-        private Org.BouncyCastle.Math.EC.ECPoint publicKey;
-        private Org.BouncyCastle.Math.BigInteger privateKey;
-        private Org.BouncyCastle.Asn1.X9.X9ECParameters k1Params;
-        private Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer;
+        private readonly Org.BouncyCastle.Math.EC.ECPoint publicKey;
+        private readonly Org.BouncyCastle.Math.BigInteger privateKey;
+        private readonly Org.BouncyCastle.Asn1.X9.X9ECParameters k1Params;
+        private readonly Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer;
 
-        public Secp256k1KeyPair(Org.BouncyCastle.Math.BigInteger privateKey)
+        internal Secp256k1KeyPair(Org.BouncyCastle.Math.BigInteger privateKey)
         {
             this.privateKey = privateKey;
 
@@ -39,9 +118,9 @@ namespace Ibasa.Ripple
             return privateKey.ToByteArray();
         }
 
-        public override byte[] GetCanonicalPublicKey()
+        public override PublicKey GetPublicKey()
         {
-            return publicKey.GetEncoded(true);
+            return new Secp256k1PublicKey(signer, publicKey);
         }
 
         public override byte[] Sign(ReadOnlySpan<byte> data)
@@ -77,7 +156,7 @@ namespace Ibasa.Ripple
         private Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters privateKey;
         private Org.BouncyCastle.Crypto.Signers.Ed25519Signer signer;
 
-        public Ed25519KeyPair(byte[] privateKey)
+        internal Ed25519KeyPair(byte[] privateKey)
         {
             this.privateKey = new Org.BouncyCastle.Crypto.Parameters.Ed25519PrivateKeyParameters(privateKey, 0);
             this.publicKey = this.privateKey.GeneratePublicKey();
@@ -92,12 +171,9 @@ namespace Ibasa.Ripple
             return key;
         }
 
-        public override byte[] GetCanonicalPublicKey()
+        public override PublicKey GetPublicKey()
         {
-            var key = new byte[33];
-            key[0] = 0xed;
-            publicKey.Encode(key, 1);
-            return key;
+            return new Ed25519PublicKey(signer, publicKey);
         }
 
         public override byte[] Sign(ReadOnlySpan<byte> data)

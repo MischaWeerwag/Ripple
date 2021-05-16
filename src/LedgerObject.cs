@@ -188,7 +188,7 @@ namespace Ibasa.Ripple
     {
         public static Hash256 CalculateId(AccountId source, AccountId destination, uint sequence)
         {
-            Span<byte> buffer = stackalloc byte[62];
+            Span<byte> buffer = stackalloc byte[46];
             System.Buffers.Binary.BinaryPrimitives.WriteUInt16BigEndian(buffer, 0x0078);
             source.CopyTo(buffer.Slice(2));
             destination.CopyTo(buffer.Slice(22));

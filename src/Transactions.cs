@@ -424,15 +424,15 @@ namespace Ibasa.Ripple
 
         private protected abstract void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning);
 
-        private uint hpTXN = 0x54584E00u; // TXN
-        private uint hpSTX = 0x53545800u; // STX
-        private uint hpSMT = 0x534D5400u; // SMT
+        private const uint hpTXN = 0x54584E00u; // TXN
+        private const uint hpSTX = 0x53545800u; // STX
+        private const uint hpSMT = 0x534D5400u; // SMT
 
         public ReadOnlyMemory<byte> Sign(KeyPair keyPair, out Hash256 hash)
         {
             Signers = null;
             TxnSignature = null;
-            SigningPubKey = keyPair.GetCanonicalPublicKey();
+            SigningPubKey = keyPair.GetPublicKey().GetCanoncialBytes();
             var bufferWriter = new ArrayBufferWriter<byte>();
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpSTX);
@@ -465,7 +465,7 @@ namespace Ibasa.Ripple
             {
                 var signer = new Signer();
                 signer.Account = signers[i].Item1;
-                signer.SigningPubKey = signers[i].Item2.GetCanonicalPublicKey();
+                signer.SigningPubKey = signers[i].Item2.GetPublicKey().GetCanoncialBytes();
                 signer.TxnSignature = null;
                 signerArray[i] = signer;
             }
@@ -701,6 +701,26 @@ namespace Ibasa.Ripple
         {
             get { return (PaymentChannelClaimFlags)base.Flags; }
             set { base.Flags = (uint)value; }
+        }
+
+        private const uint hpCLM = 0x434C4D00u; // CLM
+
+        public static byte[] Authorize(KeyPair keyPair, Hash256 channelId, XrpAmount amount)
+        {
+            Span<byte> buffer = stackalloc byte[44];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer, hpCLM);
+            channelId.CopyTo(buffer.Slice(4));
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice(36), amount.Drops);
+            return keyPair.Sign(buffer);
+        }
+
+        public static bool Verify(PublicKey publicKey, ReadOnlySpan<byte> signature, Hash256 channelId, XrpAmount amount)
+        {
+            Span<byte> buffer = stackalloc byte[44];
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(buffer, hpCLM);
+            channelId.CopyTo(buffer.Slice(4));
+            System.Buffers.Binary.BinaryPrimitives.WriteUInt64BigEndian(buffer.Slice(36), amount.Drops);
+            return publicKey.Verify(buffer, signature);
         }
     }
 }

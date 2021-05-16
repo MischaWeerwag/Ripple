@@ -58,7 +58,7 @@ namespace Ibasa.Ripple.Tests
             var address = new AccountId(account);
 
             secret.GetKeyPairs(out var _, out var keyPair);
-            var publicKey = keyPair.GetCanonicalPublicKey();
+            var publicKey = keyPair.GetPublicKey().GetCanoncialBytes();
             Assert.Equal(address, AccountId.FromPublicKey(publicKey));
         }
 

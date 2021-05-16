@@ -1998,7 +1998,7 @@ namespace Ibasa.Ripple
         /// A unique ID for this channel, as a 64-character hexadecimal string.
         /// This is also the ID of the channel object in the ledger's state data.
         /// </summary>
-        public Hash256 ChannelId { get;  }
+        public Hash256 ChannelId { get; }
 
         /// <summary>
         /// The destination account of the channel, as an Address.
@@ -2171,5 +2171,59 @@ namespace Ibasa.Ripple
                 }
             }
         }
+    }
+    public sealed class ChannelAuthorizeRequest
+    {
+        /// <summary>
+        /// The unique ID of the payment channel to use.
+        /// </summary>
+        public Hash256 ChannelId { get; set; }
+
+        /// <summary>
+        /// Cumulative amount of XRP, in drops, to authorize.
+        /// If the destination has already received a lesser amount of XRP from this channel, the signature created by this method can be redeemed for the difference.
+        /// </summary>
+        public XrpAmount Amount { get; set; }
+
+        /// <summary>
+        /// (Optional) Generate a key pair and address from this seed value. 
+        /// This value can be formatted in hexadecimal, the XRP Ledger's base58 format, RFC-1751, or as an arbitrary string. 
+        /// Cannot be used with seed or seed_hex.
+        /// </summary>
+        public string Passphrase { get; set; }
+
+        /// <summary>
+        /// (Optional) The secret seed to use to sign the claim. This must be the same key pair as the public key specified in the channel.
+        /// </summary>
+        public Seed? Seed { get; set; }
+
+        /// <summary>
+        /// (Optional) The secret key to use to sign the claim. This must be the same key pair as the public key specified in the channel.
+        /// Cannot be used with seed, seed_hex, or passphrase.
+        /// </summary>
+        public string Secret { get; set; }
+    }
+
+    public sealed class ChannelVerifyRequest
+    {
+        /// <summary>
+        /// The amount of XRP, in drops, the provided signature authorizes.
+        /// </summary>
+        public XrpAmount Amount { get; set; }
+
+        /// <summary>
+        /// The Channel ID of the channel that provides the XRP.
+        /// </summary>
+        public Hash256 ChannelId { get; set; }
+
+        /// <summary>
+        /// The public key of the channel and the key pair that was used to create the signature.
+        /// </summary>
+        public PublicKey PublicKey { get; set; }
+
+        /// <summary>
+        /// The signature to verify.
+        /// </summary>
+        public ReadOnlyMemory<byte> Signature { get; set; }
     }
 }

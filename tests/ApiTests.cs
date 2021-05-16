@@ -23,7 +23,7 @@ namespace Ibasa.Ripple.Tests
         public static TestAccount FromSeed(Seed secret)
         {
             secret.GetKeyPairs(out var _, out var keyPair);
-            var address = AccountId.FromPublicKey(keyPair.GetPublicKey().GetCanoncialBytes());
+            var address = AccountId.FromPublicKey(keyPair.PublicKey.GetCanoncialBytes());
             return new TestAccount(address, secret);
         }
 
@@ -468,7 +468,7 @@ namespace Ibasa.Ripple.Tests
 
             var transaction = new SetRegularKeyTransaction();
             transaction.Account = account;
-            transaction.RegularKey = AccountId.FromPublicKey(keyPair.GetPublicKey().GetCanoncialBytes());
+            transaction.RegularKey = AccountId.FromPublicKey(keyPair.PublicKey.GetCanoncialBytes());
 
             var (_, transactionResponse) = await SubmitTransaction(secret, transaction);
             var srkr = Assert.IsType<SetRegularKeyTransaction>(transactionResponse.Transaction);
@@ -1465,7 +1465,7 @@ namespace Ibasa.Ripple.Tests
             paymentChannelCreate.SettleDelay = (uint)TimeSpan.FromHours(24).TotalSeconds;
             var seed = Seed.Create(KeyType.Secp256k1);
             seed.GetKeyPairs(out var _, out var keyPair);
-            paymentChannelCreate.PublicKey = keyPair.GetPublicKey().GetCanoncialBytes();
+            paymentChannelCreate.PublicKey = keyPair.PublicKey.GetCanoncialBytes();
             var (_, transactionResponse1) = await SubmitTransaction(accountOne.Secret, paymentChannelCreate);
             var pccreater = Assert.IsType<PaymentChannelCreateTransaction>(transactionResponse1.Transaction);
             Assert.Equal(accountOne.Address, pccreater.Account);
@@ -1507,11 +1507,11 @@ namespace Ibasa.Ripple.Tests
             channelVerifyRequest.Amount = claimAmount;
             channelVerifyRequest.ChannelId = channelId;
             channelVerifyRequest.Signature = signatureLocal;
-            channelVerifyRequest.PublicKey = keyPair.GetPublicKey();
+            channelVerifyRequest.PublicKey = keyPair.PublicKey;
             var verifiedApi = await Api.ChannelVerify(channelVerifyRequest);
             Assert.True(verifiedApi);
 
-            var verifiedLocal = PaymentChannelClaimTransaction.Verify(keyPair.GetPublicKey(), signatureLocal, channelId, claimAmount);
+            var verifiedLocal = PaymentChannelClaimTransaction.Verify(keyPair.PublicKey, signatureLocal, channelId, claimAmount);
             Assert.True(verifiedLocal);
 
             // Claim some funds
@@ -1520,7 +1520,7 @@ namespace Ibasa.Ripple.Tests
             paymentChannelClaim.Channel = channelId;
             paymentChannelClaim.Balance = claimAmount;
             paymentChannelClaim.Signature = signatureLocal;
-            paymentChannelClaim.PublicKey = keyPair.GetPublicKey().GetCanoncialBytes();
+            paymentChannelClaim.PublicKey = keyPair.PublicKey.GetCanoncialBytes();
             var (_, transactionResponse2) = await SubmitTransaction(accountTwo.Secret, paymentChannelClaim);
             var pcclaimr = Assert.IsType<PaymentChannelClaimTransaction>(transactionResponse2.Transaction);
             Assert.Equal(accountTwo.Address, pcclaimr.Account);

@@ -432,7 +432,7 @@ namespace Ibasa.Ripple
         {
             Signers = null;
             TxnSignature = null;
-            SigningPubKey = keyPair.GetPublicKey().GetCanoncialBytes();
+            SigningPubKey = keyPair.PublicKey.GetCanoncialBytes();
             var bufferWriter = new ArrayBufferWriter<byte>();
 
             System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(bufferWriter.GetSpan(4), hpSTX);
@@ -465,7 +465,7 @@ namespace Ibasa.Ripple
             {
                 var signer = new Signer();
                 signer.Account = signers[i].Item1;
-                signer.SigningPubKey = signers[i].Item2.GetPublicKey().GetCanoncialBytes();
+                signer.SigningPubKey = signers[i].Item2.PublicKey.GetCanoncialBytes();
                 signer.TxnSignature = null;
                 signerArray[i] = signer;
             }

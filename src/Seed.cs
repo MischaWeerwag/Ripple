@@ -144,7 +144,7 @@ namespace Ibasa.Ripple
 
                 // Calculate intermediate
                 Span<byte> intermediateSource = stackalloc byte[41];
-                rootKeyPair.GetPublicKey().GetCanoncialBytes().CopyTo(intermediateSource);
+                rootKeyPair.PublicKey.GetCanoncialBytes().CopyTo(intermediateSource);
                 System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(intermediateSource.Slice(33), 0);
 
                 Org.BouncyCastle.Math.BigInteger secpIntermediateSecret = default;

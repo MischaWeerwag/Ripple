@@ -368,7 +368,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
 
             var masterEntropy = Base16.Decode(response.MasterSeedHex);
             var masterSeed = new Seed(masterEntropy, keyType ?? KeyType.Secp256k1);
-            masterSeed.KeyPair(out _, out var keyPair);
+            masterSeed.GetKeyPairs(out _, out var keyPair);
             var publicKey = keyPair.GetCanonicalPublicKey();
             Assert.Equal(response.PublicKeyHex, Base16.Encode(publicKey));
             var accountId = AccountId.FromPublicKey(publicKey);

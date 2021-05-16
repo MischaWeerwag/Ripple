@@ -1941,4 +1941,235 @@ namespace Ibasa.Ripple
             Alternatives = Array.AsReadOnly(alternatives);
         }
     }
+
+    public sealed class AccountChannelsRequest
+    {
+        /// <summary>
+        /// A 20-byte hex string, or the ledger index of the ledger to use, or a shortcut string to choose a ledger automatically.
+        /// </summary>
+        public LedgerSpecification Ledger { get; set; }
+
+        /// <summary>
+        /// The unique identifier of an account, typically the account's Address.
+        /// The request returns channels where this account is the channel's owner/source.
+        /// </summary>
+        public AccountId Account { get; set; }
+
+        /// <summary>
+        /// (Optional) The unique identifier of an account, typically the account's Address.
+        /// If provided, filter results to payment channels whose destination is this account.
+        /// </summary>
+        public AccountId? DestinationAccount { get; set; }
+
+        /// <summary>
+        /// (Optional) Limit the number of transactions to retrieve.
+        /// Cannot be less than 10 or more than 400.
+        /// The default is 200.
+        /// </summary>
+        public uint? Limit { get; set; }
+
+        /// <summary>
+        /// (Optional) Value from a previous paginated response.
+        /// Resume retrieving data where that response left off.
+        /// Updated in: rippled 1.5.0 
+        /// </summary>
+        public JsonElement? Marker { get; set; }
+    }
+
+    public sealed class AccountChannel
+    {
+        /// <summary>
+        /// The owner of the channel, as an Address.
+        /// </summary>
+        public AccountId Account { get; }
+
+        /// <summary>
+        /// The total amount of XRP, in drops allocated to this channel.
+        /// </summary>
+        public XrpAmount Amount { get; }
+
+        /// <summary>
+        /// The total amount of XRP, in drops, paid out from this channel, as of the ledger version used.
+        /// (You can calculate the amount of XRP left in the channel by subtracting balance from amount.)
+        /// </summary>
+        public XrpAmount Balance { get; }
+
+        /// <summary>
+        /// A unique ID for this channel, as a 64-character hexadecimal string.
+        /// This is also the ID of the channel object in the ledger's state data.
+        /// </summary>
+        public Hash256 ChannelId { get;  }
+
+        /// <summary>
+        /// The destination account of the channel, as an Address.
+        /// Only this account can receive the XRP in the channel while it is open.
+        /// </summary>
+        public AccountId DestinationAccount { get; }
+
+        /// <summary>
+        /// The number of seconds the payment channel must stay open after the owner of the channel requests to close it.
+        /// </summary>
+        public TimeSpan SettleDelay { get; }
+
+        /// <summary>
+        /// (May be omitted) The public key for the payment channel, if one was specified at channel creation.
+        /// Signed claims against this channel must be redeemed with the matching key pair.
+        /// </summary>
+        public ReadOnlyMemory<byte>? PublicKey { get; }
+
+        /// <summary>
+        /// (May be omitted) Time, in seconds since the Ripple Epoch, when this channel is set to expire.
+        /// This expiration date is mutable.If this is before the close time of the most recent validated ledger, the channel is expired.
+        /// </summary>
+        public DateTimeOffset? Expiration { get; }
+
+        /// <summary>
+        /// (May be omitted) Time, in seconds since the Ripple Epoch, of this channel's immutable expiration, if one was specified at channel creation.
+        /// If this is before the close time of the most recent validated ledger, the channel is expired.
+        /// </summary>
+        public DateTimeOffset? CancelAfter { get; }
+
+        /// <summary>
+        /// (May be omitted) A 32-bit unsigned integer to use as a source tag for payments through this payment channel, if one was specified at channel creation.
+        /// This indicates the payment channel's originator or other purpose at the source account.
+        /// Conventionally, if you bounce payments from this channel, you should specify this value in the DestinationTag of the return payment.
+        /// </summary>
+        public uint? SourceTag { get; }
+
+        /// <summary>
+        /// (May be omitted) A 32-bit unsigned integer to use as a destination tag for payments through this channel, if one was specified at channel creation.
+        /// This indicates the payment channel's beneficiary or other purpose at the destination account.
+        /// </summary>
+        public uint? DestinationTag { get; }
+
+        public AccountChannel(JsonElement json)
+        {
+            JsonElement element;
+            Account = new AccountId(json.GetProperty("account").GetString());
+            DestinationAccount = new AccountId(json.GetProperty("destination_account").GetString());
+            Amount = XrpAmount.FromDrops(ulong.Parse(json.GetProperty("amount").GetString()));
+            Balance = XrpAmount.FromDrops(ulong.Parse(json.GetProperty("balance").GetString()));
+            ChannelId = new Hash256(json.GetProperty("channel_id").GetString());
+            SettleDelay = TimeSpan.FromSeconds(json.GetProperty("settle_delay").GetUInt32());
+            if (json.TryGetProperty("public_key_hex", out element))
+            {
+                PublicKey = element.GetBytesFromBase16();
+            }
+            if (json.TryGetProperty("expiration", out element))
+            {
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
+            }
+            if (json.TryGetProperty("cancel_after", out element))
+            {
+                CancelAfter = Epoch.ToDateTimeOffset(element.GetUInt32());
+            }
+            if (json.TryGetProperty("source_tag", out element))
+            {
+                SourceTag = element.GetUInt32();
+            }
+            if (json.TryGetProperty("destination_tag", out element))
+            {
+                DestinationTag = element.GetUInt32();
+            }
+        }
+    }
+
+
+    public sealed class AccountChannelsResponse : IAsyncEnumerable<AccountChannel>
+    {
+        /// <summary>
+        /// The identifying hash of the ledger version used to retrieve this data.
+        /// </summary>
+        public Hash256? LedgerHash { get; }
+
+        /// <summary>
+        /// The ledger index of the ledger version used to retrieve this data.
+        /// </summary>
+        public uint LedgerIndex { get; }
+
+        /// <summary>
+        /// If true, this data comes from a validated ledger.
+        /// </summary>
+        public bool Validated { get; }
+
+        /// <summary>
+        /// The address of the source/owner of the payment channels.
+        /// This corresponds to the account field of the request.
+        /// </summary>
+        public AccountId Account { get; }
+
+        /// <summary>
+        /// Server-defined value indicating the response is paginated.
+        /// Pass this to the next call to resume where this call left off.
+        /// Omitted when there are no additional pages after this one.
+        /// New in: rippled 0.26.4 
+        /// </summary>
+        public JsonElement? Marker { get; }
+
+        /// <summary>
+        /// Array of Channel Objects Payment channels owned by this account.
+        /// </summary>
+        public ReadOnlyCollection<AccountChannel> Channels { get; }
+
+        private readonly AccountChannelsRequest request;
+        private readonly Api api;
+
+        internal AccountChannelsResponse(JsonElement json, AccountChannelsRequest request, Api api)
+        {
+            this.request = request;
+            this.api = api;
+
+            if (json.TryGetProperty("ledger_hash", out var hash))
+            {
+                LedgerHash = new Hash256(hash.GetString());
+            }
+            if (json.TryGetProperty("ledger_current_index", out var ledgerCurrentIndex))
+            {
+                LedgerIndex = ledgerCurrentIndex.GetUInt32();
+            }
+            else
+            {
+                LedgerIndex = json.GetProperty("ledger_index").GetUInt32();
+            }
+            Validated = json.GetProperty("validated").GetBoolean();
+
+            Account = new AccountId(json.GetProperty("account").GetString());
+
+            if (json.TryGetProperty("marker", out var marker))
+            {
+                Marker = marker.Clone();
+            }
+
+            var channelsJson = json.GetProperty("channels");
+            var channels = new AccountChannel[channelsJson.GetArrayLength()];
+            for (int i = 0; i < channels.Length; ++i)
+            {
+                channels[i] = new AccountChannel(channelsJson[i]);
+            }
+            Channels = Array.AsReadOnly(channels);
+        }
+
+        public async IAsyncEnumerator<AccountChannel> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        {
+            var response = this;
+
+            while (true)
+            {
+                foreach (var line in response.Channels)
+                {
+                    yield return line;
+                }
+
+                if (response.Marker.HasValue)
+                {
+                    request.Marker = response.Marker;
+                    response = await api.AccountChannels(request, cancellationToken);
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+    }
 }

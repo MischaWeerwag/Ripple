@@ -310,6 +310,40 @@ namespace Ibasa.Ripple
         }
 
         /// <summary>
+        /// The account_channels method returns information about an account's Payment Channels.
+        /// This includes only channels where the specified account is the channel's source, not the destination.
+        /// (A channel's "source" and "owner" are the same.)
+        /// All information retrieved is relative to a particular version of the ledger.
+        /// </summary>
+        public async Task<AccountChannelsResponse> AccountChannels(AccountChannelsRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "account_channels");
+            LedgerSpecification.Write(jsonWriter, request.Ledger);
+            jsonWriter.WriteString("account", request.Account.ToString());
+            if (request.DestinationAccount.HasValue)
+            {
+                jsonWriter.WriteString("destination_account", request.DestinationAccount.Value.ToString());
+            }
+            if (request.Limit.HasValue)
+            {
+                jsonWriter.WriteNumber("limit", request.Limit.Value);
+            }
+            if (request.Marker.HasValue)
+            {
+                jsonWriter.WritePropertyName("marker");
+                request.Marker.Value.WriteTo(jsonWriter);
+            }
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new AccountChannelsResponse(response, request, this);
+        }
+
+        /// <summary>
         /// The submit method applies a transaction and sends it to the network to be confirmed and included in future ledgers.
         /// Submit-only mode takes a signed, serialized transaction as a binary blob, and submits it to the network as-is. 
         /// Since signed transaction objects are immutable, no part of the transaction can be modified or automatically filled in after submission.

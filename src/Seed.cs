@@ -61,6 +61,18 @@ namespace Ibasa.Ripple
             entropy.CopyTo(UnsafeAsSpan(ref this));
         }
 
+        /// <summary>
+        /// Returns a new seed using a cryptographically strong source of random bytes.
+        /// </summary>
+        /// <param name="type">The seed type to create.</param>
+        /// <returns>A new cryptographically secure seed.</returns>
+        public static Seed Create(KeyType type)
+        {
+            Span<byte> entropy = stackalloc byte[16];
+            System.Security.Cryptography.RandomNumberGenerator.Fill(entropy);
+            return new Seed(entropy, type);
+        }
+
         public override string ToString()
         {
             if (_type == KeyType.Secp256k1)
@@ -148,7 +160,7 @@ namespace Ibasa.Ripple
             }
         }
 
-        public void KeyPair(out KeyPair rootKeyPair, out KeyPair keyPair)
+        public void GetKeyPairs(out KeyPair rootKeyPair, out KeyPair keyPair)
         {
             if (_type == KeyType.Secp256k1)
             {

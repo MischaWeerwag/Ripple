@@ -282,7 +282,7 @@ namespace Ibasa.Ripple
         }
     }
 
-    public abstract class Transaction
+    public abstract partial class Transaction
     {
         /// <summary>
         /// Set of bit-flags for this transaction.
@@ -505,56 +505,6 @@ namespace Ibasa.Ripple
 
             return bufferWriter.WrittenMemory.Slice(4);
         }
-
-        public static Transaction ReadJson(JsonElement json)
-        {
-            var transactionType = json.GetProperty("TransactionType").GetString();
-            if (transactionType == "AccountSet")
-            {
-                return new AccountSetTransaction(json);
-            }
-            else if (transactionType == "Payment")
-            {
-                return new PaymentTransaction(json);
-            }
-            else if (transactionType == "TrustSet")
-            {
-                return new TrustSetTransaction(json);
-            }
-            else if (transactionType == "SetRegularKey")
-            {
-                return new SetRegularKeyTransaction(json);
-            }
-            else if (transactionType == "AccountDelete")
-            {
-                return new AccountDeleteTransaction(json);
-            }
-            else if (transactionType == "SignerListSet")
-            {
-                return new SignerListSetTransaction(json);
-            }
-            else if (transactionType == "CheckCreate")
-            {
-                return new CheckCreateTransaction(json);
-            }
-            else if (transactionType == "CheckCancel")
-            {
-                return new CheckCancelTransaction(json);
-            }
-            else if (transactionType == "CheckCash")
-            {
-                return new CheckCashTransaction(json);
-            }
-            else if (transactionType == "OfferCreate")
-            {
-                return new OfferCreateTransaction(json);
-            }
-            else
-            {
-                throw new NotImplementedException(
-                    string.Format("Transaction type '{0}' not implemented", transactionType));
-            }
-        }
     }
 
     [Flags]
@@ -724,4 +674,33 @@ namespace Ibasa.Ripple
         }
     }
 
+    [Flags]
+    public enum PaymentChannelClaimFlags
+    {
+        /// <summary>
+        /// Clear the channel's Expiration time.
+        /// (Expiration is different from the channel's immutable CancelAfter time.)
+        /// Only the source address of the payment channel can use this flag.
+        /// </summary>
+        Renew = 0x00010000,
+
+        /// <summary>
+        /// Request to close the channel.
+        /// Only the channel source and destination addresses can use this flag.
+        /// This flag closes the channel immediately if it has no more XRP allocated to it after processing the current claim, or if the destination address uses it.
+        /// If the source address uses this flag when the channel still holds XRP, this schedules the channel to close after SettleDelay seconds have passed.
+        /// (Specifically, this sets the Expiration of the channel to the close time of the previous ledger plus the channel's SettleDelay time, unless the channel already has an earlier Expiration time.)
+        /// If the destination address uses this flag when the channel still holds XRP, any XRP that remains after processing the claim is returned to the source address.
+        /// </summary>
+        Close = 0x00020000,
+    }
+
+    public sealed partial class PaymentChannelClaimTransaction
+    {
+        public new PaymentChannelClaimFlags Flags
+        {
+            get { return (PaymentChannelClaimFlags)base.Flags; }
+            set { base.Flags = (uint)value; }
+        }
+    }
 }

@@ -863,6 +863,34 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         fieldOpt "TxnSignature" null
     ]
 
+    // Write out the ReadJson method for each Transaction object
+    writer.WriteLine("    public abstract partial class Transaction")
+    writer.WriteLine("    {")
+
+    writer.WriteLine("      /// <summary>")
+    writer.WriteLine("      /// Read a transaction from a json object.")
+    writer.WriteLine("      /// </summary>")
+    writer.WriteLine("      public static Transaction ReadJson(JsonElement json)")
+    writer.WriteLine("      {")
+    writer.WriteLine("          var transactionType = json.GetProperty(\"TransactionType\").GetString();")
+
+    let mutable elseIf = "if "
+    for ledgerType in ledgerTypes do
+        if ledgerType.IsTransaction then
+            writer.WriteLine("          {0}(transactionType == \"{1}\")", elseIf, ledgerType.Name)
+            writer.WriteLine("          {")
+            writer.WriteLine("              return new {0}Transaction(json);", ledgerType.Name);
+            writer.WriteLine("          }")
+            elseIf <- "else if "
+
+    writer.WriteLine("          else")
+    writer.WriteLine("          {")
+    writer.WriteLine("              throw new NotImplementedException(")
+    writer.WriteLine("                  string.Format(\"Transaction type '{0}' not implemented\", transactionType));")
+    writer.WriteLine("          }")
+    writer.WriteLine("      }")
+    writer.WriteLine("    }")
+
     for ledgerType in ledgerTypes do
 
         let allFields = 

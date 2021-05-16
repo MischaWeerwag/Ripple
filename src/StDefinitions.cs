@@ -509,6 +509,97 @@ namespace Ibasa.Ripple.St
 }
 namespace Ibasa.Ripple
 {
+    public abstract partial class Transaction
+    {
+      /// <summary>
+      /// Read a transaction from a json object.
+      /// </summary>
+      public static Transaction ReadJson(JsonElement json)
+      {
+          var transactionType = json.GetProperty("TransactionType").GetString();
+          if (transactionType == "AccountSet")
+          {
+              return new AccountSetTransaction(json);
+          }
+          else if (transactionType == "AccountDelete")
+          {
+              return new AccountDeleteTransaction(json);
+          }
+          else if (transactionType == "CheckCancel")
+          {
+              return new CheckCancelTransaction(json);
+          }
+          else if (transactionType == "CheckCash")
+          {
+              return new CheckCashTransaction(json);
+          }
+          else if (transactionType == "CheckCreate")
+          {
+              return new CheckCreateTransaction(json);
+          }
+          else if (transactionType == "DepositPreauth")
+          {
+              return new DepositPreauthTransaction(json);
+          }
+          else if (transactionType == "EscrowCancel")
+          {
+              return new EscrowCancelTransaction(json);
+          }
+          else if (transactionType == "EscrowCreate")
+          {
+              return new EscrowCreateTransaction(json);
+          }
+          else if (transactionType == "EscrowFinish")
+          {
+              return new EscrowFinishTransaction(json);
+          }
+          else if (transactionType == "OfferCancel")
+          {
+              return new OfferCancelTransaction(json);
+          }
+          else if (transactionType == "OfferCreate")
+          {
+              return new OfferCreateTransaction(json);
+          }
+          else if (transactionType == "Payment")
+          {
+              return new PaymentTransaction(json);
+          }
+          else if (transactionType == "PaymentChannelClaim")
+          {
+              return new PaymentChannelClaimTransaction(json);
+          }
+          else if (transactionType == "PaymentChannelCreate")
+          {
+              return new PaymentChannelCreateTransaction(json);
+          }
+          else if (transactionType == "PaymentChannelFund")
+          {
+              return new PaymentChannelFundTransaction(json);
+          }
+          else if (transactionType == "SetRegularKey")
+          {
+              return new SetRegularKeyTransaction(json);
+          }
+          else if (transactionType == "SignerListSet")
+          {
+              return new SignerListSetTransaction(json);
+          }
+          else if (transactionType == "TicketCreate")
+          {
+              return new TicketCreateTransaction(json);
+          }
+          else if (transactionType == "TrustSet")
+          {
+              return new TrustSetTransaction(json);
+          }
+          else
+          {
+              throw new NotImplementedException(
+                  string.Format("Transaction type '{0}' not implemented", transactionType));
+          }
+      }
+    }
     /// <summary>
     /// The AccountRoot object type describes a single account, its settings, and XRP balance.
     /// </summary>

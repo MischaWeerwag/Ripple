@@ -22,7 +22,7 @@ namespace Ibasa.Ripple.Tests
 
         public static TestAccount FromSeed(Seed secret)
         {
-            secret.KeyPair(out var _, out var keyPair);
+            secret.GetKeyPairs(out var _, out var keyPair);
             var address = AccountId.FromPublicKey(keyPair.GetCanonicalPublicKey());
             return new TestAccount(address, secret);
         }
@@ -142,7 +142,8 @@ namespace Ibasa.Ripple.Tests
             var minLedger = uint.MaxValue;
             var maxLedger = uint.MinValue;
 
-            while (true) {
+            while (true)
+            {
                 var toSubmit = transactions
                     .Where(transaction => !submits.Exists(tuple => tuple.Item1.Equals(transaction)))
                     .ToArray();
@@ -244,7 +245,7 @@ namespace Ibasa.Ripple.Tests
 
         protected async Task<(SubmitResponse, TransactionResponse)[]> SubmitTransactions(Seed secret, IEnumerable<Transaction> transactions)
         {
-            secret.KeyPair(out var _, out var keyPair);
+            secret.GetKeyPairs(out var _, out var keyPair);
             return await SubmitTransactions(transaction =>
             {
                 var bytes = transaction.Sign(keyPair, out var transactionHash);
@@ -254,7 +255,7 @@ namespace Ibasa.Ripple.Tests
 
         protected async Task<(SubmitResponse, TransactionResponse)> SubmitTransaction(Seed secret, Transaction transaction)
         {
-            secret.KeyPair(out var _, out var keyPair);
+            secret.GetKeyPairs(out var _, out var keyPair);
             var results = await SubmitTransactions(transaction =>
             {
                 var bytes = transaction.Sign(keyPair, out var transactionHash);
@@ -268,7 +269,7 @@ namespace Ibasa.Ripple.Tests
             var signers =
                 secrets.Select(tuple =>
                 {
-                    tuple.Item2.KeyPair(out var _, out var keyPair);
+                    tuple.Item2.GetKeyPairs(out var _, out var keyPair);
                     return ValueTuple.Create(tuple.Item1, keyPair);
                 }).ToArray();
 
@@ -463,7 +464,7 @@ namespace Ibasa.Ripple.Tests
             var secret = Setup.TestAccountOne.Secret;
 
             var seed = new Seed("ssKXuaAGcAXaKBf7d532v8KeypdoS");
-            seed.KeyPair(out var _, out var keyPair);
+            seed.GetKeyPairs(out var _, out var keyPair);
 
             var transaction = new SetRegularKeyTransaction();
             transaction.Account = account;
@@ -1418,7 +1419,7 @@ namespace Ibasa.Ripple.Tests
             var offerCreate = new OfferCreateTransaction();
             offerCreate.Account = M1.Address;
             offerCreate.TakerPays = new IssuedAmount(G3.Address, gbp, new Currency(1m));
-            offerCreate.TakerGets = XrpAmount.FromXrp(10m); 
+            offerCreate.TakerGets = XrpAmount.FromXrp(10m);
             var (_, _) = await SubmitTransaction(M1.Secret, offerCreate);
 
             // Ask for a path to send XRP to A2 from A1 via GBP
@@ -1438,7 +1439,7 @@ namespace Ibasa.Ripple.Tests
             Assert.Collection(path,
                 item => Assert.Equal(G3.Address, item.Account),
                 item => Assert.Equal(CurrencyCode.XRP, item.Currency));
-            
+
             // ... and try and make a payment with that path
             payment = new PaymentTransaction();
             payment.Account = ripplePathFindRequest.SourceAccount;
@@ -1447,6 +1448,66 @@ namespace Ibasa.Ripple.Tests
             payment.SendMax = alternative.SourceAmount;
             payment.Paths = alternative.PathsComputed;
             var (_, _) = await SubmitTransaction(A1.Secret, payment);
+        }
+
+        [Fact]
+        public async Task TestPaymentChannel()
+        {
+            var accountOne = Setup.TestAccountOne;
+            var accountTwo = Setup.TestAccountTwo;
+            await Setup.WaitForAccounts(accountOne, accountTwo);
+
+            // Setup a payment channel from account one to two
+            var paymentChannelCreate = new PaymentChannelCreateTransaction();
+            paymentChannelCreate.Account = accountOne.Address;
+            paymentChannelCreate.Destination = accountTwo.Address;
+            paymentChannelCreate.Amount = XrpAmount.FromXrp(100m);
+            // TODO SettleDelay should just be a timespan
+            paymentChannelCreate.SettleDelay = (uint)TimeSpan.FromHours(24).TotalSeconds;
+            var seed = Seed.Create(KeyType.Secp256k1);
+            seed.GetKeyPairs(out var _, out var keyPair);
+            paymentChannelCreate.PublicKey = keyPair.GetCanonicalPublicKey();
+            var (_, transactionResponse1) = await SubmitTransaction(accountOne.Secret, paymentChannelCreate);
+            var pccreater = Assert.IsType<PaymentChannelCreateTransaction>(transactionResponse1.Transaction);
+            Assert.Equal(accountOne.Address, pccreater.Account);
+            Assert.Equal(accountTwo.Address, pccreater.Destination);
+
+            // Calculate the payment channel ID
+            var channelId = PayChannelLedgerEntry.CalculateId(pccreater.Account, pccreater.Destination, pccreater.Sequence);
+
+            // Ask for account channels
+            var accountChannelsRequest = new AccountChannelsRequest();
+            accountChannelsRequest.Ledger = LedgerSpecification.Current;
+            accountChannelsRequest.Account = accountOne.Address;
+            var accountChannelsResponse = await Api.AccountChannels(accountChannelsRequest);
+            Assert.Equal(accountChannelsRequest.Account, accountChannelsResponse.Account);
+            var accountChannel = Assert.Single(accountChannelsResponse.Channels);
+            Assert.Equal(channelId, accountChannel.ChannelId);
+            Assert.Equal(accountOne.Address, accountChannel.Account);
+            Assert.Equal(accountTwo.Address, accountChannel.DestinationAccount);
+            Assert.Equal(XrpAmount.FromXrp(100m), accountChannel.Amount);
+            Assert.Equal(XrpAmount.FromXrp(0m), accountChannel.Balance);
+            Assert.Equal(TimeSpan.FromHours(24), accountChannel.SettleDelay);
+
+            // Claim some funds
+            var paymentChannelClaim = new PaymentChannelClaimTransaction();
+            paymentChannelClaim.Account = accountTwo.Address;
+            paymentChannelClaim.Channel = channelId;
+            paymentChannelClaim.Balance = XrpAmount.FromXrp(10m);
+            var (_, transactionResponse2) = await SubmitTransaction(accountTwo.Secret, paymentChannelClaim);
+            var pcclaimr = Assert.IsType<PaymentChannelClaimTransaction>(transactionResponse2.Transaction);
+            Assert.Equal(accountTwo.Address, pcclaimr.Account);
+
+            // Close the channel
+            var paymentChannelClose = new PaymentChannelClaimTransaction();
+            paymentChannelClose.Account = accountOne.Address;
+            paymentChannelClose.Channel = channelId;
+            paymentChannelClose.Flags = PaymentChannelClaimFlags.Close;
+            var (_, transactionResponse3) = await SubmitTransaction(accountOne.Secret, paymentChannelClose);
+            var pccloser = Assert.IsType<PaymentChannelClaimTransaction>(transactionResponse3.Transaction);
+            Assert.Equal(accountOne.Address, pcclaimr.Account);
+
+
         }
     }
 }

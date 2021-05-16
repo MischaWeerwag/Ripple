@@ -1455,7 +1455,6 @@ namespace Ibasa.Ripple.Tests
         {
             var accountOne = Setup.TestAccountOne;
             var accountTwo = Setup.TestAccountTwo;
-            await Setup.WaitForAccounts(accountOne, accountTwo);
 
             // Setup a payment channel from account one to two
             var paymentChannelCreate = new PaymentChannelCreateTransaction();
@@ -1521,9 +1520,11 @@ namespace Ibasa.Ripple.Tests
             paymentChannelClaim.Channel = channelId;
             paymentChannelClaim.Balance = claimAmount;
             paymentChannelClaim.Signature = signatureLocal;
+            paymentChannelClaim.PublicKey = keyPair.GetPublicKey().GetCanoncialBytes();
             var (_, transactionResponse2) = await SubmitTransaction(accountTwo.Secret, paymentChannelClaim);
             var pcclaimr = Assert.IsType<PaymentChannelClaimTransaction>(transactionResponse2.Transaction);
             Assert.Equal(accountTwo.Address, pcclaimr.Account);
+            Assert.Equal(channelId, pcclaimr.Channel);
 
             // Close the channel
             var paymentChannelClose = new PaymentChannelClaimTransaction();
@@ -1532,7 +1533,9 @@ namespace Ibasa.Ripple.Tests
             paymentChannelClose.Flags = PaymentChannelClaimFlags.Close;
             var (_, transactionResponse3) = await SubmitTransaction(accountOne.Secret, paymentChannelClose);
             var pccloser = Assert.IsType<PaymentChannelClaimTransaction>(transactionResponse3.Transaction);
-            Assert.Equal(accountOne.Address, pcclaimr.Account);
+            Assert.Equal(accountOne.Address, pccloser.Account);
+            Assert.Equal(channelId, pccloser.Channel);
+            Assert.Equal(PaymentChannelClaimFlags.Close, pccloser.Flags);
 
 
         }

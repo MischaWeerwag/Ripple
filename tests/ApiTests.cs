@@ -60,7 +60,7 @@ namespace Ibasa.Ripple.Tests
         }
 
         /// <summary>
-        /// Wait for the account to exist in a validated ledger.
+        /// Wait for the account to exist in a validated ledger, then return current information.
         /// </summary>
         public async Task<AccountInfoResponse> WaitForAccount(AccountId account)
         {
@@ -93,7 +93,9 @@ namespace Ibasa.Ripple.Tests
                     System.Threading.Thread.Sleep(1000);
                 }
             }
-            return infoResponse;
+
+            infoRequest.Ledger = LedgerSpecification.Current;
+            return await Api.AccountInfo(infoRequest);
         }
 
         public async Task<AccountInfoResponse[]> WaitForAccounts(params TestAccount[] accounts)
@@ -1450,11 +1452,18 @@ namespace Ibasa.Ripple.Tests
             var (_, _) = await SubmitTransaction(A1.Secret, payment);
         }
 
-        [Fact]
-        public async Task TestPaymentChannel()
+        [Theory]
+        [InlineData(KeyType.Secp256k1)]
+        [InlineData(KeyType.Ed25519)]
+        public async Task TestPaymentChannel(KeyType keyType)
         {
-            var accountOne = Setup.TestAccountOne;
-            var accountTwo = Setup.TestAccountTwo;
+            var accounts = await Task.WhenAll(TestAccount.Create(), TestAccount.Create());
+            var accountOne = accounts[0];
+            var accountTwo = accounts[1];
+
+            // Setup a seed and key pair to use for the channel
+            var seed = Seed.Create(keyType);
+            seed.GetKeyPairs(out var _, out var keyPair);
 
             // Setup a payment channel from account one to two
             var paymentChannelCreate = new PaymentChannelCreateTransaction();
@@ -1463,8 +1472,6 @@ namespace Ibasa.Ripple.Tests
             paymentChannelCreate.Amount = XrpAmount.FromXrp(100m);
             // TODO SettleDelay should just be a timespan
             paymentChannelCreate.SettleDelay = (uint)TimeSpan.FromHours(24).TotalSeconds;
-            var seed = Seed.Create(KeyType.Secp256k1);
-            seed.GetKeyPairs(out var _, out var keyPair);
             paymentChannelCreate.PublicKey = keyPair.PublicKey.GetCanoncialBytes();
             var (_, transactionResponse1) = await SubmitTransaction(accountOne.Secret, paymentChannelCreate);
             var pccreater = Assert.IsType<PaymentChannelCreateTransaction>(transactionResponse1.Transaction);

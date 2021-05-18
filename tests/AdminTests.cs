@@ -386,5 +386,19 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             var masterKey = Rfc1751.Encode(masterEntropy);
             Assert.Equal(masterKey, response.MasterKey);
         }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("BAWL MAN JADE MOON DOVE GEM SON NOW HAD ADEN GLOW TIRE")]
+        public async void TestValidationCreate(string secret)
+        {
+            var request = new ValidationCreateRequest();
+            request.Secret = secret;
+
+            var response = await Api.ValidationCreate(request);
+            Assert.NotNull(response.ValidationKey);
+            Assert.NotNull(response.ValidationPublicKey);
+            Assert.NotNull(response.ValidationSeed);
+        }
     }
 }

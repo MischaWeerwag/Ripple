@@ -449,6 +449,25 @@ namespace Ibasa.Ripple
         }
 
         /// <summary>
+        /// Use the validation_create command to generate cryptographic keys a rippled server can use to identify itself to the network.
+        /// Similar to the wallet_propose method, this method only generates a set of keys in the proper format.
+        /// It does not any makes changes to the XRP Ledger data or server configuration.
+        /// </summary>
+        public async Task<ValidationCreateResponse> ValidationCreate(ValidationCreateRequest request, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "validation_create");
+            if (request.Secret != null) { jsonWriter.WriteString("secret", request.Secret); }
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new ValidationCreateResponse(response);
+        }
+
+        /// <summary>
         /// The gateway_balances command calculates the total balances issued by a given account, optionally excluding amounts held by operational addresses. 
         /// New in: rippled 0.28.2 
         /// </summary>

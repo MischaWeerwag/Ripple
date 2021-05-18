@@ -1362,6 +1362,41 @@ namespace Ibasa.Ripple
         }
     }
 
+    public sealed class ValidationCreateRequest
+    {
+        /// <summary>
+        /// (Optional) Use this value as a seed to generate the credentials.
+        /// The same secret always generates the same credentials.
+        /// You can provide the seed in RFC-1751 format or the XRP Ledger's base58 format.
+        /// If omitted, generate a random seed.
+        /// </summary>
+        public string Secret { get; set; }
+    }
+
+    public sealed class ValidationCreateResponse
+    {
+        /// <summary>
+        /// The secret key for these validation credentials, in RFC-1751  format.
+        /// </summary>
+        public string ValidationKey { get; private set; }
+
+        /// <summary>
+        /// The public key for these validation credentials, in the XRP Ledger's base58 encoded string format.
+        /// </summary>
+        public string ValidationPublicKey { get; private set; }
+        /// <summary>
+        /// The secret key for these validation credentials, in the XRP Ledger's base58 encoded string format.
+        /// </summary>
+        public string ValidationSeed { get; private set; }
+
+        internal ValidationCreateResponse(JsonElement json)
+        {
+            ValidationKey = json.GetProperty("validation_key").GetString();
+            ValidationPublicKey = json.GetProperty("validation_public_key").GetString();
+            ValidationSeed = json.GetProperty("validation_seed").GetString();
+        }
+    }
+
     public sealed class GatewayBalancesRequest
     {
         /// <summary>

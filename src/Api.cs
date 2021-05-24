@@ -262,6 +262,40 @@ namespace Ibasa.Ripple
         }
 
         /// <summary>
+        /// The manifest method reports the current "manifest" information for a given validator public key.
+        /// The "manifest" is the public portion of that validator's configured token.
+        /// </summary>
+        public async Task<ManifestResponse> Manifest(PublicKey publicKey, CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "manifest");
+            jsonWriter.WriteString("public_key", publicKey.ToString());
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new ManifestResponse(response);
+        }
+
+        /// <summary>
+        /// The server_info command asks the server for a human-readable version of various information about the rippled server being queried.
+        /// </summary>
+        public async Task<ServerInfoResponse> ServerInfo(CancellationToken cancellationToken = default)
+        {
+            jsonBuffer.Clear();
+            jsonWriter.Reset();
+            jsonWriter.WriteStartObject();
+            var requestId = WriteHeader(jsonWriter, "server_info");
+            WriteFooter(jsonWriter);
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
+            var response = await SendReceiveAsync(requestId, jsonBuffer.WrittenMemory, cancellationToken);
+            return new ServerInfoResponse(response);
+        }
+
+        /// <summary>
         /// The server_state command asks the server for various machine-readable information about the rippled server's current state.
         /// </summary>
         public async Task<ServerStateResponse> ServerState(CancellationToken cancellationToken = default)

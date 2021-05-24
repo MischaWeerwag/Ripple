@@ -404,6 +404,22 @@ namespace Ibasa.Ripple.Tests
         }
 
         [Fact]
+        public async Task TestServerInfo()
+        {
+            var response = await Api.ServerInfo();
+            Assert.False(string.IsNullOrWhiteSpace(response.BuildVersion));
+        }
+
+        [Fact]
+        public async Task TestManifest()
+        {
+            //TODO
+            //var bytes = Base16.Decode("ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860");
+            //PublicKey publicKey = new Secp256k1PublicKey(bytes);
+            //var response = await Api.Manifest(publicKey);
+        }
+
+        [Fact]
         public async Task TestServerState()
         {
             var response = await Api.ServerState();

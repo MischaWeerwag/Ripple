@@ -7,12 +7,34 @@ namespace Ibasa.Ripple
         public abstract bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature);
 
         public abstract byte[] GetCanoncialBytes();
+
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
+        /// <returns>A string that represents the current object.</returns>
+        public override string ToString()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public sealed class Secp256k1PublicKey : PublicKey
     {
         private readonly Org.BouncyCastle.Crypto.Signers.ECDsaSigner signer;
         private readonly Org.BouncyCastle.Math.EC.ECPoint publicKey;
+
+        public Secp256k1PublicKey(ReadOnlySpan<byte> key)
+        {
+            var k1Params = Org.BouncyCastle.Asn1.Sec.SecNamedCurves.GetByName("secp256k1");
+            this.publicKey = k1Params.Curve.DecodePoint(key.ToArray());
+            this.signer = new Org.BouncyCastle.Crypto.Signers.ECDsaSigner(
+                new Org.BouncyCastle.Crypto.Signers.HMacDsaKCalculator(
+                    new Org.BouncyCastle.Crypto.Digests.Sha256Digest()));
+            var parameters = new Org.BouncyCastle.Crypto.Parameters.ECPublicKeyParameters(
+                this.publicKey,
+                new Org.BouncyCastle.Crypto.Parameters.ECDomainParameters(k1Params.Curve, k1Params.G, k1Params.N, k1Params.H));
+            signer.Init(false, parameters);
+        }
 
         internal Secp256k1PublicKey(Org.BouncyCastle.Asn1.X9.X9ECParameters k1Params, Org.BouncyCastle.Math.EC.ECPoint publicKey)
         {

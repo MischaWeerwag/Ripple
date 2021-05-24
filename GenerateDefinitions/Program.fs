@@ -295,6 +295,13 @@ let knownTypes = Map.ofList [
         "Epoch.ToDateTimeOffset(reader.ReadUInt32())",
         "writer.WriteUInt32({0}, Epoch.FromDateTimeOffset({1}))"
         )
+    "TimeSpan", (
+        true, 
+        "TimeSpan",
+        "TimeSpan.FromSeconds({0}.GetUInt32())",
+        "TimeSpan.FromSeconds(reader.ReadUInt32())",
+        "writer.WriteUInt32({0}, (uint){1}.TotalSeconds)"
+        )
     "AccountSetFlags", (
         true, 
         "AccountSetFlags",
@@ -581,7 +588,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "Amount" "Total XRP, in drops, that has been allocated to this channel. This includes XRP that has been paid to the destination address. This is initially set by the transaction that created the channel and can be increased if the source address sends a PaymentChannelFund transaction."
                 field "Balance" "Total XRP, in drops, already paid out by the channel. The difference between this value and the Amount field is how much XRP can still be paid to the destination address with PaymentChannelClaim transactions. If the channel closes, the remaining difference is returned to the source address."
                 field "PublicKey" "Public key, in hexadecimal, of the key pair that can be used to sign claims against this channel. This can be any valid secp256k1 or Ed25519 public key. This is set by the transaction that created the channel and must match the public key used in claims against the channel. The channel source address can also send XRP from this channel to the destination without signed claims."
-                field "SettleDelay" "Number of seconds the source address must wait to close the channel if it still has any XRP in it. Smaller values mean that the destination address has less time to redeem any outstanding claims after the source address requests to close the channel. Can be any value that fits in a 32-bit unsigned integer (0 to 2^32-1). This is set by the transaction that creates the channel."
+                field "SettleDelay" "Number of seconds the source address must wait to close the channel if it still has any XRP in it. Smaller values mean that the destination address has less time to redeem any outstanding claims after the source address requests to close the channel. Can be any value that fits in a 32-bit unsigned integer (0 to 2^32-1). This is set by the transaction that creates the channel." |> withOverride "TimeSpan"
                 ownerNode
                 previousTxnID
                 previousTxnLgrSeq
@@ -689,7 +696,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "Destination" "The unique address of the account that can cash the Check."
                 field "SendMax" "Maximum amount of source currency the Check is allowed to debit the sender, including transfer fees on non-XRP currencies. The Check can only credit the destination with the same currency (from the same issuer, for non-XRP currencies). For non-XRP amounts, the nested field names MUST be lower-case."
                 fieldOpt "DestinationTag" "Arbitrary tag that identifies the reason for the Check, or a hosted recipient to pay."
-                fieldOpt "Expiration" "Time after which the Check is no longer valid, in seconds since the Ripple Epoch."
+                fieldOpt "Expiration" "Time after which the Check is no longer valid, in seconds since the Ripple Epoch." |> withOverride "DateTimeOffset"
                 fieldOpt "InvoiceID" "Arbitrary 256-bit hash representing a specific reason or identifier for this Check."
             ]
         }
@@ -719,8 +726,8 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "Amount" "Amount of XRP, in drops, to deduct from the sender's balance and escrow. Once escrowed, the XRP can either go to the Destination address (after the FinishAfter time) or returned to the sender (after the CancelAfter time)."
                 |> withOverride "XrpAmount"
                 field "Destination" "Address to receive escrowed XRP."
-                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this escrow expires. This value is immutable; the funds can only be returned the sender after this time."
-                fieldOpt "FinishAfter" "The time, in seconds since the Ripple Epoch, when the escrowed XRP can be released to the recipient. This value is immutable; the funds cannot move until this time is reached."
+                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this escrow expires. This value is immutable; the funds can only be returned the sender after this time." |> withOverride "DateTimeOffset"
+                fieldOpt "FinishAfter" "The time, in seconds since the Ripple Epoch, when the escrowed XRP can be released to the recipient. This value is immutable; the funds cannot move until this time is reached." |> withOverride "DateTimeOffset"
                 fieldOpt "Condition" "Hex value representing a PREIMAGE-SHA-256 crypto-condition. The funds can only be delivered to the recipient if this condition is fulfilled."
                 fieldOpt "DestinationTag" "Arbitrary tag to further specify the destination for this escrowed payment, such as a hosted recipient at the destination address."
             ]
@@ -751,7 +758,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
             Fields = [
                 field "TakerGets" "The amount and type of currency being provided by the offer creator."
                 field "TakerPays" "The amount and type of currency being requested by the offer creator."
-                fieldOpt "Expiration" "Time after which the offer is no longer active, in seconds since the Ripple Epoch."
+                fieldOpt "Expiration" "Time after which the offer is no longer active, in seconds since the Ripple Epoch." |> withOverride "DateTimeOffset"
                 fieldOpt "OfferSequence" "An offer to delete first, specified in the same way as OfferCancel."
             ]
         }
@@ -791,9 +798,9 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "Amount" "Amount of XRP, in drops, to deduct from the sender's balance and set aside in this channel. While the channel is open, the XRP can only go to the Destination address. When the channel closes, any unclaimed XRP is returned to the source address's balance."
                 |> withOverride "XrpAmount"
                 field "Destination" "Address to receive XRP claims against this channel. This is also known as the \"destination address\" for the channel. Cannot be the same as the sender (Account)."
-                field "SettleDelay" "Amount of time the source address must wait before closing the channel if it has unclaimed XRP."
+                field "SettleDelay" "Amount of time the source address must wait before closing the channel if it has unclaimed XRP." |> withOverride "TimeSpan"
                 field "PublicKey" "The public key of the key pair the source will use to sign claims against this channel, in hexadecimal. This can be any secp256k1 or Ed25519 public key."
-                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this channel expires. Any transaction that would modify the channel after this time closes the channel without otherwise affecting it. This value is immutable; the channel can be closed earlier than this time but cannot remain open after this time."
+                fieldOpt "CancelAfter" "The time, in seconds since the Ripple Epoch, when this channel expires. Any transaction that would modify the channel after this time closes the channel without otherwise affecting it. This value is immutable; the channel can be closed earlier than this time but cannot remain open after this time." |> withOverride "DateTimeOffset"
                 fieldOpt "DestinationTag" "Arbitrary tag to further specify the destination for this payment channel, such as a hosted recipient at the destination address."
             ]
         }
@@ -805,7 +812,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
                 field "Channel" "The unique ID of the channel, as a 64-character hexadecimal string."
                 field "Amount" "Amount of XRP, in drops to add to the channel. Must be a positive amount of XRP."
                 |> withOverride "XrpAmount"
-                fieldOpt "Expiration" "New Expiration time to set for the channel, in seconds since the Ripple Epoch. This must be later than either the current time plus the SettleDelay of the channel, or the existing Expiration of the channel. After the Expiration time, any transaction that would access the channel closes the channel without taking its normal action. Any unspent XRP is returned to the source address when the channel closes. (Expiration is separate from the channel's immutable CancelAfter time.) For more information, see the PayChannel ledger object type."
+                fieldOpt "Expiration" "New Expiration time to set for the channel, in seconds since the Ripple Epoch. This must be later than either the current time plus the SettleDelay of the channel, or the existing Expiration of the channel. After the Expiration time, any transaction that would access the channel closes the channel without taking its normal action. Any unspent XRP is returned to the source address when the channel closes. (Expiration is separate from the channel's immutable CancelAfter time.) For more information, see the PayChannel ledger object type." |> withOverride "DateTimeOffset"
             ]
         }
         {

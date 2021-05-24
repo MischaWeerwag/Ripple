@@ -1486,8 +1486,7 @@ namespace Ibasa.Ripple.Tests
             paymentChannelCreate.Account = accountOne.Address;
             paymentChannelCreate.Destination = accountTwo.Address;
             paymentChannelCreate.Amount = XrpAmount.FromXrp(100m);
-            // TODO SettleDelay should just be a timespan
-            paymentChannelCreate.SettleDelay = (uint)TimeSpan.FromHours(24).TotalSeconds;
+            paymentChannelCreate.SettleDelay = TimeSpan.FromHours(24);
             paymentChannelCreate.PublicKey = keyPair.PublicKey.GetCanoncialBytes();
             var (_, transactionResponse1) = await SubmitTransaction(accountOne.Secret, paymentChannelCreate);
             var pccreater = Assert.IsType<PaymentChannelCreateTransaction>(transactionResponse1.Transaction);

@@ -2160,7 +2160,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Number of seconds the source address must wait to close the channel if it still has any XRP in it. Smaller values mean that the destination address has less time to redeem any outstanding claims after the source address requests to close the channel. Can be any value that fits in a 32-bit unsigned integer (0 to 2^32-1). This is set by the transaction that creates the channel.
         /// </summary>
-        public uint SettleDelay { get; private set; }
+        public TimeSpan SettleDelay { get; private set; }
 
         /// <summary>
         /// A hint indicating which page of the sender's owner directory links to this object, in case the directory consists of multiple pages. Note: The object does not contain a direct link to the owner directory containing it, since that value can be derived from the Account.
@@ -2220,7 +2220,7 @@ namespace Ibasa.Ripple
             Amount = Ripple.Amount.ReadJson(json.GetProperty("Amount"));
             Balance = Ripple.Amount.ReadJson(json.GetProperty("Balance"));
             PublicKey = json.GetProperty("PublicKey").GetBytesFromBase16();
-            SettleDelay = json.GetProperty("SettleDelay").GetUInt32();
+            SettleDelay = TimeSpan.FromSeconds(json.GetProperty("SettleDelay").GetUInt32());
             OwnerNode = ulong.Parse(json.GetProperty("OwnerNode").GetString(), System.Globalization.NumberStyles.AllowHexSpecifier);
             PreviousTxnID = new Hash256(json.GetProperty("PreviousTxnID").GetString());
             PreviousTxnLgrSeq = json.GetProperty("PreviousTxnLgrSeq").GetUInt32();
@@ -2304,7 +2304,7 @@ namespace Ibasa.Ripple
             {
                 throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_SettleDelay, fieldId));
             }
-            SettleDelay = reader.ReadUInt32();
+            SettleDelay = TimeSpan.FromSeconds(reader.ReadUInt32());
             if (!reader.TryReadFieldId(out fieldId))
             {
                 throw new Exception("End of st data reached but non-optional fields still not set");
@@ -3944,7 +3944,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) Time after which the Check is no longer valid, in seconds since the Ripple Epoch.
         /// </summary>
-        public uint? Expiration { get; set; }
+        public DateTimeOffset? Expiration { get; set; }
 
         /// <summary>
         /// (Optional) Arbitrary 256-bit hash representing a specific reason or identifier for this Check.
@@ -3971,7 +3971,7 @@ namespace Ibasa.Ripple
             }
             if (json.TryGetProperty("Expiration", out element))
             {
-                Expiration = element.GetUInt32();
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
             if (json.TryGetProperty("InvoiceID", out element))
             {
@@ -4009,7 +4009,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_Expiration)
             {
-                Expiration = reader.ReadUInt32();
+                Expiration = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -4165,7 +4165,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (Expiration != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.Expiration, Expiration.Value);
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Epoch.FromDateTimeOffset(Expiration.Value));
             }
             if (DestinationTag != null)
             {
@@ -4728,12 +4728,12 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) The time, in seconds since the Ripple Epoch, when this escrow expires. This value is immutable; the funds can only be returned the sender after this time.
         /// </summary>
-        public uint? CancelAfter { get; set; }
+        public DateTimeOffset? CancelAfter { get; set; }
 
         /// <summary>
         /// (Optional) The time, in seconds since the Ripple Epoch, when the escrowed XRP can be released to the recipient. This value is immutable; the funds cannot move until this time is reached.
         /// </summary>
-        public uint? FinishAfter { get; set; }
+        public DateTimeOffset? FinishAfter { get; set; }
 
         /// <summary>
         /// (Optional) Hex value representing a PREIMAGE-SHA-256 crypto-condition. The funds can only be delivered to the recipient if this condition is fulfilled.
@@ -4761,11 +4761,11 @@ namespace Ibasa.Ripple
             Destination = new AccountId(json.GetProperty("Destination").GetString());
             if (json.TryGetProperty("CancelAfter", out element))
             {
-                CancelAfter = element.GetUInt32();
+                CancelAfter = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
             if (json.TryGetProperty("FinishAfter", out element))
             {
-                FinishAfter = element.GetUInt32();
+                FinishAfter = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
             if (json.TryGetProperty("Condition", out element))
             {
@@ -4823,7 +4823,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_CancelAfter)
             {
-                CancelAfter = reader.ReadUInt32();
+                CancelAfter = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -4831,7 +4831,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_FinishAfter)
             {
-                FinishAfter = reader.ReadUInt32();
+                FinishAfter = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -4979,11 +4979,11 @@ namespace Ibasa.Ripple
             }
             if (CancelAfter != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, CancelAfter.Value);
+                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, Epoch.FromDateTimeOffset(CancelAfter.Value));
             }
             if (FinishAfter != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.FinishAfter, FinishAfter.Value);
+                writer.WriteUInt32(StUInt32FieldCode.FinishAfter, Epoch.FromDateTimeOffset(FinishAfter.Value));
             }
             if (TicketSequence != null)
             {
@@ -5554,7 +5554,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) Time after which the offer is no longer active, in seconds since the Ripple Epoch.
         /// </summary>
-        public uint? Expiration { get; set; }
+        public DateTimeOffset? Expiration { get; set; }
 
         /// <summary>
         /// (Optional) An offer to delete first, specified in the same way as OfferCancel.
@@ -5577,7 +5577,7 @@ namespace Ibasa.Ripple
             TakerPays = Ripple.Amount.ReadJson(json.GetProperty("TakerPays"));
             if (json.TryGetProperty("Expiration", out element))
             {
-                Expiration = element.GetUInt32();
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
             if (json.TryGetProperty("OfferSequence", out element))
             {
@@ -5615,7 +5615,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_Expiration)
             {
-                Expiration = reader.ReadUInt32();
+                Expiration = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -5763,7 +5763,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (Expiration != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.Expiration, Expiration.Value);
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Epoch.FromDateTimeOffset(Expiration.Value));
             }
             if (OfferSequence != null)
             {
@@ -6489,7 +6489,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// Amount of time the source address must wait before closing the channel if it has unclaimed XRP.
         /// </summary>
-        public uint SettleDelay { get; set; }
+        public TimeSpan SettleDelay { get; set; }
 
         /// <summary>
         /// The public key of the key pair the source will use to sign claims against this channel, in hexadecimal. This can be any secp256k1 or Ed25519 public key.
@@ -6499,7 +6499,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) The time, in seconds since the Ripple Epoch, when this channel expires. Any transaction that would modify the channel after this time closes the channel without otherwise affecting it. This value is immutable; the channel can be closed earlier than this time but cannot remain open after this time.
         /// </summary>
-        public uint? CancelAfter { get; set; }
+        public DateTimeOffset? CancelAfter { get; set; }
 
         /// <summary>
         /// (Optional) Arbitrary tag to further specify the destination for this payment channel, such as a hosted recipient at the destination address.
@@ -6520,11 +6520,11 @@ namespace Ibasa.Ripple
 
             Amount = Ripple.XrpAmount.ReadJson(json.GetProperty("Amount"));
             Destination = new AccountId(json.GetProperty("Destination").GetString());
-            SettleDelay = json.GetProperty("SettleDelay").GetUInt32();
+            SettleDelay = TimeSpan.FromSeconds(json.GetProperty("SettleDelay").GetUInt32());
             PublicKey = json.GetProperty("PublicKey").GetBytesFromBase16();
             if (json.TryGetProperty("CancelAfter", out element))
             {
-                CancelAfter = element.GetUInt32();
+                CancelAfter = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
             if (json.TryGetProperty("DestinationTag", out element))
             {
@@ -6578,7 +6578,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_CancelAfter)
             {
-                CancelAfter = reader.ReadUInt32();
+                CancelAfter = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -6588,7 +6588,7 @@ namespace Ibasa.Ripple
             {
                 throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_SettleDelay, fieldId));
             }
-            SettleDelay = reader.ReadUInt32();
+            SettleDelay = TimeSpan.FromSeconds(reader.ReadUInt32());
             if (!reader.TryReadFieldId(out fieldId))
             {
                 throw new Exception("End of st data reached but non-optional fields still not set");
@@ -6736,9 +6736,9 @@ namespace Ibasa.Ripple
             }
             if (CancelAfter != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, CancelAfter.Value);
+                writer.WriteUInt32(StUInt32FieldCode.CancelAfter, Epoch.FromDateTimeOffset(CancelAfter.Value));
             }
-            writer.WriteUInt32(StUInt32FieldCode.SettleDelay, SettleDelay);
+            writer.WriteUInt32(StUInt32FieldCode.SettleDelay, (uint)SettleDelay.TotalSeconds);
             if (TicketSequence != null)
             {
                 writer.WriteUInt32(StUInt32FieldCode.TicketSequence, TicketSequence.Value);
@@ -6802,7 +6802,7 @@ namespace Ibasa.Ripple
         /// <summary>
         /// (Optional) New Expiration time to set for the channel, in seconds since the Ripple Epoch. This must be later than either the current time plus the SettleDelay of the channel, or the existing Expiration of the channel. After the Expiration time, any transaction that would access the channel closes the channel without taking its normal action. Any unspent XRP is returned to the source address when the channel closes. (Expiration is separate from the channel's immutable CancelAfter time.) For more information, see the PayChannel ledger object type.
         /// </summary>
-        public uint? Expiration { get; set; }
+        public DateTimeOffset? Expiration { get; set; }
 
         public PaymentChannelFundTransaction()
         {
@@ -6820,7 +6820,7 @@ namespace Ibasa.Ripple
             Amount = Ripple.XrpAmount.ReadJson(json.GetProperty("Amount"));
             if (json.TryGetProperty("Expiration", out element))
             {
-                Expiration = element.GetUInt32();
+                Expiration = Epoch.ToDateTimeOffset(element.GetUInt32());
             }
         }
 
@@ -6854,7 +6854,7 @@ namespace Ibasa.Ripple
             }
             if (fieldId == StFieldId.UInt32_Expiration)
             {
-                Expiration = reader.ReadUInt32();
+                Expiration = Epoch.ToDateTimeOffset(reader.ReadUInt32());
                 if (!reader.TryReadFieldId(out fieldId))
                 {
                     throw new Exception("End of st data reached but non-optional fields still not set");
@@ -6994,7 +6994,7 @@ namespace Ibasa.Ripple
             writer.WriteUInt32(StUInt32FieldCode.Sequence, Sequence);
             if (Expiration != null)
             {
-                writer.WriteUInt32(StUInt32FieldCode.Expiration, Expiration.Value);
+                writer.WriteUInt32(StUInt32FieldCode.Expiration, Epoch.FromDateTimeOffset(Expiration.Value));
             }
             if (LastLedgerSequence != null)
             {

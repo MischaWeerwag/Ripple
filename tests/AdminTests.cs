@@ -32,9 +32,9 @@ namespace Ibasa.Ripple.Tests
         }
     }
 
-    public class IgnoreOnCTheoryAttribute : TheoryAttribute
+    public class IgnoreOnCITheoryAttribute : TheoryAttribute
     {
-        public IgnoreOnCTheoryAttribute()
+        public IgnoreOnCITheoryAttribute()
         {
             if (CI.IsRunningInCI)
             {
@@ -350,7 +350,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             await Api.Ping();
         }
 
-        [IgnoreOnCTheory]
+        [IgnoreOnCITheory]
         [InlineData(null)]
         [InlineData(KeyType.Secp256k1)]
         [InlineData(KeyType.Ed25519)]
@@ -387,7 +387,7 @@ ED264807102805220DA0F312E71FC2C69E1552C9C5790F6C25E3729DEB573D5860
             Assert.Equal(masterKey, response.MasterKey);
         }
 
-        [Theory]
+        [IgnoreOnCITheory]
         [InlineData(null)]
         [InlineData("BAWL MAN JADE MOON DOVE GEM SON NOW HAD ADEN GLOW TIRE")]
         public async void TestValidationCreate(string secret)

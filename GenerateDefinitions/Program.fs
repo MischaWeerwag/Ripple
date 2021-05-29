@@ -79,26 +79,39 @@ let emitTransactionType (writer : TextWriter) (document : JsonDocument) =
         writer.WriteLine("        {0} = {1},", entry.Name, uint16 value)
     writer.WriteLine("    }")
     writer.WriteLine()
+
+let getFields (document : JsonDocument) =
+    document.RootElement.GetProperty("FIELDS").EnumerateArray()
+    |> Seq.map(fun tuple ->
+        let name = tuple.[0].GetString()
+        let object = tuple.[1]
+        let typ = object.GetProperty("type").GetString()
+        let nth = object.GetProperty("nth").GetInt32()
+        let isSigningField = object.GetProperty("isSigningField").GetBoolean()
+        // trim ST off the front of types, we're nesting this in St anyway
+        let key = trimSt typ
+        name, (key, nth, isSigningField)
+    )
+    |> Map.ofSeq
+    // Add on extra fields that ripple-binary-codec is missing
+    |> Map.add "Version" ("UInt16", 16, true)
     
 /// Emit the FIELDS
 let emitFields (writer : TextWriter) (document : JsonDocument) =
-    let types = document.RootElement.GetProperty("FIELDS")
-
     // We want to map by type, then map by name to get index
     let fields =
-        types.EnumerateArray()
-        |> Seq.map(fun tuple ->
-            let name = tuple.[0].GetString()
-            let object = tuple.[1]
-            let typ = object.GetProperty("type").GetString()
-            let nth = object.GetProperty("nth").GetInt32()
-            // trim ST off the front of types, we're nesting this in St anyway
-            let key = trimSt typ
-            key, (name, nth)
-        )
-        |> Seq.groupBy fst
+        getFields document
+        |> Seq.groupBy (fun kv ->
+            let (typ, _, _) = kv.Value
+            typ)
         |> Map.ofSeq
-        |> Map.map (fun _ seq -> seq |> Seq.map snd |> Map.ofSeq)
+        |> Map.map (fun _ seq ->
+            seq
+            |> Seq.map (fun kv ->
+                let (_, nth, _) = kv.Value
+                kv.Key, nth
+            )
+            |> Map.ofSeq)
 
     // For each type emit the field codes (eg. UInt8FieldCode.CloseResolution = 1)
     for typeFields in fields do
@@ -377,19 +390,7 @@ let emitLedger (writer : TextWriter) (document : JsonDocument) =
         |> Map.ofSeq
 
     // We want to map by name then by type
-    let fields =
-        document.RootElement.GetProperty("FIELDS").EnumerateArray()
-        |> Seq.map(fun tuple ->
-            let name = tuple.[0].GetString()
-            let object = tuple.[1]
-            let typ = object.GetProperty("type").GetString()
-            let nth = object.GetProperty("nth").GetInt32()
-            let isSigningField = object.GetProperty("isSigningField").GetBoolean()
-            // trim ST off the front of types, we're nesting this in St anyway
-            let key = trimSt typ
-            name, (key, nth, isSigningField)
-        )
-        |> Map.ofSeq
+    let fields = getFields document
         
     let field name doc =
         let fieldType, nth, isSigningField = fields.[name]

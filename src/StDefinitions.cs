@@ -242,6 +242,7 @@ namespace Ibasa.Ripple.St
         LedgerEntryType = 1,
         SignerWeight = 3,
         TransactionType = 2,
+        Version = 16,
     }
 
     public enum StUInt32FieldCode
@@ -438,6 +439,7 @@ namespace Ibasa.Ripple.St
         public static readonly StFieldId UInt16_LedgerEntryType = new StFieldId(StTypeCode.UInt16, 1);
         public static readonly StFieldId UInt16_SignerWeight = new StFieldId(StTypeCode.UInt16, 3);
         public static readonly StFieldId UInt16_TransactionType = new StFieldId(StTypeCode.UInt16, 2);
+        public static readonly StFieldId UInt16_Version = new StFieldId(StTypeCode.UInt16, 16);
 
         public static readonly StFieldId UInt32_BondAmount = new StFieldId(StTypeCode.UInt32, 23);
         public static readonly StFieldId UInt32_CancelAfter = new StFieldId(StTypeCode.UInt32, 36);

@@ -719,23 +719,23 @@ namespace Ibasa.Ripple
             var info = json.GetProperty("info");
 
             JsonElement element;
-            if (json.TryGetProperty("amendment_blocked", out element))
+            if (info.TryGetProperty("amendment_blocked", out element))
             {
                 AmendmentBlocked = element.GetBoolean();
             }
-            BuildVersion = json.GetProperty("build_version").ToString();
-            if (json.TryGetProperty("closed_ledger", out element))
+            BuildVersion = info.GetProperty("build_version").ToString();
+            if (info.TryGetProperty("closed_ledger", out element))
             {
                 ClosedLedger = element;
             }
-            CompleteLedgers = json.GetProperty("complete_ledgers").GetString();
-            HostId = json.GetProperty("hostid").GetString();
-            IoLatency = TimeSpan.FromMilliseconds(json.GetProperty("io_latency_ms").GetUInt32());
-            JqTransOverflow = ulong.Parse(json.GetProperty("jq_trans_overflow").GetString());
-            Peers = json.GetProperty("peers").GetUInt32();
-            PubKeyNode = json.GetProperty("pubkey_node").GetString();
-            ServerState = json.GetProperty("server_state").GetString();
-            ServerStateDuration = TimeSpan.FromMilliseconds(ulong.Parse(json.GetProperty("server_state_duration_us").GetString()) / 1000.0);
+            CompleteLedgers = info.GetProperty("complete_ledgers").GetString();
+            HostId = info.GetProperty("hostid").GetString();
+            IoLatency = TimeSpan.FromMilliseconds(info.GetProperty("io_latency_ms").GetUInt32());
+            JqTransOverflow = ulong.Parse(info.GetProperty("jq_trans_overflow").GetString());
+            Peers = info.GetProperty("peers").GetUInt32();
+            PubKeyNode = info.GetProperty("pubkey_node").GetString();
+            ServerState = info.GetProperty("server_state").GetString();
+            ServerStateDuration = TimeSpan.FromMilliseconds(ulong.Parse(info.GetProperty("server_state_duration_us").GetString()) / 1000.0);
         }
 
     }

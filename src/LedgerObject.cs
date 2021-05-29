@@ -485,9 +485,22 @@ namespace Ibasa.Ripple
         public Majority(ref StReader reader)
         {
             var fieldId = reader.ReadFieldId();
-
+            if (fieldId != StFieldId.UInt32_CloseTime)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.UInt32_CloseTime, fieldId));
+            }
             CloseTime = Epoch.ToDateTimeOffset(reader.ReadUInt32());
+            fieldId = reader.ReadFieldId();
+            if (fieldId != StFieldId.Hash256_Amendment)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Hash256_Amendment, fieldId));
+            }
             Amendment = reader.ReadHash256();
+            fieldId = reader.ReadFieldId();
+            if (fieldId != StFieldId.Object_ObjectEndMarker)
+            {
+                throw new Exception(string.Format("Expected {0} but got {1}", StFieldId.Object_ObjectEndMarker, fieldId));
+            }
         }
 
         public override int GetHashCode()

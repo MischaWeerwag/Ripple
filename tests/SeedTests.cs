@@ -84,5 +84,15 @@ namespace Ibasa.Ripple.Tests
             var secret = new Seed(bytes, type);
             Assert.Equal(secret.ToString(), expected);
         }
+
+        [Theory]
+        [InlineData(KeyType.Secp256k1)]
+        [InlineData(KeyType.Ed25519)]
+        public void TestSeedCreate(KeyType type)
+        {
+            var seed = Seed.Create(type);
+            Assert.Equal(type, seed.Type);
+            Assert.NotEqual(default, seed);
+        }
     }
 }

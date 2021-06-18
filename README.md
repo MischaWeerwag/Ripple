@@ -52,7 +52,7 @@ using(var jsonRpcApi = new JsonRpcApi(httpClient))
 
   // Locally sign and submit it to the network
   var submitRequest = new SubmitRequest();
-  sendingSeed.KeyPair(out var _, out var keyPair);
+  sendingSeed.GetKeyPairs(out var _, out var keyPair);
   submitRequest.TxBlob = transaction.Sign(keyPair, out var transactionHash);
   var submitResponse = await Api.Submit(submitRequest);
 

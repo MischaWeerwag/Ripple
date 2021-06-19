@@ -9,7 +9,7 @@ namespace Ibasa.Ripple.Tests
 {
     public struct TestAccount
     {
-        static readonly HttpClient HttpClient = new HttpClient();
+        static readonly FaucetClient FaucetClient = new FaucetClient();
 
         public readonly AccountId Address;
         public readonly Seed Secret;
@@ -29,13 +29,8 @@ namespace Ibasa.Ripple.Tests
 
         public static async Task<TestAccount> Create()
         {
-            var response = await HttpClient.PostAsync("https://faucet.altnet.rippletest.net/accounts", null);
-            var json = await response.Content.ReadAsStringAsync();
-            var document = System.Text.Json.JsonDocument.Parse(json);
-            var account = document.RootElement.GetProperty("account");
-            return new TestAccount(
-                new AccountId(account.GetProperty("address").GetString()),
-                new Seed(account.GetProperty("secret").GetString()));
+            var response = await FaucetClient.Generate();
+            return FromSeed(response);
         }
     }
 

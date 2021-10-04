@@ -51,6 +51,7 @@ namespace Ibasa.Ripple
             var json = await response.Content.ReadAsStringAsync();
             response.EnsureSuccessStatusCode();
             var document = System.Text.Json.JsonDocument.Parse(json);
+            // ValueKind = Object : "{"account":{"xAddress":"T7j5GjC8KFZ3jjbX2XsGzSj8ci4MVgUPEDHZKZpta1ywP9y","secret":"shLrJiQniUKVSYgG7YQ6BsGeq9c65","classicAddress":"rfLMWnokuVeXXFAJG7vs1XuTG8992n59mq","address":"rfLMWnokuVeXXFAJG7vs1XuTG8992n59mq"},"amount":1000,"balance":1000}"
             var account = document.RootElement.GetProperty("account");
             return new Seed(account.GetProperty("secret").GetString());
         }

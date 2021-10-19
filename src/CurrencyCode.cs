@@ -141,7 +141,7 @@ namespace Ibasa.Ripple
         {
             var a = UnsafeAsSpan(ref this);
             var b = UnsafeAsSpan(ref other);
-            for (int i = 0; i < 16; ++i)
+            for (int i = 0; i < 20; ++i)
             {
                 if (a[i] != b[i])
                 {

@@ -164,7 +164,7 @@ namespace Ibasa.Ripple.St
         TxnSignature = 4,
         UNLModifyValidator = 19,
         ValidatorToDisable = 20,
-        ValidatorToReEnable = 20,
+        ValidatorToReEnable = 21,
     }
 
     public enum StHash128FieldCode
@@ -385,7 +385,7 @@ namespace Ibasa.Ripple.St
         public static readonly StFieldId Blob_TxnSignature = new StFieldId(StTypeCode.Blob, 4);
         public static readonly StFieldId Blob_UNLModifyValidator = new StFieldId(StTypeCode.Blob, 19);
         public static readonly StFieldId Blob_ValidatorToDisable = new StFieldId(StTypeCode.Blob, 20);
-        public static readonly StFieldId Blob_ValidatorToReEnable = new StFieldId(StTypeCode.Blob, 20);
+        public static readonly StFieldId Blob_ValidatorToReEnable = new StFieldId(StTypeCode.Blob, 21);
 
         public static readonly StFieldId Hash128_EmailHash = new StFieldId(StTypeCode.Hash128, 1);
 

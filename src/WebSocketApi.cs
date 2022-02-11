@@ -88,7 +88,7 @@ namespace Ibasa.Ripple
                             {
                                 OnPathFind?.Invoke(this, id, pathFindResponse);
                             }
-                            catch (Exception exc)
+                            catch (Exception)
                             {
                                 // TODO: We don't want user exceptions from the OnPathFind event to tear down this thread but we should bubble them up somehow.
                             }

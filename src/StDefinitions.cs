@@ -595,6 +595,10 @@ namespace Ibasa.Ripple
           {
               return new TrustSetTransaction(json);
           }
+          else if (transactionType == "UNLModify")
+          {
+              return null;
+          }
           else
           {
               throw new NotImplementedException(
@@ -602,6 +606,16 @@ namespace Ibasa.Ripple
           }
       }
     }
+
+    public sealed partial class UnlModifyTransaction : Transaction
+    {
+        internal UnlModifyTransaction(JsonElement json): base(json) {}
+        private protected override void Serialize(IBufferWriter<byte> bufferWriter, bool forSigning)
+        {
+            throw new NotImplementedException();
+        }
+    }
+    
     /// <summary>
     /// The AccountRoot object type describes a single account, its settings, and XRP balance.
     /// </summary>

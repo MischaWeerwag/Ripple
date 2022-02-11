@@ -591,5 +591,18 @@ namespace Ibasa.Ripple
             CloseTimeResolution = reader.ReadUInt8();
             CloseFlags = reader.ReadUInt8();
         }
+
+        public LedgerHeader(JsonElement json)
+        {
+            Sequence = Convert.ToUInt32(json.GetProperty("seqNum").GetString());
+            TotalCoins = Convert.ToUInt64(json.GetProperty("total_coins").GetString());
+            ParentHash = new Hash256(json.GetProperty("parent_hash").GetString());
+            TransactionHash = new Hash256(json.GetProperty("transaction_hash").GetString());
+            AccountHash = new Hash256(json.GetProperty("account_hash").GetString());
+            ParentCloseTime = Epoch.ToDateTimeOffset(json.GetProperty("parent_close_time").GetUInt32());
+            CloseTime = Epoch.ToDateTimeOffset(json.GetProperty("close_time").GetUInt32());
+            CloseTimeResolution = json.GetProperty("close_time_resolution").GetByte();
+            CloseFlags = json.GetProperty("close_flags").GetByte();
+        }
     }
 }

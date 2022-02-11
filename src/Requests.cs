@@ -161,7 +161,7 @@ namespace Ibasa.Ripple
         /// </summary>
         public bool Closed { get; private set; }
 
-        public Hash256[] Transactions { get; private set; }
+        public Transaction[] Transactions { get; private set; }
 
         internal LedgerResponse(JsonElement json)
         {
@@ -176,10 +176,7 @@ namespace Ibasa.Ripple
             if (json.TryGetProperty("ledger_index", out var ledger_index))
             {
                 LedgerIndex = ledger_index.GetUInt32();
-
-                var stBytes = ledger.GetProperty("ledger_data").GetBytesFromBase16();
-                var stReader = new St.StReader(stBytes);
-                Ledger = new LedgerHeader(stReader);
+                Ledger = new LedgerHeader(ledger);
             }
             else
             {
@@ -188,11 +185,12 @@ namespace Ibasa.Ripple
 
             if (ledger.TryGetProperty("transactions", out var transactions))
             {
-                var length = transactions.GetArrayLength();
-                Transactions = new Hash256[length];
-                for (int i = 0; i < length; ++i)
+                var txCount = transactions.GetArrayLength();
+                Transactions = new Transaction[txCount];
+                for (var i = 0; i < txCount; i++)
                 {
-                    Transactions[i] = new Hash256(transactions[i].GetString());
+                    var tx = transactions[i];
+                    Transactions[i] = Transaction.ReadJson(tx);
                 }
             }
 

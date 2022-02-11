@@ -109,7 +109,7 @@ namespace Ibasa.Ripple
             jsonWriter.WriteStartObject();
             var requestId = WriteHeader(jsonWriter, "ledger");
             LedgerSpecification.Write(jsonWriter, request.Ledger);
-            jsonWriter.WriteBoolean("binary", true);
+            jsonWriter.WriteBoolean("binary", false);
             jsonWriter.WriteBoolean("full", request.Full);
             jsonWriter.WriteBoolean("accounts", request.Accounts);
             jsonWriter.WriteBoolean("transactions", request.Transactions);

@@ -96,7 +96,25 @@ namespace Ibasa.Ripple
             MemoType = memoType;
         }
 
-        internal Memo(JsonElement json) { throw new NotImplementedException(); }
+        internal Memo(JsonElement json)
+        {
+            MemoData = default;
+            MemoFormat = null;
+            MemoType = null;
+            
+            if (json.TryGetProperty("MemoData", out var memoData))
+            {
+                 MemoData = new ReadOnlyMemory<byte>(); // TODO
+            }
+            if (json.TryGetProperty("MemoFormat", out var memoFormat))
+            {
+                MemoFormat = memoFormat.GetString();
+            }
+            if (json.TryGetProperty("MemoType", out var memoType))
+            {
+                MemoType = memoType.ToString();
+            }
+        }
 
         internal Memo(ref StReader reader) { throw new NotImplementedException(); }
 
@@ -354,7 +372,9 @@ namespace Ibasa.Ripple
         /// </summary>
         public UInt32? TicketSequence { get; set; }
 
-
+        public Hash256 Hash { get; set; }
+        public MetaData Meta { get; set; }
+        
         public Transaction()
         {
 
@@ -367,6 +387,27 @@ namespace Ibasa.Ripple
             Account = new AccountId(json.GetProperty("Account").GetString());
             Fee = XrpAmount.ReadJson(json.GetProperty("Fee"));
             Sequence = json.GetProperty("Sequence").GetUInt32();
+            Hash = new Hash256(json.GetProperty("hash").GetString());
+
+            if (json.TryGetProperty("metaData", out var meta))
+            {
+                var amountDelivered = new Amount();
+                if (meta.TryGetProperty("delivered_amount", out var delivered))
+                {
+                    amountDelivered = Amount.ReadJson(delivered);
+                }
+                else if (meta.TryGetProperty("DeliveredAmount", out delivered))
+                {
+                    amountDelivered = Amount.ReadJson(delivered);
+                }
+                Meta = new MetaData
+                {
+                    TransactionIndex = meta.GetProperty("TransactionIndex").GetUInt32(),
+                    TransactionResult = meta.GetProperty("TransactionResult").GetString(),
+                    DeliveredAmount = amountDelivered,
+                };
+            }
+
             if (json.TryGetProperty("AccountTxnID", out element))
             {
                 AccountTxnID = new Hash256(element.GetString());
@@ -504,6 +545,13 @@ namespace Ibasa.Ripple
             }
 
             return bufferWriter.WrittenMemory.Slice(4);
+        }
+
+        public class MetaData
+        {
+            public uint TransactionIndex { get; set; }
+            public string TransactionResult { get; set; }
+            public Amount DeliveredAmount { get; set; }
         }
     }
 
